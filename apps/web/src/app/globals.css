@@ -4,19 +4,22 @@
 
 @layer base {
   :root {
+    /* Tokens tomados de seSALE.html: --s0 fondo, --s2 cards, --F primario, --s4 bordes, --t4 texto secundario */
     --background: 0 0% 5%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 9%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 100%;
-    --primary: 328 78% 51%;
+    --primary: 328 82% 52%;
     --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 63%;
-    --border: 0 0% 20%;
+    --muted: 0 0% 22%;
+    --muted-foreground: 0 0% 40%;
+    --border: 0 0% 16%;
+    --destructive: 1 71% 59%;
+    --destructive-foreground: 0 0% 100%;
     --radius: 0.75rem;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground antialiased;
   }
 }

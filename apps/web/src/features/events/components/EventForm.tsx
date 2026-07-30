@@ -176,8 +176,8 @@ export function EventForm() {
         </div>
       )}
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
-        <legend className="px-1 text-sm font-medium">Contacto (opcional)</legend>
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <legend className="px-1 text-sm font-bold text-ink-2">Contacto (opcional)</legend>
         <div className="flex flex-col gap-1">
           <Label htmlFor="contact_whatsapp">WhatsApp</Label>
           <Input id="contact_whatsapp" {...register("contact_whatsapp")} />
@@ -209,7 +209,7 @@ export function EventForm() {
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-xl text-base">
         {isSubmitting ? "Publicando..." : "Publicar evento"}
       </Button>
     </form>
