@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>seSALE — La agenda cultural de tu ciudad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:70px}
+a{text-decoration:none;color:inherit}
+button{font-family:'Inter',sans-serif;cursor:pointer}
+:root{
+  --F:#E91E8C;--FD:#c4166f;--FB:#1a0d14;
+  --V:#1D9E75;--VW:#25D366;--AM:#EF9F27;
+  --AZ:#378ADD;--VI:#7F77DD;--NA:#D85A30;
+  --s0:#0d0d0d;--s1:#111;--s2:#1a1a1a;--s3:#222;--s4:#2a2a2a;--s5:#383838;--s6:#555;
+  --t1:#fff;--t2:#ccc;--t3:#888;--t4:#666;--t5:#444;
+}
+/* NAV */
+.nav{position:sticky;top:0;z-index:200;background:var(--s0);border-bottom:1px solid #1e1e1e;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;overflow:hidden}
+.nav::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.05) 1px,transparent 1px);background-size:16px 16px;pointer-events:none}
+.nav::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--F),transparent 70%)}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;position:relative;z-index:1;min-height:48px}
+.logo-img{height:44px;width:auto;max-width:150px;object-fit:contain}
+.logo .se{font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px}
+.logo .sale{font-size:22px;font-weight:900;color:var(--F);letter-spacing:-1px}
+.logo .punto{width:7px;height:7px;border-radius:50%;background:var(--F);margin-left:2px;margin-bottom:3px;flex-shrink:0;animation:puls 2s ease-in-out infinite}
+@keyframes puls{0%,100%{transform:scale(1)}50%{transform:scale(1.4)}}
+.nav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1}
+.cpill{background:var(--s2);border:1px solid var(--s4);border-radius:20px;padding:6px 11px;font-size:11px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:5px;cursor:pointer}
+.cpill i{color:var(--F);font-size:13px}
+.btn-pub{background:var(--F);color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700}
+/* BNAV */
+.bnav{background:var(--s1);border-top:1px solid #1e1e1e;display:flex;justify-content:space-around;padding:10px 0 16px;position:fixed;bottom:0;left:0;right:0;z-index:200}
+.btab{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;background:none;border:none;padding:0 8px;min-width:56px}
+.btab i{font-size:22px;color:var(--t5)}
+.btab span{font-size:10px;font-weight:600;color:var(--t5)}
+.btab.on i,.btab.on span{color:var(--F)}
+/* SCREENS */
+.screen{display:none}
+.screen.open{display:block}
+/* HERO */
+.hero{padding:36px 20px 28px;border-bottom:1px solid #1e1e1e;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--F)}
+.hero-deco{position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,#E91E8C06 0%,transparent 70%);pointer-events:none}
+.eyebrow{font-size:10px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.eyebrow i{font-size:12px}
+.hero-t{font-size:clamp(24px,6vw,38px);font-weight:900;line-height:1.1;margin-bottom:10px;letter-spacing:-1px}
+.hero-t em{color:var(--F);font-style:normal}
+.hero-s{font-size:13px;color:var(--t4);margin-bottom:6px;line-height:1.6}
+.stats{display:flex;gap:24px;margin:4px 20px 24px;padding-top:18px;border-top:1px solid #1e1e1e}
+.st-n{font-size:22px;font-weight:800;color:#fff;display:block;letter-spacing:-1px}
+.st-l{font-size:10px;color:var(--t5);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px}
+/* ESTA NOCHE */
+.en-btn{margin:14px 20px 0;background:var(--F);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:13px;cursor:pointer}
+.en-ico{width:40px;height:40px;background:rgba(255,255,255,.18);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.en-ico i{font-size:21px;color:#fff}
+.en-inf .en-t{font-size:14px;font-weight:700;color:#fff}
+.en-inf .en-s{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+.en-c{background:rgba(255,255,255,.22);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:700;color:#fff;margin-left:auto;white-space:nowrap}
+/* BANNERS */
+.bans-section{padding:14px 20px 0}
+.ban-lbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.ban-lbl em{color:var(--F);font-style:normal;font-size:9px}
+.ban-full{border-radius:12px;overflow:hidden;margin-bottom:8px;cursor:pointer;position:relative;height:78px;background:var(--s2)}
+.ban-full img,.ad-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.ad-empty-content{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:5px;border:1px dashed var(--s4);border-radius:12px;color:var(--t5);font-size:11px;font-weight:600;text-align:center;padding:8px}
+.ad-empty-content i{font-size:22px;color:#E91E8C66}
+.ban-full .ad-empty-content{font-size:9px;gap:3px}
+.ban-full .ad-empty-content i{font-size:16px}
+.ban-full.ad-empty .ad-empty-content,.ad-tile.ad-empty .ad-empty-content{display:flex}
+/* CAT CHIPS */
+.cat-wrap{padding:14px 20px 0;border-bottom:1px solid #1e1e1e}
+.cat-lbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:14px}
+.chip{background:var(--s2);border:1px solid var(--s4);border-radius:20px;padding:7px 14px;font-size:11px;font-weight:600;color:var(--t2);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;flex-shrink:0}
+.chip:hover{border-color:#E91E8C66}
+.chip i{font-size:13px}
+.chip.on{background:var(--F);border-color:var(--F);color:#fff}
+.chips-lg{gap:10px}
+.chip-lg{padding:12px 19px;font-size:14px;gap:9px;border-radius:24px}
+.chip-lg i{font-size:17px}
+/* VISTA TABS */
+.vtabs{display:flex;background:var(--s1);border-bottom:1px solid #1e1e1e}
+.vtab{flex:1;padding:11px;text-align:center;font-size:12px;font-weight:600;color:var(--t5);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:6px}
+.vtab i{font-size:14px}
+.vtab.on{color:var(--F);border-bottom-color:var(--F)}
+/* SEARCH + FILTROS */
+.sbar-wrap{padding:13px 20px 0}
+.sbar{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:9px}
+.sbar i{font-size:15px;color:var(--t5)}
+.sbar input{background:none;border:none;outline:none;color:#fff;font-size:13px;font-family:'Inter',sans-serif;flex:1}
+.sbar input::placeholder{color:var(--s6)}
+.fwrap{padding:10px 20px 0}
+.flbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.flbl i{font-size:12px;color:var(--F)}
+.fils{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:2px}
+.fil{background:var(--s5);border:none;border-radius:20px;padding:8px 15px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
+.fil:hover{background:var(--s6)}
+.fil.on{background:var(--F)}
+.fil i{font-size:13px}
+/* FECHA PANEL */
+.fp{background:#161616;border-bottom:1px solid #1e1e1e;padding:14px 20px;display:none}
+.fp.open{display:block}
+.fp-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.fp-t{font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px}
+.fp-t i{font-size:15px;color:var(--F)}
+.btn-limp{background:var(--s5);color:#fff;border:none;border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600}
+.raps{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.rap{background:var(--s5);border:none;border-radius:20px;padding:7px 14px;font-size:11px;font-weight:600;color:#fff;cursor:pointer}
+.rap.on{background:var(--F)}
+.cal-box{background:var(--s2);border-radius:12px;padding:14px;border:1px solid var(--s4)}
+.cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-mes{font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px}
+.cal-mes i{font-size:15px;color:var(--F)}
+.cal-nav{background:var(--s5);color:#fff;border:none;border-radius:8px;width:30px;height:30px;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-nav:hover{background:var(--F)}
+.dhds{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.dhd{font-size:9px;font-weight:700;color:var(--t5);text-align:center;padding:3px 0}
+.dias{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dia{height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--t3);border-radius:6px;cursor:pointer;position:relative;background:none;border:none}
+.dia:hover:not(.otro){background:var(--s5);color:#fff}
+.dia.hoy{color:var(--F);font-weight:800}
+.dia.sel{background:var(--F);color:#fff}
+.dia.ri{background:var(--F);color:#fff;border-radius:6px 0 0 6px}
+.dia.rf{background:var(--F);color:#fff;border-radius:0 6px 6px 0}
+.dia.rango{background:#4a1030;color:var(--F);border-radius:0}
+.dia.tev::after{content:'';position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--F)}
+.dia.sel.tev::after,.dia.ri.tev::after,.dia.rf.tev::after{background:#fff}
+.dia.otro{color:var(--s5);cursor:default}
+.sel-box{background:var(--FB);border:1px solid var(--F);border-radius:10px;padding:11px 14px;margin-top:12px;display:none;align-items:center;justify-content:space-between}
+.sel-box.show{display:flex}
+.sel-txt{font-size:13px;font-weight:700;color:var(--F);display:flex;align-items:center;gap:8px}
+.sel-txt i{font-size:15px}
+.btn-ver-ev{background:var(--F);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700}
+/* EVENTOS */
+.seclbl{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:2px;padding:13px 20px 8px;display:flex;align-items:center;gap:6px}
+.seclbl i{font-size:13px;color:var(--F)}
+.ev-list{padding:0 20px 8px}
+.ads-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:2px 0 10px}
+.ad-tile{position:relative;border-radius:12px;overflow:hidden;background:var(--s2);aspect-ratio:3/2;cursor:pointer}
+.sep-f{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;padding:9px 0 5px;border-bottom:1px solid #1e1e1e;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.sep-f i{font-size:11px;color:var(--F)}
+.evi{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--s1);cursor:pointer}
+.evi:hover{opacity:.8}
+.evi:last-child{border-bottom:none}
+.efc{text-align:center;min-width:34px;flex-shrink:0}
+.efd{font-size:17px;font-weight:800;color:var(--F);line-height:1;letter-spacing:-1px}
+.efm{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;margin-top:2px}
+.eico{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.eico i{font-size:18px}
+.einf{flex:1;min-width:0}
+.enom{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.elug{font-size:11px;color:var(--t5);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+.elug i{font-size:11px;color:var(--F);flex-shrink:0}
+/* WA STRIP */
+.wa-strip{background:#1a3a22;border:1px solid #25D36644;border-radius:12px;margin:10px 20px 20px;padding:13px 16px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.wa-strip i.ico{font-size:24px;color:var(--VW);flex-shrink:0}
+.wa-t{font-size:13px;font-weight:700;color:#fff}
+.wa-s{font-size:11px;color:#3a8a4a;margin-top:2px}
+.wa-arr{margin-left:auto;font-size:18px;color:var(--VW)}
+/* MAPA */
+.mapa-cont{background:#0f0f0f;border-radius:14px;overflow:hidden;border:1px solid #1e1e1e;position:relative;height:340px;margin:14px 20px 20px}
+.mapa-svg{width:100%;height:100%}
+.m-cerca{position:absolute;top:12px;right:12px;background:rgba(13,13,13,.93);border:1px solid #E91E8C55;border-radius:20px;padding:7px 15px;font-size:12px;font-weight:700;color:var(--F);display:flex;align-items:center;gap:5px;cursor:pointer}
+.m-ley{position:absolute;bottom:12px;left:12px;background:rgba(13,13,13,.93);border:1px solid var(--s4);border-radius:10px;padding:9px 11px;display:flex;flex-direction:column;gap:5px}
+.lr{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--t2)}
+.ld{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mtt{position:absolute;background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:10px 12px;display:none;min-width:155px;z-index:10;pointer-events:none}
+.mtt-t{font-weight:700;color:#fff;margin-bottom:3px;font-size:12px}
+.mtt-m{color:var(--t4);font-size:11px;margin-bottom:5px}
+/* BACK HEADER */
+.bkhd{display:flex;align-items:center;gap:11px;padding:13px 20px 10px;border-bottom:1px solid #1e1e1e}
+.bkbtn{background:none;border:none;color:var(--F);font-size:23px;cursor:pointer;display:flex;align-items:center;padding:0}
+.bktit{font-size:14px;font-weight:600;color:var(--t3)}
+/* CATEGORIAS */
+.cats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px}
+.ccat{border-radius:12px;overflow:hidden;border:1px solid var(--s4);cursor:pointer;transition:border-color .15s}
+.ccat:hover{border-color:#E91E8C66}
+.ccat-img{height:80px;display:flex;align-items:center;justify-content:center;position:relative}
+.ccat-img i{font-size:32px}
+.ccat-cnt{position:absolute;top:7px;right:8px;background:rgba(0,0,0,.7);border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700;color:var(--t2)}
+.ccat-info{background:var(--s2);padding:9px 11px}
+.ccat-nom{font-size:13px;font-weight:700;color:#fff}
+.ccat-desc{font-size:11px;color:var(--t4);margin-top:2px}
+/* CAT DETALLE */
+.cat-det-hero{height:110px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.cat-det-tit{position:absolute;bottom:12px;left:18px;font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:center;gap:9px}
+.cat-det-cnt{position:absolute;bottom:12px;right:16px;font-size:12px;color:rgba(255,255,255,.55);background:rgba(0,0,0,.45);border-radius:20px;padding:3px 10px}
+.cat-bans{padding:12px 20px 4px}
+.cat-ban-lbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.cat-ban-lbl em{color:var(--F);font-style:normal;font-size:9px}
+/* SUGERIR */
+.sug-box{margin:4px 20px 20px;background:var(--s1);border:1px dashed var(--s4);border-radius:12px;padding:16px}
+.sug-t{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;gap:7px}
+.sug-t i{font-size:15px;color:var(--F)}
+.sug-s{font-size:11px;color:var(--t5);margin-bottom:12px;line-height:1.5}
+.sug-row{display:flex;gap:8px}
+.sug-inp{flex:1;background:var(--s2);border:1px solid var(--s4);border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none}
+.sug-inp:focus{border-color:var(--F)}
+.sug-inp::placeholder{color:var(--s6)}
+.sug-btn{background:var(--F);color:#fff;border:none;border-radius:8px;padding:10px 17px;font-size:13px;font-weight:700}
+.sug-btn:disabled{background:#3a1a2a;color:#664;cursor:not-allowed}
+.sug-ok{background:#0a1a0a;border:1px solid #1D9E7544;border-radius:8px;padding:10px 12px;display:none;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;font-weight:600;color:#5DCAA5}
+.sug-ok i{font-size:16px;color:var(--V)}
+/* LUGARES */
+.lugares-wrap{padding:0}
+.tipo-chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px}
+.ticon{font-size:13px}
+/* LUGAR CARD */
+.lugar-card{background:var(--s2);border:1px solid var(--s4);border-radius:12px;overflow:hidden;margin:0 20px 12px;cursor:pointer;transition:border-color .15s}
+.lugar-card:hover{border-color:#E91E8C44}
+.lugar-card.dest{border-color:var(--F)}
+.lugar-row{display:flex;align-items:center;gap:11px;background:var(--s1);border-radius:10px;margin:0 20px 10px;padding:11px 13px}
+.lr-ico{width:40px;height:40px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.lr-body{flex:1;min-width:0}
+.lr-tipo{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.lr-tipo i{font-size:11px}
+.lr-nom{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr-meta{font-size:10px;color:var(--t5);display:flex;gap:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr-meta span{display:flex;align-items:center;gap:3px}
+.lr-meta i{font-size:10px;color:var(--F)}
+.lr-wa{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--VW);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
+.lc-img{height:90px;display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
+.lc-bdes{position:absolute;top:8px;left:8px;background:var(--F);color:#fff;font-size:9px;font-weight:800;border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px}
+.lc-bdes i{font-size:10px}
+.lc-bopen{position:absolute;top:8px;right:8px;border-radius:20px;padding:3px 9px;font-size:9px;font-weight:700;display:flex;align-items:center;gap:4px}
+.is-open{background:#0d2a1a;color:var(--V);border:1px solid #1D9E7544}
+.is-closed{background:var(--s2);color:var(--t5);border:1px solid var(--s4)}
+.odot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.lc-body{padding:12px 14px}
+.lc-tipo{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.lc-tipo i{font-size:11px}
+.lc-nom{font-size:15px;font-weight:800;color:#fff;margin-bottom:4px;letter-spacing:-.3px}
+.lc-meta{font-size:11px;color:var(--t5);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
+.lc-meta span{display:flex;align-items:center;gap:4px}
+.lc-meta i{font-size:11px;color:var(--F)}
+.lc-foot{display:flex;gap:8px}
+.btn-wa-s{background:var(--VW);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.btn-ig-s{background:var(--s5);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.btn-map-s{background:var(--AZ)22;color:var(--AZ);border:1px solid var(--AZ)44;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;margin-left:auto}
+.no-deliv{background:var(--s1);border-radius:10px;margin:0 20px 20px;padding:12px 14px;font-size:11px;color:var(--t5);line-height:1.6;display:flex;align-items:flex-start;gap:9px}
+.no-deliv i{font-size:16px;color:var(--F);flex-shrink:0;margin-top:1px}
+/* QUE ES */
+.qe-hero{padding:32px 20px 28px;background:linear-gradient(180deg,#0d0d0d 0%,#1a0d14 100%);border-bottom:1px solid #1e1e1e;text-align:center;position:relative;overflow:hidden}
+.qe-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--F)}
+.qe-logo{font-size:40px;font-weight:900;letter-spacing:-2px;margin-bottom:6px;display:flex;align-items:baseline;justify-content:center;gap:0}
+.qe-logo .se{color:#fff}
+.qe-logo .sale{color:var(--F)}
+.qe-logo .punto{width:10px;height:10px;border-radius:50%;background:var(--F);margin-left:3px;margin-bottom:5px;animation:puls 2s ease-in-out infinite;flex-shrink:0}
+.qe-tag{font-size:11px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:3px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.qe-tag i{font-size:13px}
+.qe-copy{font-size:14px;color:var(--t3);line-height:1.7;max-width:340px;margin:0 auto 20px}
+.qe-copy strong{color:#fff}
+.qe-stats{display:flex;justify-content:center;gap:24px;padding-top:18px;border-top:1px solid #1e1e1e}
+.qs-n{font-size:22px;font-weight:800;color:var(--F);display:block;letter-spacing:-1px}
+.qs-l{font-size:10px;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.dif-list{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.dif-item{background:var(--s2);border-left:3px solid var(--F);border-radius:0 10px 10px 0;padding:13px 14px}
+.dif-t{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.dif-t i{font-size:15px;color:var(--F)}
+.dif-s{font-size:11px;color:var(--t5);line-height:1.5}
+.pasos-sec{padding:18px 20px}
+.pasos-tit{font-size:11px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.pasos-tit i{font-size:13px}
+.paso{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start}
+.paso:last-child{margin-bottom:0}
+.paso-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.paso-ico i{font-size:20px}
+.paso-n{font-size:9px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.paso-t{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.paso-s{font-size:12px;color:var(--t5);line-height:1.5}
+.pq-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 18px}
+.pq-card{background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:14px}
+.pq-ico{font-size:26px;margin-bottom:8px}
+.pq-t{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
+.pq-s{font-size:11px;color:var(--t5);line-height:1.4}
+.pq-tag{display:inline-block;font-size:9px;font-weight:700;border-radius:20px;padding:3px 9px;margin-top:6px}
+.divisor{height:1px;background:#1e1e1e;margin:4px 20px 18px}
+/* EVENTO */
+.ev-img{display:flex;align-items:center;justify-content:center;position:relative;height:160px;cursor:pointer}
+.ev-img i{font-size:54px}
+.ev-img-badge{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.85);border:1px solid #444;border-radius:20px;padding:6px 14px;font-size:11px;font-weight:600;color:#fff;display:flex;align-items:center;gap:5px}
+.ev-img-badge i{font-size:12px;color:var(--F)}
+.ev-img-zoom{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.65);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;gap:5px}
+.ev-img-zoom i{font-size:13px}
+/* LIGHTBOX FLYER */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;align-items:center;justify-content:center;padding:30px}
+.lightbox.open{display:flex}
+.lightbox-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.12);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lightbox-img{width:100%;max-width:420px;aspect-ratio:3/4;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ev-body{padding:18px 20px}
+.ev-cat-tag{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:5px 15px;font-size:11px;font-weight:700;margin-bottom:13px}
+.ev-cat-tag i{font-size:13px}
+.ev-tit{font-size:21px;font-weight:800;margin-bottom:16px;line-height:1.2;letter-spacing:-.5px;color:#fff}
+.ev-mg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.mi{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:9px}
+.mi i{font-size:15px;color:var(--F);flex-shrink:0}
+.mi-l{font-size:10px;color:var(--t5);text-transform:uppercase;letter-spacing:.5px}
+.mi-v{font-size:13px;font-weight:700;color:#fff;margin-top:2px}
+.ent-sec{margin-bottom:18px}
+.ent-tit{font-size:11px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.ent-tit i{font-size:12px;color:var(--F)}
+.ent-pago{background:var(--s2);border:1px solid var(--s4);border-radius:12px;overflow:hidden}
+.ent-precio{background:var(--s3);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--s4)}
+.ent-pv{font-size:21px;font-weight:800;color:#fff;letter-spacing:-1px}
+.ent-pl{font-size:11px;color:var(--t4);margin-bottom:3px}
+.ent-ant{font-size:12px;font-weight:700;color:#fff;background:var(--F);border-radius:20px;padding:5px 13px;display:flex;align-items:center;gap:5px}
+.ent-ant i{font-size:12px}
+.ent-donde{padding:13px 16px}
+.ent-dl{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.ent-op{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #111}
+.ent-op:last-child{border-bottom:none}
+.ent-op-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ent-op-ico i{font-size:16px}
+.ent-op-n{flex:1}
+.ent-op-n strong{font-size:13px;font-weight:700;color:#fff;display:block}
+.ent-op-n span{font-size:11px;color:var(--t4)}
+.ent-gratis{background:#0d2a1a;border:1px solid var(--V);border-radius:12px;padding:15px;display:flex;align-items:center;gap:13px}
+.ent-gratis i{font-size:24px;color:var(--V);flex-shrink:0}
+.eg-t{font-size:16px;font-weight:700;color:#5DCAA5}
+.eg-s{font-size:11px;color:#3a6a3a;margin-top:3px}
+.ev-accs{display:flex;gap:10px;margin-bottom:18px}
+.acc-bell{flex:1;background:var(--F);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.acc-bell i{font-size:15px}
+.acc-wa{flex:1;background:var(--VW);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.acc-wa i{font-size:15px}
+/* PERFIL ORGANIZADOR */
+.perf-card{background:var(--s1);border:1px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:18px}
+.perf-hd{background:var(--s2);padding:14px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:11px}
+.perf-logo{width:46px;height:46px;border-radius:10px;background:#E91E8C22;border:1px solid #E91E8C44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--F);flex-shrink:0}
+.perf-n{font-size:14px;font-weight:700;color:#fff}
+.perf-t{font-size:11px;color:var(--t4);margin-top:2px}
+.perf-plan{font-size:10px;font-weight:700;background:var(--F);color:#fff;border-radius:20px;padding:3px 10px;margin-left:auto;display:flex;align-items:center;gap:4px}
+.perf-plan i{font-size:11px}
+.perf-row{display:flex;align-items:center;gap:11px;padding:11px 16px;border-bottom:1px solid #111}
+.perf-row:last-child{border-bottom:none}
+.perf-row i{font-size:14px;color:var(--F);width:17px;flex-shrink:0}
+.perf-row span{font-size:12px;color:var(--t2)}
+.perf-row a{font-size:12px;color:var(--F)}
+/* VERIFICADO PÚBLICO */
+.verif-pub{background:#0d2a1a;border:1px solid #1D9E7544;border-radius:10px;padding:13px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
+.vp-ico{width:38px;height:38px;background:#1D9E7522;border:1.5px solid #1D9E75;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vp-ico i{font-size:18px;color:var(--V)}
+.vp-t{font-size:13px;font-weight:700;color:#5DCAA5;margin-bottom:3px}
+.vp-s{font-size:11px;color:#3a6a3a;margin-bottom:7px}
+.vp-badges{display:flex;flex-wrap:wrap;gap:5px}
+.vp-badge{background:#1D9E7518;border:1px solid #1D9E7533;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:#5DCAA5;display:flex;align-items:center;gap:4px}
+.vp-badge i{font-size:11px}
+/* REPORT */
+.report-box{background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:20px}
+.report-s{font-size:11px;color:var(--t5);line-height:1.6;margin-bottom:9px}
+.btn-report{background:#E24B4A22;color:#E24B4A;border:1px solid #E24B4A44;border-radius:20px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;width:fit-content}
+.btn-report i{font-size:12px}
+/* REGISTRO */
+.reg-wrap{padding:20px}
+.reg-t{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-.5px}
+.reg-s{font-size:13px;color:var(--t4);margin-bottom:20px;line-height:1.6}
+.fl{font-size:11px;font-weight:600;color:var(--t3);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.fl em{color:var(--F);font-style:normal}
+.fl i{font-size:12px;color:var(--F)}
+.fi{width:100%;background:var(--s2);border:1px solid var(--s4);border-radius:9px;padding:11px 13px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:14px}
+.fi:focus{border-color:var(--F)}
+.fi::placeholder{color:var(--s6)}
+.fsel{width:100%;background:var(--s2);border:1px solid var(--s4);border-radius:9px;padding:11px 13px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:14px;appearance:none;-webkit-appearance:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.doc-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.doc-op{background:var(--s2);border:1.5px solid var(--s4);border-radius:9px;padding:12px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.doc-op.on{background:var(--FB);border-color:var(--F)}
+.doc-op i{font-size:22px;color:var(--t5);display:block;margin-bottom:5px}
+.doc-op.on i{color:var(--F)}
+.doc-op .doc-n{font-size:13px;font-weight:700;color:var(--t2)}
+.doc-op.on .doc-n{color:#fff}
+.doc-op .doc-desc{font-size:10px;color:var(--t5);margin-top:3px;line-height:1.3}
+.verif-row{display:flex;gap:8px;margin-bottom:6px}
+.verif-row .fi{margin-bottom:0;flex:1}
+.btn-verif{background:var(--F);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.btn-verif i{font-size:13px}
+.verified{background:#0d2a1a;border:1px solid var(--V);border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#5DCAA5;margin-bottom:14px}
+.verified i{font-size:16px;color:var(--V)}
+.info-box{background:var(--s2);border:1px solid var(--s4);border-radius:9px;padding:11px 13px;margin-bottom:14px}
+.ib-t{font-size:12px;font-weight:700;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.ib-t i{color:var(--F);font-size:13px}
+.ib-s{font-size:11px;color:var(--t4);line-height:1.5}
+.bloque-priv{background:#1a0d14;border:1px solid #E91E8C33;border-radius:12px;padding:14px;margin-bottom:16px}
+.bloque-priv-hd{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.bloque-priv-hd i{font-size:16px;color:var(--F)}
+.bloque-priv-hd span{font-size:13px;font-weight:700;color:var(--F);flex:1}
+.bloque-priv-hd .solo{font-size:9px;font-weight:700;background:#E91E8C22;color:var(--F);border:1px solid #E91E8C44;border-radius:20px;padding:2px 8px}
+.bloque-priv p{font-size:11px;color:#8a3a5a;margin-bottom:14px;line-height:1.5}
+.bloque-pub{background:#0d2a1a;border:1px solid #1D9E7533;border-radius:12px;padding:14px;margin-bottom:16px}
+.bloque-pub-hd{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.bloque-pub-hd i{font-size:16px;color:var(--V)}
+.bloque-pub-hd span{font-size:13px;font-weight:700;color:var(--V);flex:1}
+.bloque-pub-hd .publ{font-size:9px;font-weight:700;background:#1D9E7522;color:var(--V);border:1px solid #1D9E7533;border-radius:20px;padding:2px 8px}
+.bloque-pub p{font-size:11px;color:#3a6a3a;margin-bottom:14px;line-height:1.5}
+.terminos-box{background:var(--s2);border:1px solid var(--s4);border-radius:9px;padding:13px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px}
+.chk-l{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:var(--t2);cursor:pointer;line-height:1.5}
+.chk-l input{accent-color:var(--F);width:16px;height:16px;margin-top:2px;flex-shrink:0}
+.chk-l a{color:var(--F)}
+.btn-crear{width:100%;background:var(--F);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-crear i{font-size:17px}
+.btn-google{background:#fff;color:#333;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-bottom:10px}
+.btn-google i{font-size:18px;color:#E91E8C}
+.btn-wwa{background:var(--VW);color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-bottom:18px}
+.btn-wwa i{font-size:18px}
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.divider hr{flex:1;border:none;border-top:1px solid var(--s4)}
+.divider span{font-size:12px;color:var(--t5)}
+.reg-terms{font-size:11px;color:var(--t5);text-align:center;margin-top:14px;line-height:1.6}
+.reg-terms a{color:var(--F)}
+/* PUBLICAR */
+.pub-wrap{padding:18px 20px}
+.et-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.et-o{background:var(--s5);border:none;border-radius:10px;padding:12px 6px;text-align:center;cursor:pointer;transition:background .15s}
+.et-o i{font-size:20px;color:var(--t5);display:block;margin-bottom:5px}
+.et-o span{font-size:11px;font-weight:600;color:var(--t3);display:block}
+.et-o.on{background:var(--F)}
+.et-o.on i,.et-o.on span{color:#fff}
+.ht-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.ht-o{background:var(--s5);border:none;border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:background .15s}
+.ht-o i{font-size:20px;color:var(--t5);display:block;margin-bottom:5px}
+.ht-o span{font-size:12px;font-weight:600;color:var(--t3);display:block}
+.ht-o.on{background:var(--F)}
+.ht-o.on i,.ht-o.on span{color:#fff}
+.ent-ex{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:15px;margin-bottom:14px;display:none}
+.ent-ex.show{display:block}
+.ent-ex-t{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.ent-ex-t i{color:var(--F);font-size:14px}
+.planes-g{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.plan-o{background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:13px;cursor:pointer;transition:border-color .15s}
+.plan-o:hover{border-color:#E91E8C44}
+.plan-o.on{background:var(--FB);border:1.5px solid var(--F)}
+.po-n{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.po-n i{font-size:13px;color:var(--F)}
+.po-p{font-size:12px;color:var(--F);margin-bottom:4px;font-weight:700}
+.po-d{font-size:10px;color:var(--t5);line-height:1.4}
+.btn-cont{width:100%;background:var(--F);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-cont i{font-size:17px}
+/* PAGO */
+.pago-box{margin:18px 20px 0;background:var(--s2);border:1px solid var(--s4);border-radius:14px;overflow:hidden}
+.pago-hd{background:var(--s3);padding:14px 16px;border-bottom:1px solid var(--s4);display:flex;align-items:center;gap:10px}
+.pago-hd i{font-size:22px;color:var(--F)}
+.pago-hd-t{font-size:14px;font-weight:700;color:#fff}
+.pago-hd-s{font-size:11px;color:var(--t4);margin-top:2px;display:flex;align-items:center;gap:5px}
+.pago-hd-s i{font-size:12px;color:var(--V)}
+.pr{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--s1)}
+.pr:last-child{border-bottom:none}
+.pr-l{font-size:13px;color:var(--t4);display:flex;align-items:center;gap:6px}
+.pr-l i{font-size:13px;color:var(--F)}
+.pr-v{font-size:13px;font-weight:700;color:#fff}
+.pr-v.vd{color:var(--V);display:flex;align-items:center;gap:4px}
+.pr-v.vd i{font-size:13px}
+.pr-total{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--FB);border-top:1px solid #E91E8C44}
+.pr-tl{font-size:13px;font-weight:700;color:var(--F);display:flex;align-items:center;gap:6px}
+.pr-tl i{font-size:15px}
+.pr-tv{font-size:22px;font-weight:800;color:var(--F);letter-spacing:-1px}
+.mp-btns{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.mp-lbl{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.mp-lbl i{font-size:12px;color:var(--F)}
+.btn-mp{background:#009ee3;color:#fff;border:none;border-radius:12px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;width:100%}
+.btn-mp i{font-size:18px}
+.btn-qr{background:var(--s5);color:#fff;border:none;border-radius:12px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;width:100%}
+.btn-qr i{font-size:18px}
+.btn-transf{background:var(--V);color:#fff;border:none;border-radius:12px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;width:100%}
+.btn-transf i{font-size:18px}
+.mp-seg{display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;color:var(--t5);padding:4px 0 8px}
+.mp-seg i{font-size:13px;color:var(--V)}
+/* EXITO */
+.exito-wrap{padding:48px 20px;text-align:center}
+.exito-ico{width:80px;height:80px;background:#1D9E7522;border:2px solid var(--V);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:40px;color:var(--V)}
+.exito-ico i{font-size:40px}
+.exito-t{font-size:26px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-1px}
+.exito-plan{background:var(--FB);border:1px solid #E91E8C44;border-radius:14px;padding:18px;margin:0 0 26px;text-align:left}
+.exp-l{font-size:10px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.exp-l i{font-size:12px}
+.exp-v{font-size:18px;font-weight:800;color:#fff;margin-bottom:4px}
+.exp-s{font-size:12px;color:var(--t4);display:flex;align-items:center;gap:5px}
+.exp-s i{font-size:13px;color:var(--F)}
+.btn-vol{background:var(--F);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-vol i{font-size:17px}
+/* CIUDAD MODAL */
+.ciudad-modal{padding:28px 20px 20px}
+.cm-t{font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
+.cm-t i{font-size:22px;color:var(--F)}
+.cm-s{font-size:12px;color:var(--t5);margin-bottom:18px;line-height:1.6}
+.geo-btn{background:#E91E8C18;border:1px solid #E91E8C44;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:16px;width:100%}
+.geo-ico{width:42px;height:42px;background:var(--F);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.geo-ico i{font-size:20px;color:#fff}
+.geo-t{font-size:14px;font-weight:700;color:var(--F)}
+.geo-s{font-size:11px;color:#8a3a5a;margin-top:2px}
+.geo-arr{margin-left:auto;font-size:18px;color:var(--F)}
+.cdivider{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cdivider hr{flex:1;border:none;border-top:1px solid #1e1e1e}
+.cdivider span{font-size:11px;color:var(--t5)}
+.search-c{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.search-c i{font-size:15px;color:var(--t5)}
+.search-c input{background:none;border:none;outline:none;color:#fff;font-size:13px;font-family:'Inter',sans-serif;flex:1}
+.search-c input::placeholder{color:var(--t5)}
+.ciu-item{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:border-color .15s}
+.ciu-item:hover:not(.pronto){border-color:#E91E8C44}
+.ciu-item.activa{border-color:var(--F);background:var(--FB)}
+.ciu-item.pronto{opacity:.5;cursor:default}
+.ciu-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--s3)}
+.ciu-t{font-size:13px;font-weight:700;color:#fff;flex:1}
+.ciu-s{font-size:11px;color:var(--t5);margin-top:2px}
+.ciu-b{font-size:9px;font-weight:700;border-radius:20px;padding:3px 9px}
+.ciu-b.disp{background:var(--F);color:#fff}
+.ciu-b.prox{background:var(--s3);color:var(--t5);border:1px solid var(--s4)}
+.ciu-nota{background:var(--s2);border-radius:10px;padding:12px 14px;margin-top:6px;font-size:11px;color:var(--t5);line-height:1.6;display:flex;gap:9px;align-items:flex-start}
+.ciu-nota i{font-size:15px;color:var(--F);flex-shrink:0;margin-top:1px}
+/* ADMIN */
+.admin-wrap{padding:16px 20px}
+.admin-tabs{display:flex;background:#111;border-bottom:1px solid #1e1e1e;overflow-x:auto;scrollbar-width:none}
+.admin-tabs::-webkit-scrollbar{display:none}
+.atab{flex-shrink:0;padding:10px 14px;font-size:11px;font-weight:600;color:var(--t5);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.atab i{font-size:13px}
+.atab.on{color:var(--F);border-bottom-color:var(--F)}
+.avista{display:none}
+.avista.on{display:block}
+.admin-sec{background:var(--s2);border:1px solid var(--s4);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.admin-hd{background:var(--s3);padding:12px 16px;border-bottom:1px solid var(--s4);display:flex;align-items:center;gap:8px}
+.admin-hd i{font-size:15px;color:var(--F)}
+.admin-hd-t{font-size:13px;font-weight:700;color:#fff;flex:1}
+.admin-hd-b{font-size:9px;font-weight:700;background:#E91E8C22;color:var(--F);border:1px solid #E91E8C44;border-radius:20px;padding:2px 9px}
+.arow{padding:12px 16px;border-bottom:1px solid #111;display:flex;align-items:center;gap:12px}
+.arow:last-child{border-bottom:none}
+.ar-lbl{font-size:11px;color:var(--t5);width:140px;flex-shrink:0;line-height:1.4;display:flex;align-items:center;gap:5px}
+.ar-lbl i{font-size:12px;color:var(--F)}
+.ar-val{flex:1;font-size:13px;color:#fff;font-weight:500}
+.ar-ed{background:var(--s5);border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.ar-ed i{font-size:12px}
+.ar-ed:hover{background:var(--s6);color:#fff}
+.edit-form{display:none;padding:12px 16px;border-bottom:1px solid #111;background:#0d0d0d}
+.edit-inp{background:var(--s2);border:1.5px solid var(--F);border-radius:8px;padding:8px 11px;font-size:13px;color:#fff;font-family:'Inter',sans-serif;outline:none;width:100%}
+.edit-btns{display:flex;gap:7px;margin-top:8px}
+.btn-sv{background:var(--F);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px}
+.btn-sv i{font-size:12px}
+.btn-cx{background:var(--s5);color:var(--t2);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.tog{width:40px;height:22px;border-radius:11px;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s;border:none}
+.tog.on{background:var(--F)}
+.tog.off{background:var(--s4)}
+.tog-dot{position:absolute;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.tog.on .tog-dot{left:21px}
+.tog.off .tog-dot{left:3px}
+.tog-lbl{font-size:12px;color:var(--t2)}
+/* ORDEN */
+.ord-op{background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.ord-op.on{background:var(--FB);border-color:var(--F)}
+.oo-hd{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.oo-num{width:28px;height:28px;border-radius:50%;background:var(--s5);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0}
+.ord-op.on .oo-num{background:var(--F);color:#fff}
+.oo-t{font-size:13px;font-weight:700;color:#fff;flex:1}
+.oo-b{font-size:9px;font-weight:700;border-radius:20px;padding:3px 9px;white-space:nowrap}
+.ord-op .oo-s{font-size:11px;color:var(--t5);line-height:1.5}
+.ord-preview{background:#111;border-radius:8px;padding:10px 12px;margin-top:8px}
+.op-lbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.op-ev{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a1a1a}
+.op-ev:last-child{border-bottom:none}
+.op-pos{font-size:10px;font-weight:700;color:var(--t5);width:18px;flex-shrink:0}
+.op-ico{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.op-ico i{font-size:13px}
+.op-n{font-size:11px;font-weight:600;color:#fff;flex:1}
+.op-pl{font-size:9px;font-weight:700;border-radius:20px;padding:2px 8px;white-space:nowrap}
+.pl-pro{background:var(--F);color:#fff}
+.pl-dest{background:#E91E8C22;color:var(--F);border:1px solid #E91E8C44}
+.pl-free{background:var(--s3);color:var(--t5);border:1px solid var(--s4)}
+.pl-grat{background:#1D9E7522;color:var(--V);border:1px solid #1D9E7533}
+/* CIUDADES ADMIN */
+.ca-item{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.ca-ico{width:34px;height:34px;border-radius:8px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ca-t{font-size:13px;font-weight:700;color:#fff;flex:1}
+.ca-s{font-size:11px;color:var(--t5);margin-top:2px}
+.btn-hab{border:none;border-radius:20px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.btn-hab i{font-size:12px}
+.btn-hab.on{background:var(--V);color:#fff}
+.btn-hab.off{background:var(--F);color:#fff}
+.btn-prx{background:var(--s3);color:var(--t5);border:1px solid var(--s4);border-radius:20px;padding:6px 14px;font-size:11px;font-weight:600;cursor:default;font-family:'Inter',sans-serif}
+/* BANNERS ROTATIVOS */
+.ban-slot-wrap{display:block}
+.ban-slot-wrap .ban-full{animation:banFade .4s ease}
+@keyframes banFade{from{opacity:0}to{opacity:1}}
+/* NIVELES DE AVISO */
+.evi.evi-dest{background:linear-gradient(135deg,#E91E8C24,#E91E8C0a);border:1px solid #E91E8C55;border-left:3px solid var(--F);border-radius:10px;padding:11px 12px;margin-bottom:4px}
+.evi.evi-dest .enom{font-size:14px}
+.enom-row{display:flex;align-items:center;gap:6px}
+.bdest{font-size:9px;font-weight:800;background:var(--F);color:#fff;border-radius:20px;padding:3px 9px;flex-shrink:0;display:flex;align-items:center;gap:3px}
+.bdest i{font-size:10px}
+.bpro{font-size:9px;font-weight:800;background:linear-gradient(90deg,var(--F),#c4166f);color:#fff;border-radius:20px;padding:4px 10px;flex-shrink:0;display:flex;align-items:center;gap:3px;box-shadow:0 2px 8px rgba(233,30,140,.4)}
+.bpro i{font-size:10px}
+.bfree{font-size:9px;font-weight:700;background:var(--s3);color:var(--t3);border:1px solid var(--s4);border-radius:20px;padding:3px 9px;flex-shrink:0}
+.eprecio{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px}
+.eprecio.eg{color:var(--V)}
+.eprecio.ep{color:var(--t3)}
+.evi-plus{border-radius:12px;overflow:hidden;margin-bottom:10px;cursor:pointer;background:var(--s1);border:1.5px solid #E91E8C55;box-shadow:0 6px 18px rgba(233,30,140,.14)}
+.evi-plus-img{height:120px;display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
+.evi-plus-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase}
+.evi-plus-body{padding:11px 13px}
+.evi-plus-tit{font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px;margin-bottom:4px}
+.evi-plus-meta{font-size:11px;color:var(--t4);display:flex;align-items:center;gap:4px;margin-bottom:3px}
+.evi-plus-desc{font-size:11px;color:var(--t4);line-height:1.4;margin-top:5px}
+/* MOMENTO DÍA/NOCHE */
+.mom-pills{display:flex;gap:8px;margin:12px 20px 0}
+.mom-pill{flex:1;background:var(--s2);border:1px solid var(--s4);border-radius:20px;padding:9px;font-size:12px;font-weight:700;color:var(--t2);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.mom-pill.on{background:var(--F);border-color:var(--F);color:#fff}
+.momento-nota{font-size:9px;color:var(--t5);text-align:center;margin:6px 20px 0}
+/* DROPDOWN CIUDAD */
+.ciu-drop{position:absolute;top:60px;right:16px;left:16px;max-width:280px;margin-left:auto;background:var(--s1);border:1px solid var(--s4);border-radius:12px;padding:8px;box-shadow:0 12px 28px rgba(0,0,0,.5);z-index:250;display:none}
+.ciu-drop.open{display:block}
+.ciu-drop-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;cursor:pointer;font-size:12px;color:#fff}
+.ciu-drop-item:hover{background:var(--s3)}
+.ciu-drop-item i{color:var(--F);font-size:14px}
+.ciu-drop-all{display:flex;align-items:center;gap:7px;padding:9px 8px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;color:var(--F);border-top:1px solid var(--s4);margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" style="position:relative">
+  <div class="logo">
+    <img class="logo-img" src="logo.png" alt="seSALE" onerror="this.style.display='none'">
+    <span class="se">se</span><span class="sale">SALE</span><div class="punto"></div>
+  </div>
+  <div class="nav-r">
+    <div class="cpill" onclick="togCiuDrop()"><i class="ti ti-map-pin"></i><span id="ciudad-activa">Gral. Roca</span><i class="ti ti-chevron-right" style="font-size:10px;transform:rotate(90deg)"></i></div>
+    <button class="btn-pub" onclick="ir('registro')"><i class="ti ti-user" style="font-size:13px;vertical-align:-1px"></i> Ingresar</button>
+  </div>
+  <div class="ciu-drop" id="ciu-drop">
+    <div id="ciu-drop-lista"></div>
+    <div class="ciu-drop-all" onclick="togCiuDrop();ir('ciudad')"><i class="ti ti-search"></i>Ver todas las ciudades</div>
+  </div>
+</nav>
+
+<!-- SCREENS -->
+
+<!-- ═══ HOME ═══ -->
+<div id="s-home" class="screen open">
+  <div class="hero">
+    <div class="hero-deco"></div>
+    <div class="eyebrow"><i class="ti ti-map-pin"></i>La agenda cultural de tu ciudad</div>
+    <h1 class="hero-t" id="hero-titulo">Todo lo que pasa en <em>Roca</em>,<br>en un lugar.</h1>
+    <p class="hero-s" id="hero-sub">Música, teatro, ferias, fiestas y más. Descubrí los mejores planes cerca tuyo.</p>
+  </div>
+
+  <div class="en-btn" onclick="sff(document.querySelector('.fil'),'hoy')">
+    <div class="en-ico"><i class="ti ti-calendar-event"></i></div>
+    <div class="en-inf"><div class="en-t" id="en-txt">¿Qué hay hoy?</div><div class="en-s" id="en-sub">Viernes 20 de junio · Gral. Roca</div></div>
+    <div class="en-c" id="en-cont"><i class="ti ti-calendar-event" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>8 planes</div>
+  </div>
+  <div class="mom-pills" id="mom-pills">
+    <button class="mom-pill" id="mom-dia" onclick="filtrarMomento('dia')"><i class="ti ti-sun"></i>De día</button>
+    <button class="mom-pill" id="mom-noche" onclick="filtrarMomento('noche')"><i class="ti ti-moon"></i>De noche</button>
+  </div>
+  <div class="momento-nota"><i class="ti ti-sun" style="font-size:9px"></i> Día 07:00–19:59 hs · <i class="ti ti-moon" style="font-size:9px"></i> Noche 20:00–06:59 hs</div>
+
+  <!-- BANNERS HOME -->
+  <div class="bans-section">
+    <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em>HOME · 3 slots</em></div>
+    <div id="home-bans"></div>
+  </div>
+
+  <!-- CHIPS CATEGORÍAS -->
+  <div class="cat-wrap">
+    <div class="cat-lbl"><i class="ti ti-tag" style="font-size:10px;color:var(--F);margin-right:4px"></i>Explorar por categoría</div>
+    <div class="chips chips-lg">
+      <div class="chip chip-lg on" onclick="irCat(null,this)"><i class="ti ti-apps"></i>Todos</div>
+      <div class="chip chip-lg" onclick="irCat('musica',this)"><i class="ti ti-music" style="color:#7F77DD"></i>Música en vivo</div>
+      <div class="chip chip-lg" onclick="irCat('fiesta',this)"><i class="ti ti-confetti" style="color:#E91E8C"></i>Fiesta / Baile</div>
+      <div class="chip chip-lg" onclick="irCat('teatro',this)"><i class="ti ti-theater" style="color:#EF9F27"></i>Teatro</div>
+      <div class="chip chip-lg" onclick="irCat('feria',this)"><i class="ti ti-building-store" style="color:#1D9E75"></i>Feria</div>
+      <div class="chip chip-lg" onclick="irCat('dj',this)"><i class="ti ti-vinyl" style="color:#378ADD"></i>DJ / Electrónica</div>
+      <div class="chip chip-lg" onclick="irCat('milonga',this)"><i class="ti ti-shoe" style="color:#378ADD"></i>Milonga</div>
+      <div class="chip chip-lg" onclick="irCat('pena',this)"><i class="ti ti-guitar-pick" style="color:#D85A30"></i>Peña</div>
+      <div class="chip chip-lg" onclick="irCat('standup',this)"><i class="ti ti-microphone-2" style="color:#888"></i>Stand up</div>
+      <div class="chip chip-lg" onclick="irCat('arte',this)"><i class="ti ti-palette" style="color:#7F77DD"></i>Arte</div>
+      <div class="chip chip-lg" onclick="irCat('infantil',this)"><i class="ti ti-baby-carriage" style="color:#FF8FA3"></i>Infantil</div>
+      <div class="chip chip-lg" onclick="irCat('deportes',this)"><i class="ti ti-ball-football" style="color:#14B8A6"></i>Deportes</div>
+    </div>
+  </div>
+
+  <!-- VISTA TABS -->
+  <div class="vtabs">
+    <button class="vtab on" onclick="setVista('lista',this)"><i class="ti ti-layout-list"></i>Grilla</button>
+    <button class="vtab" onclick="setVista('mapa',this)"><i class="ti ti-map-2"></i>Mapa</button>
+  </div>
+
+  <!-- VISTA LISTA -->
+  <div id="v-lista">
+    <div class="sbar-wrap"><div class="sbar"><i class="ti ti-search"></i><input type="text" placeholder="Buscar evento, lugar, artista..."></div></div>
+    <div class="fwrap">
+      <div class="flbl"><i class="ti ti-calendar"></i>¿Cuándo?</div>
+      <div class="fils" id="fils-fecha">
+        <button class="fil" onclick="sff(this,'hoy')"><i class="ti ti-moon-stars"></i>Esta noche</button>
+        <button class="fil" onclick="sff(this,'manana')"><i class="ti ti-sun"></i>Mañana</button>
+        <button class="fil" onclick="sff(this,'finde')"><i class="ti ti-calendar-week"></i>Este finde</button>
+        <button class="fil" onclick="sff(this,'semana')"><i class="ti ti-calendar"></i>Esta semana</button>
+        <button class="fil" onclick="sff(this,'julio')"><i class="ti ti-calendar-event"></i>Julio</button>
+        <button class="fil" onclick="sff(this,'vacaciones')"><i class="ti ti-snowflake"></i>Vac. invierno</button>
+        <button class="fil" id="btn-cal" onclick="togCal()"><i class="ti ti-calendar-plus"></i>Elegir fecha</button>
+      </div>
+    </div>
+
+    <!-- PANEL CALENDARIO -->
+    <div class="fp" id="fecha-panel">
+      <div class="fp-hd">
+        <div class="fp-t"><i class="ti ti-calendar-search"></i>Elegí un día o un rango</div>
+        <button class="btn-limp" onclick="limpCal()"><i class="ti ti-x" style="font-size:10px"></i> Limpiar</button>
+      </div>
+      <div class="raps">
+        <button class="rap" onclick="rap(this,'hoy')">Hoy</button>
+        <button class="rap" onclick="rap(this,'manana')">Mañana</button>
+        <button class="rap" onclick="rap(this,'finde')">Este finde</button>
+        <button class="rap" onclick="rap(this,'semana')">Esta semana</button>
+        <button class="rap" onclick="rap(this,'julio')">Todo julio</button>
+        <button class="rap" onclick="rap(this,'vacaciones')">Vac. invierno</button>
+        <button class="rap" onclick="rap(this,'agosto')">Agosto</button>
+      </div>
+      <div class="cal-box">
+        <div class="cal-hd">
+          <button class="cal-nav" onclick="irM(-1)"><i class="ti ti-chevron-left"></i></button>
+          <div class="cal-mes"><i class="ti ti-calendar"></i><span id="cal-t"></span></div>
+          <button class="cal-nav" onclick="irM(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div class="dhds"><div class="dhd">D</div><div class="dhd">L</div><div class="dhd">M</div><div class="dhd">M</div><div class="dhd">J</div><div class="dhd">V</div><div class="dhd">S</div></div>
+        <div class="dias" id="cal-dias"></div>
+      </div>
+      <div class="sel-box" id="sel-box">
+        <div class="sel-txt"><i class="ti ti-calendar-check"></i><span id="sel-txt"></span></div>
+        <button class="btn-ver-ev" onclick="aplCal()">Ver eventos <i class="ti ti-arrow-right" style="font-size:12px"></i></button>
+      </div>
+    </div>
+
+    <div class="seclbl" id="sec-lbl"><i class="ti ti-filter"></i>Elegí cuándo salir para ver los planes</div>
+    <div class="ev-list" id="ev-lista"></div>
+
+    <div class="wa-strip" onclick="compartirSitio()">
+      <i class="ti ti-brand-whatsapp ico"></i>
+      <div><div class="wa-t">Compartí seSALE</div><div class="wa-s">Mandala a tus amigos y descubran qué hacer en su ciudad</div></div>
+      <i class="ti ti-chevron-right wa-arr"></i>
+    </div>
+  </div>
+
+  <!-- VISTA MAPA -->
+  <div id="v-mapa" style="display:none">
+    <div class="mapa-cont">
+      <svg class="mapa-svg" viewBox="0 0 400 340">
+        <rect width="400" height="340" fill="#0f0f0f"/>
+        <line x1="0" y1="170" x2="400" y2="170" stroke="#1e1e1e" stroke-width="2"/>
+        <line x1="200" y1="0" x2="200" y2="340" stroke="#1e1e1e" stroke-width="2"/>
+        <line x1="0" y1="100" x2="400" y2="100" stroke="#1a1a1a" stroke-width="1"/>
+        <line x1="0" y1="240" x2="400" y2="240" stroke="#1a1a1a" stroke-width="1"/>
+        <line x1="80" y1="0" x2="80" y2="340" stroke="#1a1a1a" stroke-width="1"/>
+        <line x1="170" y1="0" x2="170" y2="340" stroke="#1a1a1a" stroke-width="1"/>
+        <line x1="260" y1="0" x2="260" y2="340" stroke="#1a1a1a" stroke-width="1"/>
+        <rect x="85" y="105" width="80" height="60" rx="3" fill="#131313"/>
+        <rect x="205" y="105" width="80" height="60" rx="3" fill="#131313"/>
+        <rect x="85" y="175" width="80" height="60" rx="3" fill="#131313"/>
+        <rect x="205" y="175" width="80" height="60" rx="3" fill="#131313"/>
+        <g style="cursor:pointer" onclick="showMTT(event,110,75,'El Tinglado','Música · 21:30 hs','#7F77DD')"><circle cx="110" cy="75" r="14" fill="#1a1a1a" stroke="#7F77DD" stroke-width="1.5"/><circle cx="110" cy="75" r="8" fill="#7F77DD"/></g>
+        <g style="cursor:pointer" onclick="showMTT(event,260,130,'Aquelarre Bar','Fiesta · 23:00 hs','#E91E8C')"><circle cx="260" cy="130" r="14" fill="#1a1a1a" stroke="#E91E8C" stroke-width="1.5"/><circle cx="260" cy="130" r="8" fill="#E91E8C"/></g>
+        <g style="cursor:pointer" onclick="showMTT(event,140,210,'Teatro Municipal','Teatro · 20:00 hs','#EF9F27')"><circle cx="140" cy="210" r="14" fill="#1a1a1a" stroke="#EF9F27" stroke-width="1.5"/><circle cx="140" cy="210" r="8" fill="#EF9F27"/></g>
+        <g style="cursor:pointer" onclick="showMTT(event,330,195,'Salón Gardel','Milonga · 22:00 hs','#378ADD')"><circle cx="330" cy="195" r="14" fill="#1a1a1a" stroke="#378ADD" stroke-width="1.5"/><circle cx="330" cy="195" r="8" fill="#378ADD"/></g>
+        <g style="cursor:pointer" onclick="showMTT(event,50,265,'Club Italiano','Peña · 21:00 hs','#D85A30')"><circle cx="50" cy="265" r="14" fill="#1a1a1a" stroke="#D85A30" stroke-width="1.5"/><circle cx="50" cy="265" r="8" fill="#D85A30"/></g>
+      </svg>
+      <div class="m-cerca"><i class="ti ti-navigation"></i>Cerca mío</div>
+      <div class="m-ley">
+        <div class="lr"><div class="ld" style="background:#7F77DD"></div>Música</div>
+        <div class="lr"><div class="ld" style="background:#E91E8C"></div>Fiesta</div>
+        <div class="lr"><div class="ld" style="background:#EF9F27"></div>Teatro</div>
+        <div class="lr"><div class="ld" style="background:#378ADD"></div>Milonga</div>
+        <div class="lr"><div class="ld" style="background:#D85A30"></div>Peña</div>
+      </div>
+      <div class="mtt" id="mtt"><div class="mtt-t" id="mtt-t"></div><div class="mtt-m" id="mtt-m"></div><div id="mtt-c" style="display:inline-block;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;margin-top:3px"></div></div>
+    </div>
+  </div>
+
+  <!-- ESTADÍSTICAS — al final del scroll del home -->
+  <div class="stats">
+    <div><span class="st-n">38</span><span class="st-l">Esta semana</span></div>
+    <div><span class="st-n">12</span><span class="st-l">Organizadores</span></div>
+    <div><span class="st-n">3</span><span class="st-l">Ciudades</span></div>
+  </div>
+</div>
+
+<!-- ═══ CATEGORÍA DETALLE ═══ -->
+<div id="s-cat-det" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit" id="cat-det-bkt">Categoría</span></div>
+  <div class="cat-det-hero" id="cat-det-hero">
+    <i class="ti" id="cat-det-ico" style="font-size:44px"></i>
+    <div class="cat-det-tit"><i class="ti" id="cat-det-ico2" style="font-size:18px"></i><span id="cat-det-tit"></span></div>
+    <div class="cat-det-cnt" id="cat-det-cnt"></div>
+  </div>
+  <div id="cat-subs-wrap" style="display:none;padding:14px 20px 0">
+    <div class="cat-lbl"><i class="ti ti-apps" style="font-size:10px;color:var(--F);margin-right:4px"></i>Subcategorías</div>
+    <div class="chips" id="cat-subs-list"></div>
+  </div>
+  <div class="cat-bans">
+    <div class="cat-ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>En esta categoría</span><em id="cat-ban-lbl-em">2 slots</em></div>
+    <div id="cat-bans-list"></div>
+  </div>
+  <div class="fwrap" style="padding-bottom:12px;border-bottom:1px solid #1e1e1e">
+    <div class="flbl"><i class="ti ti-filter"></i>Filtrar</div>
+    <div class="fils">
+      <button class="fil" onclick="filtrarMomentoCat(this,null)"><i class="ti ti-list"></i>Todos</button>
+      <button class="fil"><i class="ti ti-moon-stars"></i>Esta noche</button>
+      <button class="fil"><i class="ti ti-calendar-week"></i>Este finde</button>
+      <button class="fil" onclick="filtrarMomentoCat(this,'gratis')"><i class="ti ti-ticket"></i>Gratis</button>
+      <button class="fil" onclick="filtrarMomentoCat(this,'dia')"><i class="ti ti-sun"></i>Diurno</button>
+      <button class="fil" onclick="filtrarMomentoCat(this,'noche')"><i class="ti ti-moon"></i>Nocturno</button>
+    </div>
+  </div>
+  <div class="seclbl" id="cat-det-lbl"><i class="ti ti-filter"></i>Elegí un filtro para ver los eventos</div>
+  <div class="ev-list" id="cat-det-lista"></div>
+</div>
+
+<!-- ═══ CATEGORÍAS GRID ═══ -->
+<div id="s-categorias" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Explorar categorías</span></div>
+  <div class="sbar-wrap" style="margin-bottom:4px"><div class="sbar"><i class="ti ti-search"></i><input type="text" placeholder="Buscar categoría..."></div></div>
+
+  <!-- BANNERS CATEGORÍAS -->
+  <div class="bans-section">
+    <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em>2 slots</em></div>
+    <div id="categorias-bans"></div>
+  </div>
+
+  <div class="cats-grid">
+    <div class="ccat" onclick="verCat('musica')"><div class="ccat-img" style="background:#1a0a2a"><i class="ti ti-music" style="color:#7F77DD"></i><div class="ccat-cnt">8 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Música en vivo</div><div class="ccat-desc">Bandas, solistas, jazz</div></div></div>
+    <div class="ccat" onclick="verCat('fiesta')"><div class="ccat-img" style="background:#1a0a14"><i class="ti ti-confetti" style="color:#E91E8C"></i><div class="ccat-cnt">5 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Fiesta / Baile</div><div class="ccat-desc">Temáticas, 80s</div></div></div>
+    <div class="ccat" onclick="verCat('teatro')"><div class="ccat-img" style="background:#1a140a"><i class="ti ti-theater" style="color:#EF9F27"></i><div class="ccat-cnt">3 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Teatro</div><div class="ccat-desc">Obras, monólogos</div></div></div>
+    <div class="ccat" onclick="verCat('feria')"><div class="ccat-img" style="background:#0a1a12"><i class="ti ti-building-store" style="color:#1D9E75"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Feria</div><div class="ccat-desc">Artesanos, diseño</div></div></div>
+    <div class="ccat" onclick="verCat('dj')"><div class="ccat-img" style="background:#0a1220"><i class="ti ti-vinyl" style="color:#378ADD"></i><div class="ccat-cnt">4 ev.</div></div><div class="ccat-info"><div class="ccat-nom">DJ / Electrónica</div><div class="ccat-desc">Sets, electrónica</div></div></div>
+    <div class="ccat" onclick="verCat('milonga')"><div class="ccat-img" style="background:#0a121a"><i class="ti ti-shoe" style="color:#378ADD"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Milonga / Tango</div><div class="ccat-desc">Milongas, tango</div></div></div>
+    <div class="ccat" onclick="verCat('pena')"><div class="ccat-img" style="background:#1a0e0a"><i class="ti ti-guitar-pick" style="color:#D85A30"></i><div class="ccat-cnt">3 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Peña folclórica</div><div class="ccat-desc">Folklore, zamba</div></div></div>
+    <div class="ccat" onclick="verCat('standup')"><div class="ccat-img" style="background:#111"><i class="ti ti-microphone-2" style="color:#888"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Stand up</div><div class="ccat-desc">Humor, comedia</div></div></div>
+    <div class="ccat" onclick="verCat('arte')"><div class="ccat-img" style="background:#1a0a1a"><i class="ti ti-palette" style="color:#7F77DD"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Exposición / Arte</div><div class="ccat-desc">Muestras</div></div></div>
+    <div class="ccat" onclick="verCat('recital')"><div class="ccat-img" style="background:#1a0a2a"><i class="ti ti-microphone" style="color:#7F77DD"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Recital</div><div class="ccat-desc">Artistas en vivo</div></div></div>
+    <div class="ccat" onclick="verCat('cine')"><div class="ccat-img" style="background:#0a0a14"><i class="ti ti-movie" style="color:#555"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Cine</div><div class="ccat-desc">Proyecciones</div></div></div>
+    <div class="ccat" onclick="verCat('infantil')"><div class="ccat-img" style="background:#1a0d12"><i class="ti ti-baby-carriage" style="color:#FF8FA3"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Infantil</div><div class="ccat-desc">Shows, talleres, cine</div></div></div>
+    <div class="ccat" onclick="verCat('deportes')"><div class="ccat-img" style="background:#0a1a17"><i class="ti ti-ball-football" style="color:#14B8A6"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Deportes</div><div class="ccat-desc">Fútbol, running, outdoor</div></div></div>
+    <div class="ccat" style="border-style:dashed;border-color:#E91E8C44"><div class="ccat-img" style="background:#1a0d14"><i class="ti ti-dots-circle-horizontal" style="color:#E91E8C66"></i></div><div class="ccat-info" style="background:#1a0d14"><div class="ccat-nom" style="color:#E91E8C">Otro</div><div class="ccat-desc">Categoría general</div></div></div>
+  </div>
+  <div class="sug-box">
+    <div class="sug-t"><i class="ti ti-bulb"></i>¿Tu evento no encaja?</div>
+    <div class="sug-s">Sugerí una nueva categoría. Si tiene sentido para la comunidad, la agregamos.</div>
+    <div id="sug-ok" class="sug-ok"><i class="ti ti-circle-check"></i><span id="sug-ok-t"></span></div>
+    <div class="sug-row"><input id="sug-inp" class="sug-inp" type="text" maxlength="40" placeholder="Ej: Poesía, Carnaval..."><button id="sug-btn" class="sug-btn" disabled onclick="envSug()">Sugerir</button></div>
+  </div>
+</div>
+
+<!-- ═══ LUGARES FIJOS ═══ -->
+<div id="s-lugares" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Bares, cafés y restaurantes</span></div>
+  <div class="sbar-wrap" style="margin-bottom:0"><div class="sbar"><i class="ti ti-search"></i><input type="text" placeholder="Buscar restaurante, bar, cervecería..."></div></div>
+  <div class="tipo-chips">
+    <button class="chip on" onclick="setTipo(this,'todos')"><i class="ti ti-grid-dots"></i>Todos</button>
+    <button class="chip" onclick="setTipo(this,'cerveceria')"><i class="ti ti-beer" style="color:#EF9F27"></i>Cervecerías</button>
+    <button class="chip" onclick="setTipo(this,'restaurante')"><i class="ti ti-tools-kitchen-2" style="color:#1D9E75"></i>Restaurantes</button>
+    <button class="chip" onclick="setTipo(this,'parrilla')"><i class="ti ti-flame" style="color:#D85A30"></i>Parrillas</button>
+    <button class="chip" onclick="setTipo(this,'bar')"><i class="ti ti-glass" style="color:#7F77DD"></i>Bares</button>
+    <button class="chip" onclick="setTipo(this,'cafe')"><i class="ti ti-coffee" style="color:#EF9F27"></i>Cafés</button>
+    <button class="chip" onclick="setTipo(this,'pizza')"><i class="ti ti-pizza" style="color:#E91E8C"></i>Pizzerías</button>
+  </div>
+
+  <!-- BANNERS LUGARES -->
+  <div class="bans-section">
+    <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em id="lugares-ban-em">2 slots</em></div>
+    <div id="lugares-bans"></div>
+  </div>
+
+  <!-- LUGAR DESTACADO -->
+  <div class="lugar-card dest">
+    <div class="lc-img" style="background:linear-gradient(135deg,#1a0a0a,#2d1010)">🥩
+      <div class="lc-bdes"><i class="ti ti-star-filled"></i>Destacado</div>
+      <div class="lc-bopen is-open"><div class="odot" style="background:var(--V)"></div>Abierto ahora</div>
+    </div>
+    <div class="lc-body">
+      <div class="lc-tipo" style="color:#D85A30"><i class="ti ti-flame"></i>Parrilla</div>
+      <div class="lc-nom">La Querencia</div>
+      <div class="lc-meta">
+        <span><i class="ti ti-map-pin"></i>San Martín 850</span>
+        <span><i class="ti ti-clock"></i>12:00 a 01:00 hs</span>
+        <span><i class="ti ti-star-filled" style="color:#EF9F27"></i>4.8</span>
+      </div>
+      <div class="lc-foot">
+        <button class="btn-wa-s"><i class="ti ti-brand-whatsapp"></i>Reservar</button>
+        <button class="btn-ig-s"><i class="ti ti-brand-instagram"></i>Instagram</button>
+        <button class="btn-map-s"><i class="ti ti-map-pin"></i>Llegar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LUGARES GRATUITOS — sin logo, ficha compacta -->
+  <div class="lugar-row">
+    <div class="lr-ico" style="background:#0d152a">🍺</div>
+    <div class="lr-body">
+      <div class="lr-tipo" style="color:#EF9F27"><i class="ti ti-beer"></i>Cervecería</div>
+      <div class="lr-nom">Aquelarre Brewing</div>
+      <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Tucumán 850</span><span><i class="ti ti-clock"></i>18 a 02 hs</span><span><div class="odot" style="background:var(--V)"></div>Abierto</span></div>
+    </div>
+    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+  </div>
+
+  <div class="lugar-row">
+    <div class="lr-ico" style="background:#0d2a10">🍕</div>
+    <div class="lr-body">
+      <div class="lr-tipo" style="color:#E91E8C"><i class="ti ti-pizza"></i>Pizzería</div>
+      <div class="lr-nom">Il Forno</div>
+      <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Belgrano 1200</span><span><i class="ti ti-clock"></i>20 a 00 hs</span><span><i class="ti ti-clock" style="font-size:10px"></i>Abre a las 20</span></div>
+    </div>
+    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+  </div>
+
+  <div class="lugar-row">
+    <div class="lr-ico" style="background:#2d0d20">🍸</div>
+    <div class="lr-body">
+      <div class="lr-tipo" style="color:#7F77DD"><i class="ti ti-glass"></i>Bar</div>
+      <div class="lr-nom">Bar del Centro</div>
+      <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Av. Roca 560</span><span><i class="ti ti-clock"></i>19 a 03 hs</span><span><div class="odot" style="background:var(--V)"></div>Abierto</span></div>
+    </div>
+    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+  </div>
+
+  <div class="no-deliv"><i class="ti ti-info-circle"></i><span>Solo lugares para salir — bares, restaurantes y cafés. Sin delivery, sin clases, sin servicios.</span></div>
+</div>
+
+<!-- ═══ EVENTO DETALLE ═══ -->
+<div id="s-evento" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Detalle del evento</span></div>
+  <div class="ev-img" style="background:linear-gradient(135deg,#1a0a1a,#2d0d2d)" onclick="abrirFlyer()">
+    <i class="ti ti-music" style="font-size:54px;color:#7F77DD"></i>
+    <div class="ev-img-badge"><i class="ti ti-moon-stars"></i>Hoy · 21:30 hs</div>
+    <div class="ev-img-zoom"><i class="ti ti-zoom-in"></i>Ver flyer</div>
+  </div>
+  <div class="ev-body">
+    <div class="ev-cat-tag" style="background:#7F77DD;color:#fff"><i class="ti ti-music"></i>Música en vivo</div>
+    <h2 class="ev-tit">Los Wachiturros del Alma — Noche de Rock</h2>
+    <div class="ev-mg">
+      <div class="mi"><i class="ti ti-calendar"></i><div><div class="mi-l">Fecha</div><div class="mi-v">Vie 20 junio</div></div></div>
+      <div class="mi"><i class="ti ti-clock"></i><div><div class="mi-l">Horario</div><div class="mi-v">21:30 hs</div></div></div>
+      <div class="mi"><i class="ti ti-map-pin"></i><div><div class="mi-l">Lugar</div><div class="mi-v">El Tinglado</div></div></div>
+      <div class="mi"><i class="ti ti-moon"></i><div><div class="mi-l">Momento</div><div class="mi-v">Nocturno</div></div></div>
+    </div>
+    <div class="ent-sec">
+      <div class="ent-tit"><i class="ti ti-ticket"></i>Entradas</div>
+      <div class="ent-pago">
+        <div class="ent-precio">
+          <div><div class="ent-pl">Precio en puerta</div><div class="ent-pv">$3.000</div></div>
+          <div class="ent-ant"><i class="ti ti-tag"></i>Anticipo $2.000</div>
+        </div>
+        <div class="ent-donde">
+          <div class="ent-dl"><i class="ti ti-map-search"></i>¿Dónde conseguirlas?</div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#1a3a22"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i></div>
+            <div class="ent-op-n"><strong>WhatsApp del organizador</strong><span>Anticipo · Cupos limitados</span></div>
+            <button style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-brand-whatsapp" style="font-size:13px"></i>Escribir</button>
+          </div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#2a0d1a"><i class="ti ti-brand-instagram" style="color:#E91E8C"></i></div>
+            <div class="ent-op-n"><strong>Instagram</strong><span>@eltingladobar</span></div>
+            <button style="background:#E91E8C;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:13px"></i>Abrir</button>
+          </div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#0d1a2a"><i class="ti ti-world" style="color:#378ADD"></i></div>
+            <div class="ent-op-n"><strong>Página web</strong><span>Venta online del organizador</span></div>
+            <button style="background:#378ADD;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:13px"></i>Ir al sitio</button>
+          </div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#241a2a"><i class="ti ti-mail" style="color:#7F77DD"></i></div>
+            <div class="ent-op-n"><strong>Email</strong><span>reservas@eltingladobar.com</span></div>
+            <button style="background:#7F77DD;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-mail" style="font-size:13px"></i>Escribir</button>
+          </div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#222"><i class="ti ti-map-pin" style="color:#aaa"></i></div>
+            <div class="ent-op-n"><strong>En el lugar</strong><span>Av. Roca 1240, General Roca</span></div>
+            <button onclick="abrirMapa('Av. Roca 1240, General Roca')" style="background:#383838;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-map-pin" style="font-size:13px"></i>Cómo llegar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ev-accs">
+      <button class="acc-bell"><i class="ti ti-bell"></i>Avisame antes</button>
+      <button class="acc-wa" onclick="compartirEvento()"><i class="ti ti-brand-whatsapp"></i>Compartir</button>
+    </div>
+    <!-- LUGAR — detalle -->
+    <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:18px"><i class="ti ti-building" style="color:var(--F);font-size:14px;margin-top:2px;flex-shrink:0"></i><span style="font-size:12px;color:var(--t2);line-height:1.6">El Tinglado Bar es un espacio cultural con shows en vivo, barra y patio al aire libre.</span></div>
+    <!-- VERIFICADO PÚBLICO — sin datos privados -->
+    <div class="verif-pub">
+      <div class="vp-ico"><i class="ti ti-shield-check"></i></div>
+      <div>
+        <div class="vp-t">Organizador verificado por seSALE</div>
+        <div class="vp-s">Identidad confirmada. Datos personales confidenciales.</div>
+        <div class="vp-badges">
+          <span class="vp-badge"><i class="ti ti-id-badge"></i>Documento</span>
+          <span class="vp-badge"><i class="ti ti-device-mobile"></i>Celular</span>
+          <span class="vp-badge"><i class="ti ti-mail"></i>Email</span>
+          <span class="vp-badge"><i class="ti ti-calendar"></i>Desde jun 2025</span>
+        </div>
+      </div>
+    </div>
+    <!-- PERFIL — solo datos públicos que el organizador eligió mostrar -->
+    <div class="perf-card">
+      <div class="perf-hd">
+        <div class="perf-logo">ET</div>
+        <div><div class="perf-n">El Tinglado Bar</div><div class="perf-t">Espacio cultural · Gral. Roca</div></div>
+        <span class="perf-plan"><i class="ti ti-crown"></i>PRO</span>
+      </div>
+      <div class="perf-row"><i class="ti ti-map-pin"></i><span>Av. Roca 1240, General Roca</span></div>
+      <div class="perf-row"><i class="ti ti-clock"></i><span>Jue a Dom · 20:00 a 03:00 hs</span></div>
+      <div class="perf-row"><i class="ti ti-brand-whatsapp"></i><a href="#">+54 9 298 456-7890</a></div>
+      <div class="perf-row"><i class="ti ti-brand-instagram"></i><a href="#">@eltingladobar</a></div>
+      <div class="perf-row"><i class="ti ti-world"></i><a href="#">eltingladobar.com.ar</a></div>
+    </div>
+    <div class="report-box">
+      <div class="report-s">El contenido de seSALE es moderado. Si este evento no te parece cultural o apropiado, podés reportarlo y lo revisamos en menos de 24 hs.</div>
+      <button class="btn-report"><i class="ti ti-flag"></i>Reportar evento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ QUÉ ES seSALE ═══ -->
+<div id="s-que-es" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">¿Qué es seSALE?</span></div>
+  <div class="qe-hero">
+    <div class="qe-logo"><span class="se">se</span><span class="sale">SALE</span><div class="punto"></div></div>
+    <div class="qe-tag"><i class="ti ti-map-pin"></i>Agenda cultural digital</div>
+    <p class="qe-copy"><strong>seSALE es la agenda cultural de las ciudades del interior.</strong> Un solo lugar para encontrar todo lo que pasa — música en vivo, teatro, ferias, fiestas y más. Y también dónde comer o tomar algo antes o después.</p>
+    <div class="qe-stats">
+      <div><span class="qs-n">100%</span><span class="qs-l">Local</span></div>
+      <div><span class="qs-n">Gratis</span><span class="qs-l">Para el público</span></div>
+      <div><span class="qs-n">Real</span><span class="qs-l">Verificado</span></div>
+    </div>
+  </div>
+  <div class="dif-list">
+    <div style="font-size:11px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;display:flex;align-items:center;gap:6px"><i class="ti ti-star-filled" style="font-size:13px"></i>Por qué seSALE</div>
+    <div class="dif-item"><div class="dif-t"><i class="ti ti-map-pin"></i>Es tuya, de tu ciudad</div><div class="dif-s">No es una app global que ignora lo que pasa en Roca o Cipolletti. Nació acá para las ciudades del interior patagónico.</div></div>
+    <div class="dif-item"><div class="dif-t"><i class="ti ti-shield-check"></i>Cada organizador está verificado</div><div class="dif-s">Para publicar hay que verificar identidad con DNI o CUIT. Sabés que hay una persona real y responsable detrás de cada evento.</div></div>
+    <div class="dif-item"><div class="dif-t"><i class="ti ti-coins"></i>Publicar es gratis</div><div class="dif-s">Cualquier persona puede publicar su evento sin pagar nada. Los planes pagos son para quienes quieren más visibilidad.</div></div>
+    <div class="dif-item"><div class="dif-t"><i class="ti ti-building-store"></i>Eventos + lugares en un solo lugar</div><div class="dif-s">Encontrás el show y también la parrilla donde cenar antes. Todo para planificar tu salida completa.</div></div>
+  </div>
+  <div style="padding:0 20px 6px;font-size:11px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:2px;display:flex;align-items:center;gap:6px"><i class="ti ti-users" style="font-size:13px"></i>¿Para quién es?</div>
+  <div class="pq-grid">
+    <div class="pq-card"><div class="pq-ico">🎵</div><div class="pq-t">Bandas y artistas</div><div class="pq-s">Publicá tus shows y llegá a toda la ciudad.</div><div class="pq-tag" style="background:#7F77DD22;color:#7F77DD;border:1px solid #7F77DD33">Publicar gratis</div></div>
+    <div class="pq-card"><div class="pq-ico">🍺</div><div class="pq-t">Bares y espacios</div><div class="pq-s">Sumá eventos y tu lugar a la agenda nocturna.</div><div class="pq-tag" style="background:#E91E8C22;color:#E91E8C;border:1px solid #E91E8C44">Con visibilidad</div></div>
+    <div class="pq-card"><div class="pq-ico">🎭</div><div class="pq-t">Teatros</div><div class="pq-s">Tu cartelera siempre actualizada y visible.</div><div class="pq-tag" style="background:#EF9F2722;color:#EF9F27;border:1px solid #EF9F2733">Cartelera</div></div>
+    <div class="pq-card"><div class="pq-ico">🔍</div><div class="pq-t">El público</div><div class="pq-s">Todo lo que pasa en tu ciudad, en un lugar.</div><div class="pq-tag" style="background:#1D9E7522;color:#1D9E75;border:1px solid #1D9E7533">100% gratis</div></div>
+  </div>
+  <div class="divisor"></div>
+  <div class="pasos-sec">
+    <div class="pasos-tit"><i class="ti ti-list-numbers"></i>Cómo funciona — Para el público</div>
+    <div class="paso"><div class="paso-ico" style="background:#E91E8C22"><i class="ti ti-map-pin" style="color:#E91E8C"></i></div><div><div class="paso-n">Paso 1</div><div class="paso-t">Abrís seSALE</div><div class="paso-s">Detectamos tu ciudad automáticamente o la elegís vos. Solo ves lo que pasa cerca tuyo.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#7F77DD22"><i class="ti ti-adjustments-horizontal" style="color:#7F77DD"></i></div><div><div class="paso-n">Paso 2</div><div class="paso-t">Filtrás cuándo y qué</div><div class="paso-s">Esta noche, este finde, vacaciones de invierno... y por categoría.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#1D9E7522"><i class="ti ti-heart" style="color:#1D9E75"></i></div><div><div class="paso-n">Paso 3</div><div class="paso-t">Encontrás tu plan</div><div class="paso-s">Ves todos los detalles, cómo conseguir entradas y el organizador verificado.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#25D36622"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i></div><div><div class="paso-n">Paso 4</div><div class="paso-t">Compartís con tus amigos</div><div class="paso-s">Un toque y lo mandás por WhatsApp. También ves dónde comer o tomar algo antes.</div></div></div>
+  </div>
+  <div class="divisor"></div>
+  <div class="pasos-sec">
+    <div class="pasos-tit"><i class="ti ti-rocket"></i>Cómo funciona — Para organizadores</div>
+    <div class="paso"><div class="paso-ico" style="background:#E91E8C22"><i class="ti ti-user-plus" style="color:#E91E8C"></i></div><div><div class="paso-n">Paso 1</div><div class="paso-t">Creás tu cuenta gratis</div><div class="paso-s">Verificás identidad con DNI o CUIT. Tus datos personales son privados — el público solo ve tu nombre de perfil y lo que vos elegís mostrar.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#7F77DD22"><i class="ti ti-pencil" style="color:#7F77DD"></i></div><div><div class="paso-n">Paso 2</div><div class="paso-t">Cargás tu evento</div><div class="paso-s">Nombre, categoría, fecha, lugar y tipo de entrada. Menos de 3 minutos.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#EF9F2722"><i class="ti ti-eye" style="color:#EF9F27"></i></div><div><div class="paso-n">Paso 3</div><div class="paso-t">Se revisa y aparece</div><div class="paso-s">Revisión rápida. Cuentas verificadas con historial limpio se aprueban automáticamente.</div></div></div>
+    <div class="paso"><div class="paso-ico" style="background:#1D9E7522"><i class="ti ti-rocket" style="color:#1D9E75"></i></div><div><div class="paso-n">Paso 4</div><div class="paso-t">Tu evento llega a toda la ciudad</div><div class="paso-s">En la grilla, el mapa y los filtros. Mejorás visibilidad con planes pagos cuando quieras.</div></div></div>
+  </div>
+  <div style="margin:0 20px 24px;background:#1a0d14;border:1px solid #E91E8C33;border-radius:12px;padding:14px;font-size:12px;color:#8a3a5a;line-height:1.6;display:flex;gap:10px">
+    <i class="ti ti-info-circle" style="font-size:16px;color:var(--F);flex-shrink:0;margin-top:1px"></i>
+    <span>seSALE <strong style="color:#E91E8C">no es</strong> para delivery, clases, servicios ni venta de productos. Solo eventos culturales y lugares donde salir.</span>
+  </div>
+</div>
+
+<!-- ═══ PUBLICAR ═══ -->
+<div id="s-publicar" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Publicar evento</span></div>
+  <div class="pub-wrap">
+    <label class="fl"><i class="ti ti-pencil"></i>Nombre del evento <em>*</em></label>
+    <input class="fi" type="text" placeholder="Ej: Noche de Jazz en vivo">
+    <label class="fl"><i class="ti ti-apps"></i>Categoría <em>*</em></label>
+    <select class="fsel"><option>Música en vivo</option><option>Fiesta / Baile</option><option>Teatro</option><option>Feria</option><option>DJ / Electrónica</option><option>Milonga / Tango</option><option>Peña folclórica</option><option>Stand up</option><option>Exposición / Arte</option><option>Recital</option><option>Cine</option><option>Infantil</option><option>Deportes</option><option>Otro</option></select>
+    <label class="fl"><i class="ti ti-clock"></i>Momento del evento <em>*</em></label>
+    <div class="ht-g">
+      <button class="ht-o on" onclick="selHT(this)"><i class="ti ti-moon"></i><span>Nocturno</span></button>
+      <button class="ht-o" onclick="selHT(this)"><i class="ti ti-sun"></i><span>Diurno</span></button>
+    </div>
+    <div class="form-row">
+      <div><label class="fl"><i class="ti ti-calendar"></i>Fecha <em>*</em></label><input class="fi" type="date"></div>
+      <div><label class="fl"><i class="ti ti-clock"></i>Hora inicio <em>*</em></label><input class="fi" type="time"></div>
+    </div>
+    <div class="form-row" style="margin-top:-10px">
+      <div><label class="fl"><i class="ti ti-clock-off"></i>Hora fin (opc.)</label><input class="fi" type="time"></div><div></div>
+    </div>
+    <label class="fl"><i class="ti ti-building"></i>Nombre del lugar <em>*</em></label>
+    <input class="fi" type="text" placeholder="Ej: El Tinglado Bar">
+    <label class="fl"><i class="ti ti-map-pin"></i>Dirección <em>*</em></label>
+    <input class="fi" type="text" placeholder="Ej: Av. Roca 1240, General Roca">
+    <label class="fl"><i class="ti ti-file-text"></i>Descripción</label>
+    <textarea class="fi" rows="3" placeholder="Contá de qué se trata..."></textarea>
+    <label class="fl"><i class="ti ti-ticket"></i>Tipo de entrada <em>*</em></label>
+    <div class="et-g">
+      <button class="et-o" onclick="selET(this,'gratis')"><i class="ti ti-circle-check"></i><span>Gratis</span></button>
+      <button class="et-o on" onclick="selET(this,'pago')"><i class="ti ti-cash"></i><span>Pago</span></button>
+      <button class="et-o" onclick="selET(this,'anticipo')"><i class="ti ti-tag"></i><span>Anticipo</span></button>
+    </div>
+    <div id="ent-extra" class="ent-ex show">
+      <div class="ent-ex-t"><i class="ti ti-info-circle"></i>Información de entradas</div>
+      <label class="fl"><i class="ti ti-currency-dollar"></i>Precio en puerta</label>
+      <input class="fi" type="text" placeholder="Ej: $3.000">
+      <div id="campo-anticipo" style="display:none">
+        <label class="fl"><i class="ti ti-tag"></i>Precio anticipo</label>
+        <input class="fi" type="text" placeholder="Ej: $2.000">
+      </div>
+      <label class="fl" style="margin-bottom:9px"><i class="ti ti-map-search"></i>¿Dónde se consiguen? <span style="color:var(--t5);font-weight:400;text-transform:none;letter-spacing:0">— vos elegís el medio de contacto, seSALE no vende entradas</span></label>
+      <label class="chk-l" style="margin-bottom:9px"><input type="checkbox" checked style="accent-color:var(--F)"><i class="ti ti-brand-whatsapp" style="font-size:14px;color:#25D366"></i>WhatsApp del organizador</label>
+      <label class="chk-l" style="margin-bottom:9px"><input type="checkbox" id="chk-ig" style="accent-color:var(--F)"><i class="ti ti-brand-instagram" style="font-size:14px;color:var(--F)"></i>Instagram / redes sociales</label>
+      <div id="campo-ig" style="display:none">
+        <label class="fl"><i class="ti ti-brand-instagram"></i>Usuario de Instagram</label>
+        <input class="fi" type="text" placeholder="@tuusuario">
+      </div>
+      <label class="chk-l" style="margin-bottom:9px"><input type="checkbox" id="chk-link" style="accent-color:var(--F)"><i class="ti ti-world" style="font-size:14px;color:var(--F)"></i>Página web / ticketera externa</label>
+      <div id="campo-link" style="display:none">
+        <label class="fl"><i class="ti ti-world"></i>Link</label>
+        <input class="fi" type="url" placeholder="https://...">
+      </div>
+      <label class="chk-l" style="margin-bottom:9px"><input type="checkbox" id="chk-mail" style="accent-color:var(--F)"><i class="ti ti-mail" style="font-size:14px;color:var(--F)"></i>Email de contacto</label>
+      <div id="campo-mail" style="display:none">
+        <label class="fl"><i class="ti ti-mail"></i>Email</label>
+        <input class="fi" type="email" placeholder="tu@email.com">
+      </div>
+      <label class="chk-l" style="margin-bottom:9px"><input type="checkbox" checked style="accent-color:var(--F)"><i class="ti ti-map-pin" style="font-size:14px;color:var(--t5)"></i>En el lugar / mapa el día del evento</label>
+    </div>
+    <label class="fl" style="margin-bottom:9px"><i class="ti ti-crown"></i>Elegí tu plan</label>
+    <div class="planes-g">
+      <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-circle"></i>Gratuito</div><div class="po-p">$0</div><div class="po-d">1 evento · básico · sin prioridad</div></div>
+      <div class="plan-o on" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-star"></i>Destacado</div><div class="po-p" id="precio-dest-pub">$X.XXX/mes</div><div class="po-d">Ilimitado · fondo destacado · 2° prioridad</div></div>
+      <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-crown"></i>Destacado Plus</div><div class="po-p" id="precio-pro-pub">$X.XXX/mes</div><div class="po-d">Imagen · banner · stats · 1° prioridad</div></div>
+      <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-ad"></i>Banner web</div><div class="po-p">Consultar</div><div class="po-d">Home + categorías · máxima visibilidad</div></div>
+    </div>
+    <button class="btn-cont" onclick="ir('pago')"><i class="ti ti-arrow-right"></i>Continuar</button>
+  </div>
+</div>
+
+<!-- ═══ PAGO ═══ -->
+<div id="s-pago" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('publicar')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Pagar plan</span></div>
+  <div class="pago-box">
+    <div class="pago-hd"><i class="ti ti-shield-check"></i><div><div class="pago-hd-t">Resumen de tu plan</div><div class="pago-hd-s"><i class="ti ti-lock"></i>Pago 100% seguro</div></div></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-crown"></i>Plan elegido</span><span class="pr-v">Destacado</span></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-calendar"></i>Duración</span><span class="pr-v">1 mes</span></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-infinite"></i>Eventos ilimitados</span><span class="pr-v vd"><i class="ti ti-check"></i>Incluido</span></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-star"></i>Badge destacado</span><span class="pr-v vd"><i class="ti ti-check"></i>Incluido</span></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-refresh"></i>Renovación</span><span class="pr-v">Automática · cancelable</span></div>
+    <div class="pr-total"><span class="pr-tl"><i class="ti ti-receipt"></i>Total</span><span class="pr-tv">$X.XXX</span></div>
+  </div>
+  <div class="mp-btns">
+    <div class="mp-lbl"><i class="ti ti-credit-card"></i>Elegí cómo pagar</div>
+    <button class="btn-mp" onclick="ir('exito')"><i class="ti ti-credit-card"></i>Pagar con Mercado Pago</button>
+    <button class="btn-qr" onclick="ir('exito')"><i class="ti ti-qrcode"></i>Pagar con QR</button>
+    <button class="btn-transf" onclick="ir('exito')"><i class="ti ti-building-bank"></i>Transferencia bancaria</button>
+    <div class="mp-seg"><i class="ti ti-lock"></i>SSL encriptado · pago seguro</div>
+  </div>
+</div>
+
+<!-- ═══ ÉXITO ═══ -->
+<div id="s-exito" class="screen">
+  <div class="exito-wrap">
+    <div class="exito-ico"><i class="ti ti-check"></i></div>
+    <div class="exito-t">¡Pago confirmado!</div>
+    <p style="font-size:13px;color:#666;margin-bottom:28px;line-height:1.7">Tu plan fue activado automáticamente.<br>Ya podés publicar eventos ilimitados.</p>
+    <div class="exito-plan">
+      <div class="exp-l"><i class="ti ti-crown"></i>Plan activo</div>
+      <div class="exp-v">Destacado · $X.XXX/mes</div>
+      <div class="exp-s"><i class="ti ti-calendar"></i>Próximo vencimiento: 20 de julio 2025</div>
+    </div>
+    <button class="btn-vol" onclick="ir('publicar')"><i class="ti ti-plus"></i>Publicar mi primer evento</button>
+    <p style="font-size:12px;color:#444;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-mail" style="font-size:14px;color:#555"></i>Recibiste un email de confirmación</p>
+  </div>
+</div>
+
+<!-- ═══ REGISTRO ═══ -->
+<div id="s-registro" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Crear cuenta</span></div>
+  <div class="reg-wrap">
+    <div class="reg-t">¡Bienvenido a seSALE!</div>
+    <p class="reg-s">Registrate para publicar tus eventos y llegar a toda la ciudad.</p>
+    <button class="btn-google"><i class="ti ti-brand-google"></i>Continuar con Google</button>
+    <button class="btn-wwa"><i class="ti ti-brand-whatsapp"></i>Continuar con WhatsApp</button>
+    <div class="divider"><hr><span>o completá tus datos</span><hr></div>
+
+    <!-- BLOQUE PRIVADO -->
+    <div class="bloque-priv">
+      <div class="bloque-priv-hd"><i class="ti ti-lock"></i><span>Datos de verificación</span><span class="solo">SOLO LO VE seSALE</span></div>
+      <p>Estos datos son confidenciales. Nunca se muestran al público. Solo los usamos para verificar tu identidad y actuar ante reclamos.</p>
+      <label class="fl"><i class="ti ti-user"></i>Nombre y apellido real <em>*</em></label>
+      <input class="fi" type="text" placeholder="Nombre y apellido del responsable">
+      <label class="fl"><i class="ti ti-id-badge"></i>Tipo de documento <em>*</em></label>
+      <div class="doc-toggle">
+        <div class="doc-op" id="doc-dni" onclick="selDoc('dni')"><i class="ti ti-user-circle"></i><div class="doc-n">DNI</div><div class="doc-desc">Persona física · Artista · Productor</div></div>
+        <div class="doc-op on" id="doc-cuit" onclick="selDoc('cuit')"><i class="ti ti-building"></i><div class="doc-n">CUIT</div><div class="doc-desc">Empresa · Bar · Teatro · Local</div></div>
+      </div>
+      <label class="fl" id="doc-lbl"><i class="ti ti-hash"></i>Número de CUIT <em>*</em></label>
+      <input class="fi" id="doc-inp" type="text" placeholder="20-12345678-9">
+      <div class="info-box"><div class="ib-t"><i class="ti ti-info-circle"></i>¿Por qué pedimos este dato?</div><div class="ib-s" id="doc-info">El CUIT identifica al responsable legal. No se muestra al público — solo lo usamos ante reclamos o contenido inapropiado.</div></div>
+      <label class="fl"><i class="ti ti-mail"></i>Email personal <em>*</em></label>
+      <div class="verif-row"><input class="fi" type="email" placeholder="tu@email.com"><button class="btn-verif"><i class="ti ti-send"></i>Verificar</button></div>
+      <div class="verified"><i class="ti ti-circle-check"></i>Email verificado ✓</div>
+      <label class="fl"><i class="ti ti-phone"></i>Celular personal <em>*</em></label>
+      <div class="verif-row"><input class="fi" type="tel" placeholder="+54 9 298 xxx-xxxx"><button class="btn-verif"><i class="ti ti-device-mobile"></i>Enviar SMS</button></div>
+      <div class="info-box"><div class="ib-t"><i class="ti ti-message-circle"></i>Verificación por SMS</div><div class="ib-s">Este número es privado. No es el WhatsApp de contacto público — ese lo configurás en tu perfil.</div></div>
+    </div>
+
+    <!-- BLOQUE PÚBLICO -->
+    <div class="bloque-pub">
+      <div class="bloque-pub-hd"><i class="ti ti-eye"></i><span>Tu perfil público</span><span class="publ">LO VE EL PÚBLICO</span></div>
+      <p>Esto es lo que aparece en tus eventos. Puede ser diferente a tus datos personales.</p>
+      <label class="fl"><i class="ti ti-building-community"></i>Nombre público <em>*</em></label>
+      <input class="fi" type="text" placeholder="Ej: El Tinglado Bar, Banda Los Cardones">
+      <label class="fl"><i class="ti ti-brand-whatsapp"></i>WhatsApp de contacto público</label>
+      <input class="fi" type="tel" placeholder="El que querés que te escriba el público">
+      <label class="fl"><i class="ti ti-map-pin"></i>Ciudad <em>*</em></label>
+      <select class="fsel"><option>General Roca, Río Negro</option><option>Cipolletti, Río Negro</option><option>Neuquén Capital</option></select>
+      <p style="font-size:11px;color:#3a6a3a;line-height:1.5;display:flex;gap:7px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Dirección, Instagram, web y link de entradas los completás desde tu perfil una vez que creás tu cuenta.</p>
+    </div>
+
+    <label class="fl"><i class="ti ti-lock"></i>Contraseña <em>*</em></label>
+    <input class="fi" type="password" placeholder="Mínimo 8 caracteres">
+    <div class="terminos-box">
+      <label class="chk-l"><input type="checkbox" style="accent-color:var(--F)">Acepto los <a href="#">Términos y Condiciones</a> y la <a href="#">Política de Privacidad</a></label>
+      <label class="chk-l"><input type="checkbox" style="accent-color:var(--F)">Me hago responsable del contenido que publique</label>
+    </div>
+    <button class="btn-crear" onclick="ir('home')"><i class="ti ti-user-plus"></i>Crear cuenta gratis</button>
+    <div class="reg-terms"><i class="ti ti-lock" style="font-size:13px;vertical-align:-2px;color:#555"></i> Tus datos de verificación son confidenciales y nunca se muestran al público.</div>
+  </div>
+</div>
+
+<!-- ═══ SELECTOR DE CIUDAD ═══ -->
+<div id="s-ciudad" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Elegir ciudad</span></div>
+  <div class="ciudad-modal">
+    <div class="cm-t"><i class="ti ti-map-pin"></i>¿En qué ciudad estás?</div>
+    <div class="cm-s">Te mostramos los eventos y lugares más cercanos. Podés cambiarla cuando quieras.</div>
+    <button class="geo-btn" onclick="usarGeo()">
+      <div class="geo-ico"><i class="ti ti-navigation"></i></div>
+      <div><div class="geo-t">Usar mi ubicación actual</div><div class="geo-s">Detectamos tu ciudad automáticamente</div></div>
+      <i class="ti ti-chevron-right geo-arr"></i>
+    </button>
+    <div class="cdivider"><hr><span>o elegí manualmente</span><hr></div>
+    <div class="search-c"><i class="ti ti-search"></i><input type="text" placeholder="Buscar ciudad..." oninput="filtrarCiudades(this.value)"></div>
+    <div id="lista-ciudades"></div>
+    <div class="ciu-nota"><i class="ti ti-info-circle"></i><span>¿No está tu ciudad? seSALE se expande gradualmente. Próximamente llegamos a más localidades del Alto Valle.</span></div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN PANEL ═══ -->
+<div id="s-admin" class="screen">
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit"><i class="ti ti-settings" style="font-size:14px;color:var(--F);vertical-align:-2px;margin-right:5px"></i>Panel de administración</span></div>
+  <div class="admin-tabs">
+    <button class="atab on" onclick="aTab('textos',this)"><i class="ti ti-pencil"></i>Textos</button>
+    <button class="atab" onclick="aTab('precios',this)"><i class="ti ti-cash"></i>Precios</button>
+    <button class="atab" onclick="aTab('config',this)"><i class="ti ti-settings"></i>Config</button>
+    <button class="atab" onclick="aTab('ciudades',this)"><i class="ti ti-map-pin"></i>Ciudades</button>
+    <button class="atab" onclick="aTab('orden',this)"><i class="ti ti-sort-ascending"></i>Orden</button>
+  </div>
+
+  <!-- TAB TEXTOS -->
+  <div id="av-textos" class="avista on"><div class="admin-wrap">
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-home"></i><div class="admin-hd-t">Hero principal</div><span class="admin-hd-b">HOME</span></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-heading"></i>Título</span><div class="ar-val" id="t-titulo">Todo lo que pasa en Roca, en un lugar.</div><button class="ar-ed" onclick="aEd('titulo','t-titulo')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-titulo"><input class="edit-inp" id="ei-titulo" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('titulo','t-titulo')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('titulo')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-text-size"></i>Subtítulo</span><div class="ar-val" id="t-sub">Música, teatro, ferias, fiestas y más.</div><button class="ar-ed" onclick="aEd('sub','t-sub')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-sub"><input class="edit-inp" id="ei-sub" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('sub','t-sub')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('sub')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-tag"></i>Eyebrow</span><div class="ar-val" id="t-eye">La agenda cultural de tu ciudad</div><button class="ar-ed" onclick="aEd('eye','t-eye')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-eye"><input class="edit-inp" id="ei-eye" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('eye','t-eye')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('eye')">Cancelar</button></div></div>
+    </div>
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-moon-stars"></i><div class="admin-hd-t">Botón Esta noche</div><span class="admin-hd-b">HOME</span></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-message-circle"></i>Texto principal</span><div class="ar-val" id="t-en">¿Qué hay esta noche?</div><button class="ar-ed" onclick="aEd('en','t-en')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-en"><input class="edit-inp" id="ei-en" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('en','t-en')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('en')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-info-circle"></i>Subtexto</span><div class="ar-val" id="t-ens">Viernes 20 de junio · Gral. Roca</div><button class="ar-ed" onclick="aEd('ens','t-ens')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-ens"><input class="edit-inp" id="ei-ens" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('ens','t-ens')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('ens')">Cancelar</button></div></div>
+    </div>
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-info-circle"></i><div class="admin-hd-t">¿Qué es seSALE?</div><span class="admin-hd-b">SECCIÓN</span></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-align-left"></i>Descripción</span><div class="ar-val" id="t-desc" style="font-size:11px;color:#888">seSALE es la agenda cultural de las ciudades del interior...</div><button class="ar-ed" onclick="aEd('desc','t-desc')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-desc"><textarea class="edit-inp" id="ei-desc" rows="3" style="resize:vertical">seSALE es la agenda cultural de las ciudades del interior. Un solo lugar para encontrar todo lo que pasa en tu ciudad.</textarea><div class="edit-btns"><button class="btn-sv" onclick="aSv('desc','t-desc')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('desc')">Cancelar</button></div></div>
+    </div>
+  </div></div>
+
+  <!-- TAB PRECIOS -->
+  <div id="av-precios" class="avista"><div class="admin-wrap">
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-calendar-event"></i><div class="admin-hd-t">Planes de publicación</div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-circle"></i>Plan Gratuito</span><div class="ar-val" id="p-gratis">$0</div><button class="ar-ed" onclick="aEd('p-gratis','p-gratis')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-p-gratis"><input class="edit-inp" id="ei-p-gratis" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('p-gratis','p-gratis')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('p-gratis')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-star"></i>Plan Destacado</span><div class="ar-val" id="p-dest">$X.XXX / mes</div><button class="ar-ed" onclick="aEd('p-dest','p-dest')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-p-dest"><input class="edit-inp" id="ei-p-dest" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('p-dest','p-dest')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('p-dest')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-crown"></i>Plan Destacado Plus</span><div class="ar-val" id="p-pro">$X.XXX / mes</div><button class="ar-ed" onclick="aEd('p-pro','p-pro')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-p-pro"><input class="edit-inp" id="ei-p-pro" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('p-pro','p-pro')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('p-pro')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-ad"></i>Banner home</span><div class="ar-val" id="p-ban">Consultar</div><button class="ar-ed" onclick="aEd('p-ban','p-ban')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-p-ban"><input class="edit-inp" id="ei-p-ban" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('p-ban','p-ban')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('p-ban')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-ad-2"></i>Banner categoría</span><div class="ar-val" id="p-ban-cat">Consultar</div><button class="ar-ed" onclick="aEd('p-ban-cat','p-ban-cat')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-p-ban-cat"><input class="edit-inp" id="ei-p-ban-cat" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('p-ban-cat','p-ban-cat')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('p-ban-cat')">Cancelar</button></div></div>
+    </div>
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-building-store"></i><div class="admin-hd-t">Planes de lugares fijos</div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-map-pin"></i>Lugar básico</span><div class="ar-val" id="pl-bas">Gratis</div><button class="ar-ed" onclick="aEd('pl-bas','pl-bas')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-pl-bas"><input class="edit-inp" id="ei-pl-bas" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('pl-bas','pl-bas')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('pl-bas')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-star-filled"></i>Lugar destacado</span><div class="ar-val" id="pl-dest">$X.XXX / mes</div><button class="ar-ed" onclick="aEd('pl-dest','pl-dest')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-pl-dest"><input class="edit-inp" id="ei-pl-dest" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('pl-dest','pl-dest')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('pl-dest')">Cancelar</button></div></div>
+    </div>
+  </div></div>
+
+  <!-- TAB CONFIG -->
+  <div id="av-config" class="avista"><div class="admin-wrap">
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-shield-check"></i><div class="admin-hd-t">Moderación</div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-robot"></i>Auto-aprobación</span><div style="flex:1;display:flex;align-items:center;gap:10px"><div class="tog on" onclick="togA(this)"><div class="tog-dot"></div></div><span class="tog-lbl">Cuentas verificadas se aprueban solas</span></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-user-search"></i>Revisión manual</span><div style="flex:1;display:flex;align-items:center;gap:10px"><div class="tog on" onclick="togA(this)"><div class="tog-dot"></div></div><span class="tog-lbl">Cuentas nuevas requieren revisión</span></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-filter"></i>Filtro de palabras</span><div style="flex:1;display:flex;align-items:center;gap:10px"><div class="tog on" onclick="togA(this)"><div class="tog-dot"></div></div><span class="tog-lbl">Bloqueo automático activo</span></div></div>
+    </div>
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-photo"></i><div class="admin-hd-t">Contenido</div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-photo"></i>Imágenes por evento</span><div class="ar-val" id="c-imgs">1 imagen</div><button class="ar-ed" onclick="aEd('c-imgs','c-imgs')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-imgs"><select class="edit-inp" id="ei-c-imgs"><option>1 imagen</option><option>3 imágenes</option><option>5 imágenes</option></select><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-imgs','c-imgs')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-imgs')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-text-size"></i>Máx. descripción</span><div class="ar-val" id="c-chars">300 caracteres</div><button class="ar-ed" onclick="aEd('c-chars','c-chars')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-chars"><input class="edit-inp" id="ei-c-chars" type="text"><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-chars','c-chars')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-chars')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-ad"></i>Slots banner home</span><div class="ar-val" id="c-slots">3 slots</div><button class="ar-ed" onclick="aEd('c-slots','c-slots')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-slots"><select class="edit-inp" id="ei-c-slots"><option>1 slot</option><option>2 slots</option><option>3 slots</option><option>4 slots</option></select><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-slots','c-slots')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-slots')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-ad-2"></i>Slots por categoría</span><div class="ar-val" id="c-slots-cat">2 slots</div><button class="ar-ed" onclick="aEd('c-slots-cat','c-slots-cat')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-slots-cat"><select class="edit-inp" id="ei-c-slots-cat"><option>1 slot</option><option>2 slots</option><option>3 slots</option></select><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-slots-cat','c-slots-cat')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-slots-cat')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-building-store"></i>Slots en lugares</span><div class="ar-val" id="c-slots-lug">2 slots</div><button class="ar-ed" onclick="aEd('c-slots-lug','c-slots-lug')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-slots-lug"><select class="edit-inp" id="ei-c-slots-lug"><option>1 slot</option><option>2 slots</option><option>3 slots</option></select><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-slots-lug','c-slots-lug')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-slots-lug')">Cancelar</button></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-tools-kitchen-2"></i>Slots por tipo de lugar</span><div class="ar-val" id="c-slots-lug-tipo">2 slots</div><button class="ar-ed" onclick="aEd('c-slots-lug-tipo','c-slots-lug-tipo')"><i class="ti ti-pencil"></i>Editar</button></div>
+      <div class="edit-form" id="ef-c-slots-lug-tipo"><select class="edit-inp" id="ei-c-slots-lug-tipo"><option>1 slot</option><option>2 slots</option><option>3 slots</option></select><div class="edit-btns"><button class="btn-sv" onclick="aSv('c-slots-lug-tipo','c-slots-lug-tipo')"><i class="ti ti-check"></i>Guardar</button><button class="btn-cx" onclick="aCx('c-slots-lug-tipo')">Cancelar</button></div></div>
+    </div>
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-bell"></i><div class="admin-hd-t">Notificaciones</div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-calendar-week"></i>Push semanal</span><div style="flex:1;display:flex;align-items:center;gap:10px"><div class="tog on" onclick="togA(this)"><div class="tog-dot"></div></div><span class="tog-lbl">Lunes 10 hs — resumen semanal</span></div></div>
+      <div class="arow"><span class="ar-lbl"><i class="ti ti-clock-2"></i>Recordatorio evento</span><div style="flex:1;display:flex;align-items:center;gap:10px"><div class="tog on" onclick="togA(this)"><div class="tog-dot"></div></div><span class="tog-lbl">Aviso 2 hs antes al que tocó "Avisame"</span></div></div>
+    </div>
+  </div></div>
+
+  <!-- TAB CIUDADES -->
+  <div id="av-ciudades" class="avista"><div class="admin-wrap">
+    <div style="background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:var(--t5);line-height:1.6;display:flex;gap:9px">
+      <i class="ti ti-info-circle" style="font-size:15px;color:var(--F);flex-shrink:0;margin-top:1px"></i>
+      <span>Habilitás ciudades con el botón. Al habilitar, aparece en el selector de usuarios y los organizadores de esa zona pueden registrarse.</span>
+    </div>
+    <div id="ciudades-admin"></div>
+  </div></div>
+
+  <!-- TAB ORDEN -->
+  <div id="av-orden" class="avista"><div class="admin-wrap">
+    <div class="admin-sec">
+      <div class="admin-hd"><i class="ti ti-sort-ascending"></i><div class="admin-hd-t">Criterio activo</div><span class="admin-hd-b">ACTIVO</span></div>
+      <div style="padding:14px">
+        <div style="background:var(--FB);border:1.5px solid var(--F);border-radius:10px;padding:13px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:7px"><i class="ti ti-check" style="color:var(--V)"></i>Plan primero, luego fecha de publicación</div>
+          <div style="font-size:11px;color:#8a3a5a;line-height:1.9">
+            1° <strong style="color:#fff"><i class="ti ti-crown" style="font-size:11px;vertical-align:-1px;color:var(--F)"></i> Plan Destacado Plus</strong> — más reciente primero<br>
+            2° <strong style="color:#fff"><i class="ti ti-star" style="font-size:11px;vertical-align:-1px;color:var(--F)"></i> Plan Destacado</strong> — más reciente primero<br>
+            3° <strong style="color:#fff"><i class="ti ti-circle" style="font-size:11px;vertical-align:-1px;color:#555"></i> Plan Gratuito</strong> — más reciente primero
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--t5);line-height:1.6;display:flex;gap:8px">
+          <i class="ti ti-bulb" style="font-size:15px;color:var(--AM);flex-shrink:0;margin-top:1px"></i>
+          <span>Cuando tengas más de 50 eventos activos podés migrar a un algoritmo mixto que también considera la popularidad (cantidad de "Avisame").</span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <button class="btab on" id="bt-home" onclick="ir('home')"><i class="ti ti-home"></i><span>Inicio</span></button>
+  <button class="btab" id="bt-categorias" onclick="ir('categorias')"><i class="ti ti-apps"></i><span>Categorías</span></button>
+  <button class="btab" id="bt-lugares" onclick="ir('lugares')"><i class="ti ti-building-store"></i><span>Gastronomía</span></button>
+  <button class="btab" id="bt-publicar" onclick="ir('publicar')"><i class="ti ti-plus"></i><span>Publicar</span></button>
+  <button class="btab" id="bt-cuenta" onclick="ir('registro')"><i class="ti ti-user"></i><span>Mi cuenta</span></button>
+</div>
+
+<!-- LIGHTBOX FLYER — ver imagen ampliada sin salir del sitio -->
+<div class="lightbox" id="lightbox" onclick="cerrarFlyer()">
+  <button class="lightbox-close" onclick="cerrarFlyer()"><i class="ti ti-x"></i></button>
+  <div class="lightbox-img" id="lightbox-img" style="background:linear-gradient(135deg,#1a0a1a,#2d0d2d)">
+    <i class="ti ti-music" style="font-size:120px;color:#7F77DD"></i>
+  </div>
+</div>
+
+<script>
+// ── DATOS ────────────────────────────────────────────────────────────────
+var MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var EVS_CAL={5:[20,21,22,27,28,29],6:[5,6,7,8,9,10,12,13,14,15,17,18,19,20,26,27]};
+var mesC=5,anioC=2025,calI=null,calF=null,calCk=0;
+
+// Eventos — plan: pro (Destacado Plus), dest (Destacado), gratis (Gratuito) — aviso/listing, NO el precio de entrada
+// precio: 0 = entrada gratis; pub: timestamp para ordenamiento
+var EVTS={
+  hoy:[
+    {d:20,m:'Jun',nom:'Festival Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:1000,precio:5000},
+    {d:20,m:'Jun',nom:'Fiesta de los 80s — Aquelarre',lug:'23:00 · Aquelarre Bar',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-confetti',plan:'pro',pub:900,precio:3000},
+    {d:20,m:'Jun',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado Bar',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',plan:'dest',pub:800,precio:2000},
+    {d:20,m:'Jun',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',plan:'dest',pub:700,precio:3000},
+    {d:20,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:600,precio:0},
+    {d:20,m:'Jun',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
+    {d:20,m:'Jun',nom:'Cuentos y Títeres en la Plaza',lug:'17:00 · Plaza San Martín',ibg:'#FF8FA322',ic:'#FF8FA3',ico:'ti-baby-carriage',plan:'gratis',pub:300,precio:0},
+    {d:20,m:'Jun',nom:'Maratón Nocturna 5K',lug:'21:00 · Costanera',ibg:'#14B8A622',ic:'#14B8A6',ico:'ti-ball-football',plan:'dest',pub:350,precio:1500},
+  ],
+  manana:[
+    {d:21,m:'Jun',nom:'DJ Morena — Electro Night',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',plan:'dest',pub:800,precio:2500},
+    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
+    {d:21,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:500,precio:0},
+  ],
+  finde:[
+    {d:21,m:'Jun',sep:'Sábado 21',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',plan:'dest',pub:700,precio:3000},
+    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
+    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
+    {d:22,m:'Jun',nom:'DJ Electrónico',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',plan:'dest',pub:400,precio:2500},
+  ],
+  semana:[
+    {d:20,m:'Jun',sep:'Viernes 20',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',plan:'dest',pub:800,precio:2000},
+    {d:21,m:'Jun',sep:'Sábado 21',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
+    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
+  ],
+  julio:[
+    {d:12,m:'Jul',sep:'Vacaciones invierno',nom:'Festival de Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:1000,precio:5000},
+    {d:15,m:'Jul',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',plan:'dest',pub:800,precio:4000},
+    {d:5,m:'Jul',sep:'Finde 5-6 julio',nom:'Peña Los Gauchos',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:500,precio:0},
+  ],
+  vacaciones:[
+    {d:7,m:'Jul',sep:'Semana 1 · 7-11 julio',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',plan:'dest',pub:800,precio:4000},
+    {d:9,m:'Jul',nom:'Show Bajo el Mar',lug:'17:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-theater',plan:'dest',pub:700,precio:3500},
+    {d:14,m:'Jul',sep:'Semana 2 · 14-18 julio',nom:'Festival de Jazz',lug:'20:00 · Anfiteatro',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:900,precio:5000},
+    {d:17,m:'Jul',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:400,precio:0},
+  ],
+};
+
+// BANS_HOME: 3 slots (home siempre lleva 3) — cada slot es un array de hasta 4 imágenes que rotan solas
+// Cada pieza es { img:'ruta.jpg|gif|png', alt:'texto', link:'https://...' (opcional) }. Vacío = sin anunciante todavía.
+var BANS_HOME=[[],[],[]];
+
+// BANS_CAT: 2 slots por categoría — mismo formato { img, alt, link }
+var BANS_CAT={};
+
+// ADS_GRID_HOME / ADS_GRID_CAT: grilla de 2 columnas (hasta 4 imágenes) que se muestra
+// en vez del listado de eventos, hasta que el usuario elige un filtro de fecha/momento.
+var ADS_GRID_HOME=[];
+var ADS_GRID_CAT={};
+
+var CATS={
+  musica:{nom:'Música en vivo',ico:'ti-music',ico2:'ti-music',col:'#7F77DD',bg:'#1a0a2a',cnt:'8 eventos',evs:'hoy'},
+  fiesta:{nom:'Fiesta / Baile',ico:'ti-confetti',ico2:'ti-confetti',col:'#E91E8C',bg:'#1a0a14',cnt:'5 eventos',evs:'finde'},
+  teatro:{nom:'Teatro',ico:'ti-theater',ico2:'ti-theater',col:'#EF9F27',bg:'#1a140a',cnt:'3 obras',evs:'semana'},
+  feria:{nom:'Feria',ico:'ti-building-store',ico2:'ti-building-store',col:'#1D9E75',bg:'#0a1a12',cnt:'2 ferias',evs:'finde'},
+  dj:{nom:'DJ / Electrónica',ico:'ti-vinyl',ico2:'ti-vinyl',col:'#378ADD',bg:'#0a1220',cnt:'4 eventos',evs:'hoy'},
+  milonga:{nom:'Milonga / Tango',ico:'ti-shoe',ico2:'ti-shoe',col:'#378ADD',bg:'#0a121a',cnt:'2 eventos',evs:'semana'},
+  pena:{nom:'Peña folclórica',ico:'ti-guitar-pick',ico2:'ti-guitar-pick',col:'#D85A30',bg:'#1a0e0a',cnt:'3 eventos',evs:'julio'},
+  standup:{nom:'Stand up',ico:'ti-microphone-2',ico2:'ti-microphone-2',col:'#888',bg:'#111',cnt:'1 evento',evs:'hoy'},
+  arte:{nom:'Exposición / Arte',ico:'ti-palette',ico2:'ti-palette',col:'#7F77DD',bg:'#1a0a1a',cnt:'2 muestras',evs:'semana'},
+  recital:{nom:'Recital',ico:'ti-microphone',ico2:'ti-microphone',col:'#7F77DD',bg:'#1a0a2a',cnt:'2 eventos',evs:'hoy'},
+  cine:{nom:'Cine',ico:'ti-movie',ico2:'ti-movie',col:'#555',bg:'#0a0a14',cnt:'1 función',evs:'hoy'},
+  infantil:{nom:'Infantil',ico:'ti-baby-carriage',ico2:'ti-baby-carriage',col:'#FF8FA3',bg:'#1a0d12',cnt:'2 eventos',evs:'hoy',subs:['Espectáculos','Talleres y juegos','Cine infantil','Cumpleaños y fiestas','Parques y aire libre']},
+  deportes:{nom:'Deportes',ico:'ti-ball-football',ico2:'ti-ball-football',col:'#14B8A6',bg:'#0a1a17',cnt:'2 eventos',evs:'hoy',subs:['Fútbol','Running y trail','Ciclismo','Outdoor / aventura','Torneos']},
+};
+
+// ── BANNERS ROTATIVOS: cada slot rota entre hasta 4 imágenes, una a la vez, cada 3s
+// Slot sin imágenes = se muestra el placeholder "Espacio publicitario disponible"
+var BANNER_REG={};
+function padAds(ads){
+  var out=(ads||[]).slice(0,4);
+  while(out.length<4)out.push(null);
+  return out;
+}
+function registerSlot(key,ads){
+  BANNER_REG[key]={ads:padAds(ads),idx:0};
+  return renderSlot(key);
+}
+function renderSlot(key){
+  var s=BANNER_REG[key];if(!s)return '';
+  return '<div class="ban-slot-wrap" data-slot="'+key+'">'+rAdImg(s.ads[s.idx],'ban-full')+'</div>';
+}
+function registerAndRenderSlots(prefix,slots){
+  return slots.map(function(ads,i){return registerSlot(prefix+'-'+i,ads);}).join('');
+}
+function tickBanners(){
+  document.querySelectorAll('.ban-slot-wrap').forEach(function(el){
+    var key=el.dataset.slot,s=BANNER_REG[key];
+    if(!s||s.ads.length<=1)return;
+    s.idx=(s.idx+1)%s.ads.length;
+    el.innerHTML=rAdImg(s.ads[s.idx],'ban-full');
+  });
+}
+setInterval(tickBanners,3000);
+
+// ── CATEGORÍAS GRID: 2 slots arriba del listado completo de categorías
+var BANS_CATEGORIAS=[[],[]];
+
+// ── LUGARES: 2 slots generales + 2 slots por cada tipo (todo placeholder hasta sumar anunciantes reales)
+var BANS_LUGARES=[[],[]];
+var BANS_LUG_TIPO={
+  cerveceria:[[],[]],restaurante:[[],[]],parrilla:[[],[]],bar:[[],[]],cafe:[[],[]],pizza:[[],[]]
+};
+function rLugBans(tipo){
+  var slots=tipo==='todos'?BANS_LUGARES:(BANS_LUG_TIPO[tipo]||[[],[]]);
+  return registerAndRenderSlots('lug-'+tipo,slots);
+}
+
+var CIUDADES=[
+  {ico:'🏙️',nom:'General Roca',prov:'Río Negro',estado:'activa',ev:38,lu:24},
+  {ico:'🌆',nom:'Cipolletti',prov:'Río Negro',estado:'activa',ev:22,lu:18},
+  {ico:'🌇',nom:'Neuquén Capital',prov:'Neuquén',estado:'pronto',ev:0,lu:0},
+  {ico:'🏘️',nom:'Allen',prov:'Río Negro',estado:'pronto',ev:0,lu:0},
+  {ico:'🏘️',nom:'Villa Regina',prov:'Río Negro',estado:'pronto',ev:0,lu:0},
+  {ico:'🏘️',nom:'Centenario',prov:'Neuquén',estado:'pronto',ev:0,lu:0},
+  {ico:'🏘️',nom:'Plottier',prov:'Neuquén',estado:'pronto',ev:0,lu:0},
+  {ico:'🌃',nom:'Bariloche',prov:'Río Negro',estado:'pronto',ev:0,lu:0},
+];
+
+// ── ORDENAMIENTO PRO → DEST → GRATIS dentro del mismo plan → más reciente primero
+function ordenar(arr){
+  var p={pro:0,dest:1,gratis:2};
+  return arr.slice().sort(function(a,b){
+    var pa=p[a.plan]||2,pb=p[b.plan]||2;
+    if(pa!==pb)return pa-pb;
+    return b.pub-a.pub;
+  });
+}
+
+// ── RENDER BANNER
+// ── RENDER de espacio publicitario: siempre una imagen única (gif/png/jpg).
+// Sin imagen (o si falla la carga) muestra un placeholder prolijo "Espacio publicitario disponible".
+function rAdImg(ad,cls){
+  var hasImg=!!(ad&&ad.img);
+  var click=(ad&&ad.link)?' onclick="window.open(\''+ad.link+'\',\'_blank\')" style="cursor:pointer"':'';
+  var h='<div class="'+cls+(hasImg?'':' ad-empty')+'"'+click+'>';
+  if(hasImg)h+='<img src="'+ad.img+'" alt="'+((ad&&ad.alt)||'Publicidad')+'" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.classList.add(\'ad-empty\')">';
+  h+='<div class="ad-empty-content"><i class="ti ti-speakerphone"></i><span>Espacio publicitario disponible</span></div>';
+  h+='</div>';
+  return h;
+}
+// ── GRILLA 2 COLUMNAS: reemplaza al listado de eventos hasta que el usuario elige un filtro
+function rAdsGrid(ads){
+  var list=(ads||[]).slice(0,4);
+  while(list.length<4)list.push(null);
+  return '<div class="ads-2col">'+list.map(function(a){return rAdImg(a,'ad-tile');}).join('')+'</div>';
+}
+
+// ── RENDER EVENTO — el nivel (Gratuito/Destacado/Destacado Plus) se ve en el estilo de la tarjeta, no en una etiqueta de "pagó/no pagó"
+function precioLinea(e){
+  if(!e.precio)return '<div class="eprecio eg"><i class="ti ti-circle-check" style="font-size:11px"></i>Gratis</div>';
+  return '<div class="eprecio ep"><i class="ti ti-ticket" style="font-size:11px"></i>Desde $'+e.precio.toLocaleString('es-AR')+'</div>';
+}
+function rEvi(e){
+  var cls='evi'+(e.plan==='dest'?' evi-dest':'');
+  var badge=e.plan==='dest'?'<span class="bdest"><i class="ti ti-star-filled"></i>Destacado</span>':(!e.precio?'<span class="bfree">Gratis</span>':'');
+  return '<div class="'+cls+'" onclick="ir(\'evento\')">'
+    +'<div class="efc"><div class="efd">'+e.d+'</div><div class="efm">'+e.m+'</div></div>'
+    +'<div class="eico" style="background:'+e.ibg+'"><i class="ti '+e.ico+'" style="color:'+e.ic+'"></i></div>'
+    +'<div class="einf"><div class="enom-row"><div class="enom">'+e.nom+'</div>'+badge+'</div><div class="elug"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'+precioLinea(e)+'</div>'
+    +'</div>';
+}
+function rEviPlus(e){
+  return '<div class="evi-plus" onclick="ir(\'evento\')">'
+    +'<div class="evi-plus-img" style="background:'+e.ibg+'"><i class="ti '+e.ico+'" style="font-size:34px;color:'+e.ic+'"></i><span class="evi-plus-tag">'+e.d+' '+e.m+'</span><span class="bpro" style="position:absolute;top:8px;right:8px"><i class="ti ti-crown"></i>Destacado Plus</span></div>'
+    +'<div class="evi-plus-body">'
+    +'<div class="evi-plus-tit">'+e.nom+'</div>'
+    +'<div class="evi-plus-meta"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'
+    +precioLinea(e)
+    +'</div></div>';
+}
+function pintarEv(e){return e.plan==='pro'?rEviPlus(e):rEvi(e);}
+
+function pintarArr(raw,contId){
+  var cont=document.getElementById(contId||'ev-lista');
+  if(!cont)return;
+  var h='';
+  // Si hay separadores, procesar por grupos
+  var grupos=[],grupo=[];
+  raw.forEach(function(e){
+    if(e.sep){if(grupo.length)grupos.push({sep:null,evs:grupo});grupos.push({sep:e.sep,evs:[]});grupo=[];}
+    else grupo.push(e);
+  });
+  if(grupo.length)grupos.push({sep:null,evs:grupo});
+
+  if(grupos.length<=1 && grupos[0] && !grupos[0].sep){
+    // sin separadores — ordenar todo
+    var ord=ordenar(raw);
+    ord.forEach(function(e){h+=pintarEv(e);});
+  } else {
+    grupos.forEach(function(g){
+      if(g.sep)h+='<div class="sep-f"><i class="ti ti-calendar-event"></i>'+g.sep+'</div>';
+      var ord=ordenar(g.evs);
+      ord.forEach(function(e){h+=pintarEv(e);});
+    });
+  }
+  cont.innerHTML=h;
+}
+
+function rLista(tipo,contId){
+  pintarArr(EVTS[tipo]||EVTS['hoy'],contId);
+}
+
+// ── DÍA / NOCHE
+var FRANJA={diaIni:7,diaFin:20};
+var momentoActivo=null,catActualEvs='hoy';
+function horaDe(lug){
+  var m=/^(\d{1,2}):/.exec(lug);
+  return m?parseInt(m[1],10):12;
+}
+function momentoDe(lug){
+  var h=horaDe(lug);
+  return (h>=FRANJA.diaIni&&h<FRANJA.diaFin)?'dia':'noche';
+}
+function filtrarMomento(m){
+  momentoActivo=(momentoActivo===m)?null:m;
+  document.getElementById('mom-dia').classList.toggle('on',momentoActivo==='dia');
+  document.getElementById('mom-noche').classList.toggle('on',momentoActivo==='noche');
+  var raw=EVTS['hoy'];
+  var f=momentoActivo?raw.filter(function(e){return momentoDe(e.lug)===momentoActivo;}):raw;
+  pintarArr(f,'ev-lista');
+  document.getElementById('en-cont').innerHTML='<i class="ti ti-calendar-event" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>'+f.length+' planes';
+  document.getElementById('sec-lbl').innerHTML='<i class="ti ti-star"></i>'+(momentoActivo==='dia'?'Hoy de día':momentoActivo==='noche'?'Hoy de noche':LABS['hoy']);
+}
+function filtrarMomentoCat(btn,m){
+  document.querySelectorAll('#s-cat-det .fils .fil').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  var raw=EVTS[catActualEvs]||EVTS['hoy'];
+  var f=raw;
+  var lbl='';
+  if(m==='dia'){f=raw.filter(function(e){return momentoDe(e.lug)==='dia';});lbl=' · Diurno';}
+  else if(m==='noche'){f=raw.filter(function(e){return momentoDe(e.lug)==='noche';});lbl=' · Nocturno';}
+  else if(m==='gratis'){f=raw.filter(function(e){return !e.precio;});lbl=' · Gratis';}
+  document.getElementById('cat-det-lbl').innerHTML='<i class="ti ti-calendar"></i>Eventos'+lbl;
+  pintarArr(f,'cat-det-lista');
+}
+
+// ── CIUDADES
+function rCiudades(lista){
+  var cont=document.getElementById('lista-ciudades');
+  if(!cont)return;
+  var h='';
+  lista.forEach(function(c,i){
+    var act=c.estado==='activa';
+    h+='<div class="ciu-item '+(act?'activa':'pronto')+'" onclick="'+(act?'selCiudad('+i+')':'')+';">'
+      +'<div class="ciu-ico">'+c.ico+'</div>'
+      +'<div><div class="ciu-t">'+c.nom+'</div><div class="ciu-s">'+c.prov+(act?' · '+c.ev+' eventos · '+c.lu+' lugares':' · Próximamente')+'</div></div>'
+      +'<span class="ciu-b '+(act?'disp':'prox')+'">'+(act?'Disponible':'Próximo')+'</span>'
+      +'</div>';
+  });
+  cont.innerHTML=h;
+}
+
+function filtrarCiudades(q){
+  var f=CIUDADES.filter(function(c){return c.nom.toLowerCase().includes(q.toLowerCase())||c.prov.toLowerCase().includes(q.toLowerCase());});
+  rCiudades(f);
+}
+
+function selCiudad(i){
+  document.getElementById('ciudad-activa').textContent=CIUDADES[i].nom.split(',')[0];
+  ir('home');
+}
+
+// ── COMPARTIR POR WHATSAPP
+function compartirSitio(){
+  var msg='¡Mirá seSALE! La agenda cultural de tu ciudad — música, teatro, ferias, fiestas y más, todo en un lugar: '+location.href;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function compartirEvento(){
+  var tit=document.querySelector('#s-evento .ev-tit').textContent;
+  var mv=document.querySelectorAll('#s-evento .mi-v');
+  var partes=[tit];
+  if(mv[0])partes.push(mv[0].textContent);
+  if(mv[1])partes.push(mv[1].textContent);
+  if(mv[2])partes.push(mv[2].textContent);
+  var msg=partes.join(' · ')+'. ¡Organicemos para ir! Lo vi en seSALE: '+location.href;
+  if(navigator.share){
+    navigator.share({title:tit,text:msg,url:location.href}).catch(function(){});
+  } else {
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  }
+}
+
+// ── FLYER — lightbox sin salir del sitio
+function abrirFlyer(){document.getElementById('lightbox').classList.add('open');}
+function cerrarFlyer(){document.getElementById('lightbox').classList.remove('open');}
+
+// ── MAPA — abre la dirección en Google Maps
+function abrirMapa(direccion){
+  window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(direccion),'_blank');
+}
+
+// ── DROPDOWN RÁPIDO DE CIUDAD
+function rCiuDrop(){
+  var cont=document.getElementById('ciu-drop-lista');
+  if(!cont)return;
+  var h='';
+  CIUDADES.forEach(function(c,i){
+    if(c.estado!=='activa')return;
+    h+='<div class="ciu-drop-item" onclick="togCiuDrop();selCiudad('+i+')"><i class="ti ti-map-pin"></i><span>'+c.nom+'</span></div>';
+  });
+  cont.innerHTML=h;
+}
+function togCiuDrop(){
+  var d=document.getElementById('ciu-drop');
+  d.classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  var d=document.getElementById('ciu-drop');
+  if(!d||!d.classList.contains('open'))return;
+  if(!d.contains(e.target)&&!e.target.closest('.cpill'))d.classList.remove('open');
+});
+
+function usarGeo(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(){selCiudad(0);},function(){alert('No se pudo obtener tu ubicación. Elegí manualmente.');});
+  } else {alert('Tu navegador no soporta geolocalización.');}
+}
+
+function rCiudadesAdmin(){
+  var cont=document.getElementById('ciudades-admin');
+  if(!cont)return;
+  var h='';
+  CIUDADES.forEach(function(c,i){
+    var on=c.estado==='activa';
+    h+='<div class="ca-item">'
+      +'<div class="ca-ico">'+c.ico+'</div>'
+      +'<div style="flex:1"><div class="ca-t">'+c.nom+'</div><div class="ca-s">'+c.prov+(on?' · '+c.ev+' eventos activos':' · Sin contenido aún')+'</div></div>'
+      +'<button class="btn-hab '+(on?'on':'off')+'" onclick="togCiudad('+i+')">'
+      +(on?'<i class="ti ti-check"></i>Habilitada':'<i class="ti ti-plus"></i>Habilitar')
+      +'</button>'
+      +'</div>';
+  });
+  cont.innerHTML=h;
+}
+
+function togCiudad(i){
+  CIUDADES[i].estado=CIUDADES[i].estado==='activa'?'pronto':'activa';
+  rCiudadesAdmin();rCiudades(CIUDADES);rCiuDrop();
+}
+
+// ── NAVEGACIÓN
+var SS=['home','cat-det','categorias','lugares','evento','que-es','publicar','pago','exito','registro','ciudad','admin'];
+var BM={'home':'bt-home','categorias':'bt-categorias','lugares':'bt-lugares','publicar':'bt-publicar','registro':'bt-cuenta','que-es':'bt-home','ciudad':'bt-home','cat-det':'bt-categorias'};
+
+function ir(id){
+  SS.forEach(function(s){var e=document.getElementById('s-'+s);if(e)e.classList.remove('open');});
+  document.querySelectorAll('.btab').forEach(function(b){b.classList.remove('on');});
+  var sc=document.getElementById('s-'+id);
+  if(sc)sc.classList.add('open');
+  if(BM[id])document.getElementById(BM[id]).classList.add('on');
+  window.scrollTo(0,0);
+}
+
+// ── CATEGORÍAS
+function verCat(key){
+  var cat=CATS[key];if(!cat)return;
+  catActualEvs=cat.evs;
+  document.getElementById('cat-det-bkt').textContent=cat.nom;
+  var hero=document.getElementById('cat-det-hero');
+  hero.style.background='linear-gradient(135deg,'+cat.bg+',#0d0d0d)';
+  var ico=document.getElementById('cat-det-ico');
+  ico.className='ti '+cat.ico;ico.style.color=cat.col;
+  var ico2=document.getElementById('cat-det-ico2');
+  ico2.className='ti '+cat.ico2;ico2.style.color=cat.col;
+  document.getElementById('cat-det-tit').textContent=cat.nom;
+  document.getElementById('cat-det-cnt').textContent=cat.cnt;
+  document.getElementById('cat-det-lbl').innerHTML='<i class="ti ti-filter"></i>Elegí un filtro para ver los eventos de '+cat.nom;
+  var subsWrap=document.getElementById('cat-subs-wrap');
+  if(cat.subs&&cat.subs.length){
+    document.getElementById('cat-subs-list').innerHTML=cat.subs.map(function(s){return '<div class="chip">'+s+'</div>';}).join('');
+    subsWrap.style.display='block';
+  } else { subsWrap.style.display='none'; }
+  document.getElementById('cat-ban-lbl-em').textContent=cat.nom+' · 2 slots';
+  var slots=(BANS_CAT[key]||[]).slice(0,2);
+  while(slots.length<2)slots.push([]);
+  document.getElementById('cat-bans-list').innerHTML=registerAndRenderSlots('cat-'+key,slots);
+  document.querySelectorAll('#s-cat-det .fils .fil').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('cat-det-lista').innerHTML=rAdsGrid(ADS_GRID_CAT[key]);
+  ir('cat-det');
+}
+
+function irCat(key,chip){
+  document.querySelectorAll('.chips .chip').forEach(function(c){c.classList.remove('on');});chip.classList.add('on');
+  if(key)verCat(key);
+}
+
+// ── VISTA
+function setVista(id,btn){
+  document.querySelectorAll('.vtab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');
+  document.getElementById('v-lista').style.display=id==='lista'?'block':'none';
+  document.getElementById('v-mapa').style.display=id==='mapa'?'block':'none';
+}
+
+// ── FILTROS FECHA
+var LABS={hoy:'Destacados esta noche',manana:'Mañana en Gral. Roca',finde:'Este fin de semana',semana:'Esta semana en Roca',julio:'Julio en Roca',vacaciones:'Vacaciones de invierno'};
+
+function sff(btn,tipo){
+  document.querySelectorAll('#fils-fecha .fil').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  document.getElementById('fecha-panel').classList.remove('open');
+  document.getElementById('btn-cal').classList.remove('on');
+  document.getElementById('sec-lbl').innerHTML='<i class="ti ti-star"></i>'+(LABS[tipo]||'Eventos');
+  momentoActivo=null;
+  document.getElementById('mom-dia').classList.remove('on');
+  document.getElementById('mom-noche').classList.remove('on');
+  rLista(tipo);
+}
+
+function togCal(){
+  var p=document.getElementById('fecha-panel');var b=document.getElementById('btn-cal');
+  var ab=p.classList.contains('open');p.classList.toggle('open');
+  if(ab)b.classList.remove('on');else b.classList.add('on');
+}
+
+// ── CALENDARIO
+function rCal(){
+  document.getElementById('cal-t').textContent=MESES[mesC]+' '+anioC;
+  var g=document.getElementById('cal-dias');g.innerHTML='';
+  var p=new Date(anioC,mesC,1).getDay(),tot=new Date(anioC,mesC+1,0).getDate(),ant=new Date(anioC,mesC,0).getDate();
+  for(var i=0;i<p;i++){var d=document.createElement('button');d.className='dia otro';d.textContent=ant-p+1+i;g.appendChild(d);}
+  for(var n=1;n<=tot;n++){
+    var d=document.createElement('button');var cls='dia';
+    if(n===20&&mesC===5&&anioC===2025)cls+=' hoy';
+    if(EVS_CAL[mesC]&&EVS_CAL[mesC].indexOf(n)>-1)cls+=' tev';
+    if(calI&&calF){var f=new Date(anioC,mesC,n),fi=new Date(calI.a,calI.m,calI.d),ff=new Date(calF.a,calF.m,calF.d);
+      if(f.getTime()===fi.getTime())cls+=' ri';
+      else if(f.getTime()===ff.getTime())cls+=' rf';
+      else if(f>fi&&f<ff)cls+=' rango';
+    } else if(calI&&!calF&&n===calI.d&&mesC===calI.m&&anioC===calI.a)cls+=' sel';
+    d.className=cls;d.textContent=n;
+    (function(nn,mm,aa){d.onclick=function(){cD(nn,mm,aa);};})(n,mesC,anioC);
+    g.appendChild(d);
+  }
+}
+
+function cD(d,m,a){
+  document.querySelectorAll('.rap').forEach(function(r){r.classList.remove('on');});
+  if(!calI||calCk===2){calI={d:d,m:m,a:a};calF=null;calCk=1;}
+  else{
+    var f1=new Date(calI.a,calI.m,calI.d),f2=new Date(a,m,d);
+    if(f2<f1){calF=calI;calI={d:d,m:m,a:a};}
+    else if(f2.getTime()===f1.getTime()){calF=null;calCk=1;rCal();mSel();return;}
+    else{calF={d:d,m:m,a:a};}calCk=2;
+  }
+  rCal();mSel();
+}
+
+function mSel(){
+  var b=document.getElementById('sel-box'),t=document.getElementById('sel-txt');
+  if(calI&&calF){t.textContent=calI.d+' de '+MESES[calI.m]+' → '+calF.d+' de '+MESES[calF.m];b.classList.add('show');}
+  else if(calI){t.textContent=calI.d+' de '+MESES[calI.m];b.classList.add('show');}
+  else b.classList.remove('show');
+}
+
+function irM(dir){mesC+=dir;if(mesC>11){mesC=0;anioC++;}if(mesC<0){mesC=11;anioC--;}rCal();}
+
+function limpCal(){
+  calI=null;calF=null;calCk=0;
+  document.querySelectorAll('.rap').forEach(function(r){r.classList.remove('on');});
+  document.getElementById('sel-box').classList.remove('show');
+  rCal();
+}
+
+function rap(btn,tipo){
+  document.querySelectorAll('.rap').forEach(function(r){r.classList.remove('on');});btn.classList.add('on');calCk=2;
+  if(tipo==='hoy'){calI={d:20,m:5,a:2025};calF=null;calCk=1;mesC=5;}
+  else if(tipo==='manana'){calI={d:21,m:5,a:2025};calF=null;calCk=1;mesC=5;}
+  else if(tipo==='finde'){calI={d:21,m:5,a:2025};calF={d:22,m:5,a:2025};mesC=5;}
+  else if(tipo==='semana'){calI={d:20,m:5,a:2025};calF={d:26,m:5,a:2025};mesC=5;}
+  else if(tipo==='julio'){calI={d:1,m:6,a:2025};calF={d:31,m:6,a:2025};mesC=6;}
+  else if(tipo==='vacaciones'){calI={d:7,m:6,a:2025};calF={d:18,m:6,a:2025};mesC=6;}
+  else if(tipo==='agosto'){calI={d:1,m:7,a:2025};calF={d:31,m:7,a:2025};mesC=7;}
+  rCal();mSel();
+}
+
+function aplCal(){
+  document.getElementById('fecha-panel').classList.remove('open');
+  document.getElementById('btn-cal').classList.remove('on');
+  document.querySelectorAll('#fils-fecha .fil').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('btn-cal').classList.add('on');
+  document.getElementById('sec-lbl').innerHTML='<i class="ti ti-calendar-check"></i>Resultados filtrados';
+  rLista('hoy');
+}
+
+// ── MAPA TOOLTIP
+function showMTT(e,x,y,nom,sub,col){
+  var el=document.getElementById('mtt');
+  document.getElementById('mtt-t').textContent=nom;
+  document.getElementById('mtt-m').textContent=sub;
+  var c=document.getElementById('mtt-c');
+  c.style.cssText='background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700';
+  c.textContent=nom;
+  el.style.left=(x>250?'auto':'calc('+x/400*100+'% + 12px)');
+  el.style.right=(x>250?'calc('+(100-x/400*100)+'% + 10px)':'auto');
+  el.style.top='calc('+y/340*100+'% + 10px)';
+  el.style.display='block';
+  setTimeout(function(){el.style.display='none';},2600);
+}
+
+// ── FORMULARIOS
+function selHT(el){document.querySelectorAll('.ht-o').forEach(function(b){b.classList.remove('on');});el.classList.add('on');}
+function selET(el,t){
+  document.querySelectorAll('.et-o').forEach(function(b){b.classList.remove('on');});el.classList.add('on');
+  document.getElementById('ent-extra').classList.toggle('show',t!=='gratis');
+  document.getElementById('campo-anticipo').style.display=t==='anticipo'?'block':'none';
+}
+function selPlan(el){document.querySelectorAll('.plan-o').forEach(function(b){b.classList.remove('on');});el.classList.add('on');}
+var cl=document.getElementById('chk-link');
+if(cl)cl.addEventListener('change',function(){document.getElementById('campo-link').style.display=this.checked?'block':'none';});
+var cig=document.getElementById('chk-ig');
+if(cig)cig.addEventListener('change',function(){document.getElementById('campo-ig').style.display=this.checked?'block':'none';});
+var cml=document.getElementById('chk-mail');
+if(cml)cml.addEventListener('change',function(){document.getElementById('campo-mail').style.display=this.checked?'block':'none';});
+
+// ── DNI / CUIT
+function selDoc(tipo){
+  document.getElementById('doc-dni').classList.toggle('on',tipo==='dni');
+  document.getElementById('doc-cuit').classList.toggle('on',tipo==='cuit');
+  if(tipo==='dni'){
+    document.getElementById('doc-lbl').innerHTML='<i class="ti ti-hash" style="font-size:12px;color:var(--F)"></i>Número de DNI <em style="color:var(--F)">*</em>';
+    document.getElementById('doc-inp').placeholder='Ej: 12345678';
+    document.getElementById('doc-info').textContent='Tu DNI te identifica como persona física. No se muestra al público — solo lo usamos ante reclamos.';
+  } else {
+    document.getElementById('doc-lbl').innerHTML='<i class="ti ti-hash" style="font-size:12px;color:var(--F)"></i>Número de CUIT <em style="color:var(--F)">*</em>';
+    document.getElementById('doc-inp').placeholder='20-12345678-9';
+    document.getElementById('doc-info').textContent='El CUIT identifica al responsable legal. No se muestra al público — solo lo usamos ante reclamos o contenido inapropiado.';
+  }
+}
+
+// ── SUGERIR CATEGORÍA
+var si=document.getElementById('sug-inp');
+if(si)si.addEventListener('input',function(){document.getElementById('sug-btn').disabled=this.value.trim().length<3;});
+function envSug(){
+  var val=si.value.trim();if(val.length<3)return;
+  var ok=document.getElementById('sug-ok');document.getElementById('sug-ok-t').textContent='"'+val+'" enviada. La revisamos pronto.';
+  ok.style.display='flex';si.value='';document.getElementById('sug-btn').disabled=true;
+  setTimeout(function(){ok.style.display='none';},3500);
+}
+
+// ── LUGARES FIJOS
+function setTipo(btn,tipo){
+  document.querySelectorAll('#s-lugares .chip').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');
+  document.getElementById('lugares-bans').innerHTML=rLugBans(tipo);
+}
+
+// ── ADMIN PANEL
+function aTab(id,btn){
+  document.querySelectorAll('.avista').forEach(function(v){v.classList.remove('on');});
+  document.querySelectorAll('.atab').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('av-'+id).classList.add('on');btn.classList.add('on');
+}
+function aEd(id,valId){
+  var ef=document.getElementById('ef-'+id),ei=document.getElementById('ei-'+id),val=document.getElementById(valId);
+  if(ei&&val)ei.value=val.textContent.trim();
+  if(ef)ef.style.display='block';
+}
+function aSv(id,valId){
+  var ef=document.getElementById('ef-'+id),ei=document.getElementById('ei-'+id),val=document.getElementById(valId);
+  if(ei&&val)val.textContent=ei.value;
+  if(ef)ef.style.display='none';
+}
+function aCx(id){var ef=document.getElementById('ef-'+id);if(ef)ef.style.display='none';}
+function togA(el){el.classList.toggle('on');el.classList.toggle('off');}
+
+// ── ACCESO ADMIN (triple clic en logo)
+var logoClicks=0,logoTimer=null;
+document.querySelector('.logo').addEventListener('click',function(){
+  logoClicks++;
+  clearTimeout(logoTimer);
+  if(logoClicks>=3){logoClicks=0;ir('admin');}
+  else logoTimer=setTimeout(function(){logoClicks=0;},700);
+});
+
+// ── INIT
+rCal();
+document.getElementById('ev-lista').innerHTML=rAdsGrid(ADS_GRID_HOME);
+document.getElementById('home-bans').innerHTML=registerAndRenderSlots('home',BANS_HOME);
+document.getElementById('categorias-bans').innerHTML=registerAndRenderSlots('categorias',BANS_CATEGORIAS);
+document.getElementById('lugares-bans').innerHTML=rLugBans('todos');
+rCiudades(CIUDADES);
+rCiudadesAdmin();
+rCiuDrop();
+</script>
+</body>
+</html>
