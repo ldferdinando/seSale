@@ -21,7 +21,6 @@ export const eventFormSchema = z
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),
     price_at_door: z.string().optional().or(z.literal("")),
     price_advance: z.string().optional().or(z.literal("")),
-    contact_whatsapp: z.string().max(50).optional().or(z.literal("")),
     contact_instagram: z.string().max(100).optional().or(z.literal("")),
     contact_web: z.string().max(255).optional().or(z.literal("")),
     contact_email: z.string().email("Email inválido").optional().or(z.literal("")),

@@ -21,11 +21,11 @@ function renderWithClient() {
 
 async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/ID de organizador/i), VALID_USER_ID);
-  await user.type(screen.getByLabelText("Título"), "Mi evento de prueba");
-  fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2099-01-01" } });
-  fireEvent.change(screen.getByLabelText("Hora"), { target: { value: "21:00" } });
-  await user.type(screen.getByLabelText("Lugar"), "El Tinglado Bar");
-  await user.type(screen.getByLabelText("Dirección"), "Av. Roca 1240");
+  await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
+  fireEvent.change(screen.getByLabelText(/Fecha/), { target: { value: "2099-01-01" } });
+  fireEvent.change(screen.getByLabelText(/Hora inicio/), { target: { value: "21:00" } });
+  await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
+  await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
 }
 
 async function selectCategory(user: ReturnType<typeof userEvent.setup>, label: string) {
@@ -38,30 +38,40 @@ describe("EventForm", () => {
     window.localStorage.clear();
   });
 
-  it("renders all the fields from the event model", () => {
+  it("renders all the fields from the event model", async () => {
+    const user = userEvent.setup();
     renderWithClient();
 
     expect(screen.getByLabelText(/ID de organizador/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Título")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
-    expect(screen.getByLabelText("Fecha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Hora")).toBeInTheDocument();
-    expect(screen.getByLabelText("Lugar")).toBeInTheDocument();
-    expect(screen.getByLabelText("Dirección")).toBeInTheDocument();
+    expect(screen.getByText("Momento del evento")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Hora inicio/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Hora fin/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre del lugar/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Dirección/)).toBeInTheDocument();
     expect(screen.getByText("Tipo de entrada")).toBeInTheDocument();
-    expect(screen.getByLabelText("WhatsApp")).toBeInTheDocument();
-    expect(screen.getByLabelText("Instagram")).toBeInTheDocument();
-    expect(screen.getByLabelText("Web")).toBeInTheDocument();
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Publicar evento" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pago" }));
+
+    expect(screen.getByText("WhatsApp del organizador")).toBeInTheDocument();
+    expect(screen.getByText("Instagram / redes sociales")).toBeInTheDocument();
+    expect(screen.getByText("Página web / ticketera externa")).toBeInTheDocument();
+    expect(screen.getByText("Email de contacto")).toBeInTheDocument();
+    expect(screen.getByText("En el lugar / mapa el día del evento")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Instagram / redes sociales"));
+    expect(screen.getByLabelText(/Usuario de Instagram/)).toBeInTheDocument();
   });
 
   it("shows validation errors when submitting an empty form", async () => {
     const user = userEvent.setup();
     renderWithClient();
 
-    await user.click(screen.getByRole("button", { name: "Publicar evento" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("El título es obligatorio")).toBeInTheDocument();
     expect(screen.getByText("La fecha es obligatoria")).toBeInTheDocument();
@@ -75,7 +85,7 @@ describe("EventForm", () => {
     await fillRequiredFieldsExceptCategory(user);
     await selectCategory(user, "Música en vivo");
 
-    await user.click(screen.getByRole("button", { name: "Publicar evento" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText(/Evento enviado/i)).toBeInTheDocument();
   });
@@ -90,7 +100,7 @@ describe("EventForm", () => {
     await fillRequiredFieldsExceptCategory(user);
     await selectCategory(user, "Música en vivo");
 
-    await user.click(screen.getByRole("button", { name: "Publicar evento" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     await waitFor(() => expect(screen.getByText("Organizador no encontrado")).toBeInTheDocument());
   });
