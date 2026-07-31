@@ -1,9 +1,9 @@
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EVENT_CATEGORIES, type EventFiltersState } from "@/features/events/types";
+import { Search } from "lucide-react";
 
-const ALL_CATEGORIES = "__all__";
+import { DateFilter } from "@/features/events/components/DateFilter";
+import type { EventFiltersState } from "@/features/events/types";
 
 interface EventFiltersProps {
   filters: EventFiltersState;
@@ -12,42 +12,20 @@ interface EventFiltersProps {
 
 export function EventFilters({ filters, onChange }: EventFiltersProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-ink-4">Filtrar por</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={filters.category ?? ALL_CATEGORIES}
-          onValueChange={(value) => onChange({ ...filters, category: value === ALL_CATEGORIES ? undefined : value })}
-        >
-          <SelectTrigger aria-label="Categoría">
-            <SelectValue placeholder="Categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_CATEGORIES}>Todas las categorías</SelectItem>
-            {EVENT_CATEGORIES.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3.5 py-2.5">
+        <Search className="h-4 w-4 flex-shrink-0 text-ink-5" aria-hidden />
         <input
-          type="date"
-          aria-label="Desde"
-          className="h-9 rounded-full border border-border bg-card px-4 text-sm text-foreground focus-visible:border-primary focus-visible:outline-none"
-          value={filters.dateFrom ?? ""}
-          onChange={(e) => onChange({ ...filters, dateFrom: e.target.value || undefined })}
-        />
-
-        <input
-          type="date"
-          aria-label="Hasta"
-          className="h-9 rounded-full border border-border bg-card px-4 text-sm text-foreground focus-visible:border-primary focus-visible:outline-none"
-          value={filters.dateTo ?? ""}
-          onChange={(e) => onChange({ ...filters, dateTo: e.target.value || undefined })}
+          type="text"
+          aria-label="Buscar"
+          placeholder="Buscar evento, lugar, artista..."
+          className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-5"
+          value={filters.search ?? ""}
+          onChange={(e) => onChange({ ...filters, search: e.target.value || undefined })}
         />
       </div>
+
+      <DateFilter filters={filters} onChange={onChange} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Footer } from "@/components/layout/Footer";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryProvider } from "@/lib/query-client";
 
@@ -19,11 +19,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={inter.variable}>
-      <body className="flex min-h-screen flex-col">
+      <body className="flex min-h-screen flex-col pb-[70px]">
         <QueryProvider>
           <Navbar />
           <div className="flex-1">{children}</div>
-          <Footer />
+          <BottomNav />
         </QueryProvider>
       </body>
     </html>

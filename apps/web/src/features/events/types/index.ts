@@ -34,11 +34,15 @@ export interface Event {
   location: EventLocation;
 }
 
+export type EventMoment = "dia" | "noche";
+
 export interface EventFiltersState {
   category?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  /** Filtro cliente (día 07:00–19:59 / noche 20:00–06:59): la API no lo soporta todavía. */
+  moment?: EventMoment;
 }
 
 export interface EventCreateInput {

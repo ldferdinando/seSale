@@ -2,12 +2,22 @@
 
 import { useState } from "react";
 
+import { AdSlots } from "@/features/events/components/AdSlots";
+import { CategoryChips } from "@/features/events/components/CategoryChips";
 import { EventFilters } from "@/features/events/components/EventFilters";
 import { EventList } from "@/features/events/components/EventList";
+import { MapPlaceholder } from "@/features/events/components/MapPlaceholder";
+import { MomentPills } from "@/features/events/components/MomentPills";
+import { ShareBanner } from "@/features/events/components/ShareBanner";
+import { StatsBar } from "@/features/events/components/StatsBar";
+import { TodayBanner } from "@/features/events/components/TodayBanner";
+import { ViewTabs, type EventView } from "@/features/events/components/ViewTabs";
+import { getDateRangeForPreset } from "@/features/events/lib/dateRanges";
 import type { EventFiltersState } from "@/features/events/types";
 
 export default function HomePage() {
   const [filters, setFilters] = useState<EventFiltersState>({});
+  const [view, setView] = useState<EventView>("lista");
 
   return (
     <main className="flex flex-col">
@@ -26,10 +36,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="container mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
-        <EventFilters filters={filters} onChange={setFilters} />
+      <div className="container mx-auto max-w-2xl">
+        <TodayBanner onClick={() => setFilters((f) => ({ ...f, ...getDateRangeForPreset("hoy") }))} />
 
-        <EventList filters={filters} />
+        <MomentPills value={filters.moment} onChange={(moment) => setFilters((f) => ({ ...f, moment }))} />
+
+        <AdSlots />
+
+        <CategoryChips
+          category={filters.category}
+          onChange={(category) => setFilters((f) => ({ ...f, category }))}
+        />
+
+        <ViewTabs value={view} onChange={setView} />
+
+        {view === "lista" ? (
+          <>
+            <div className="flex flex-col gap-4 px-4 pt-3.5">
+              <EventFilters filters={filters} onChange={setFilters} />
+              <EventList filters={filters} />
+            </div>
+            <ShareBanner />
+          </>
+        ) : (
+          <MapPlaceholder />
+        )}
+
+        <StatsBar />
       </div>
     </main>
   );

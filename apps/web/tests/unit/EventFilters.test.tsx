@@ -1,26 +1,53 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventFilters } from "@/features/events/components/EventFilters";
 
 describe("EventFilters", () => {
-  it("calls onChange with the new date when 'Desde' changes", () => {
-    const onChange = vi.fn();
-
-    render(<EventFilters filters={{}} onChange={onChange} />);
-
-    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-03-01" } });
-
-    expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-01" });
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 1)); // domingo 2026-03-01
   });
 
-  it("calls onChange with the new date when 'Hasta' changes", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("calls onChange with the search term when typing in the search box", () => {
     const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
 
-    render(<EventFilters filters={{ dateFrom: "2026-03-01" }} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "jazz" } });
 
-    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "2026-03-10" } });
+    expect(onChange).toHaveBeenCalledWith({ search: "jazz" });
+  });
 
-    expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-01", dateTo: "2026-03-10" });
+  it("calls onChange with tomorrow's date when clicking 'Mañana'", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mañana/ }));
+
+    expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-02", dateTo: "2026-03-02" });
+  });
+
+  it("clears the date range when clicking 'Limpiar'", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{ dateFrom: "2026-03-01", dateTo: "2026-03-01" }} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar" }));
+
+    expect(onChange).toHaveBeenCalledWith({ dateFrom: undefined, dateTo: undefined });
+  });
+
+  it("opens the calendar and selects a day", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Elegir fecha/ }));
+    fireEvent.click(screen.getByRole("button", { name: "15" }));
+    fireEvent.click(screen.getByRole("button", { name: /Ver eventos/ }));
+
+    expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-15", dateTo: "2026-03-15" });
   });
 });

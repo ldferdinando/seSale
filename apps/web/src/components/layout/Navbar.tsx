@@ -1,6 +1,5 @@
+import { ChevronRight, MapPin, User } from "lucide-react";
 import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   return (
@@ -14,14 +13,25 @@ export function Navbar() {
             <span className="mb-1 h-[7px] w-[7px] flex-shrink-0 animate-pulse rounded-full bg-primary" />
           </Link>
 
-          <nav className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link href="/mis-eventos">Mis eventos</Link>
-            </Button>
-            <Button asChild size="sm" className="rounded-full">
-              <Link href="/publicar">Publicar evento</Link>
-            </Button>
-          </nav>
+          <div className="flex items-center gap-2">
+            {/* Sin ciudades cargadas desde el backend todavía: ver a_revisar.md */}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-ink-2"
+            >
+              <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden />
+              Gral. Roca
+              <ChevronRight className="h-2.5 w-2.5 rotate-90" aria-hidden />
+            </button>
+
+            <Link
+              href="/mis-eventos"
+              className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground"
+            >
+              <User className="h-3.5 w-3.5" aria-hidden />
+              Ingresar
+            </Link>
+          </div>
         </div>
       </div>
     </header>
