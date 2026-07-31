@@ -3,7 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.event import EventPlan, EventStatus, TicketType
+from app.models.event import EventStatus, TicketType
+from app.models.plan import PlanType
 
 VALID_CATEGORIES = {
     "musica",
@@ -43,7 +44,7 @@ class EventRead(BaseModel):
     time: time
     category: str
     status: EventStatus
-    plan: EventPlan
+    plan: PlanType
     is_featured: bool
     ticket_type: TicketType
     price_at_door: int | None

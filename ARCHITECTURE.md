@@ -133,7 +133,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 └──────────┘        │ location_id (FK) ──────────────────┐ │
                     │ organizer_id (FK) ──────────────┐  │ │
                     │ status ← pending/approved/reject│  │ │
-                    │ plan ← gratis/dest/pro          │  │ │
+                    │ plan ← gratis/dest/pro/banner   │  │ │
                     │ is_featured                     │  │ │
                     │ featured_until (datetime|null)  │  │ │
                     │ ticket_type ← gratis/pago/antic │  │ │
@@ -179,15 +179,34 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 │─────────────────────────│   (plan pago del organizador)
 │ id (UUID) PK            │
 │ user_id (FK)            │
-│ plan ← dest/pro/banner  │
-│ status ← active/expired │
-│ started_at              │
-│ expires_at              │
-│ mp_payment_id           │  ← ID de pago en MercadoPago
-│ mp_subscription_id      │  ← ID de suscripción MP (si es recurrente)
-│ amount                  │
-│ created_at              │
-└─────────────────────────┘
+│ plan_id (FK) ───────────┼──────┐
+│ plan_price_id (FK) ─────┼───┐  │
+│ status ← active/expired/│   │  │
+│   cancelled/pending_pay │   │  │
+│ starts_at               │   │  │
+│ expires_at              │   │  │
+│ mp_payment_id           │   │  │  ← ID de pago en MercadoPago
+│ mp_subscription_id      │   │  │  ← ID de suscripción MP (recurrente)
+│ amount_paid             │   │  │
+│ currency = "ARS"        │   │  │
+│ created_at              │   │  │
+│ approved_by (FK|null)   │   │  │
+│ notes                   │   │  │
+└─────────────────────────┘   │  │
+                               ▼  ▼
+                    ┌────────────────────────────┐   ┌──────────────┐
+                    │        plan_prices          │──►│    plans     │
+                    │──────────────────────────── │   │──────────────│
+                    │ id (UUID) PK                │   │ id (UUID) PK │
+                    │ plan_id (FK)                │   │ name         │
+                    │ amount (ARS, 0 si gratis)   │   │ plan_type ←  │
+                    │ currency = "ARS"            │   │  gratis/dest/│
+                    │ valid_from                  │   │  pro/banner  │
+                    │ valid_until (null=vigente)  │   │ pricing_type←│
+                    │ promo_label (null)          │   │  fixed/custom│
+                    │ created_by (FK users)       │   │ description  │
+                    │ notes                       │   │ is_active    │
+                    └─────────────────────────────┘   └──────────────┘
 ```
 
 ### Definición detallada de modelos
@@ -251,10 +270,11 @@ class EventStatus(str, Enum):
     approved = "approved"   # visible al público
     rejected = "rejected"   # rechazado por admin
 
-class EventPlan(str, Enum):
-    gratis = "gratis"   # básico, sin costo
-    dest   = "dest"     # Destacado
-    pro    = "pro"      # Destacado Plus
+class PlanType(str, Enum):
+    gratis = "gratis"   # sin costo, sin pago
+    dest   = "dest"     # Destacado — precio fijo
+    pro    = "pro"      # Destacado Plus — precio fijo
+    banner = "banner"   # Banner web — precio a convenir
 
 class TicketType(str, Enum):
     gratis   = "gratis"
@@ -278,7 +298,7 @@ class Event(SQLModel, table=True):
 
     # Estado y visibilidad
     status: EventStatus = Field(default=EventStatus.pending)
-    plan: EventPlan = Field(default=EventPlan.gratis)
+    plan: PlanType = Field(default=PlanType.gratis)
     is_featured: bool = Field(default=False)       # admin puede marcar manualmente
     featured_until: datetime | None = Field(default=None)  # vencimiento del plan pago
     is_active: bool = Field(default=True)
@@ -323,29 +343,94 @@ class Location(SQLModel, table=True):
     events: list["Event"] = Relationship(back_populates="location")
 ```
 
+#### `plans`
+
+Catálogo de planes pagos disponibles (Destacado, Destacado Plus, Banner web).
+Los precios NO viven acá — viven en `plan_prices`, para poder cambiarlos sin
+perder el histórico de lo que pagó cada suscripción.
+
+```python
+class PlanType(str, Enum):
+    gratis = "gratis"   # sin costo, sin pago
+    dest   = "dest"     # Destacado — precio fijo
+    pro    = "pro"      # Destacado Plus — precio fijo
+    banner = "banner"   # Banner web — precio a convenir
+
+class PricingType(str, Enum):
+    fixed  = "fixed"    # precio fijo, se paga online (MP)
+    custom = "custom"   # precio a convenir, admin lo carga
+
+class Plan(SQLModel, table=True):
+    __tablename__ = "plans"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(max_length=100)               # "Destacado", "Destacado Plus", "Banner web"
+    plan_type: PlanType
+    pricing_type: PricingType
+    description: str | None = Field(default=None)
+    is_active: bool = Field(default=True)
+
+    # Relaciones
+    prices: list["PlanPrice"] = Relationship(back_populates="plan")
+    subscriptions: list["Subscription"] = Relationship(back_populates="plan")
+```
+
+#### `plan_prices`
+
+Histórico de precios por plan. Cada `Subscription` referencia el precio
+vigente al momento de la compra (`plan_price_id`), así un cambio de precio
+futuro nunca altera lo que ya se cobró.
+
+```python
+class PlanPrice(SQLModel, table=True):
+    __tablename__ = "plan_prices"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    plan_id: UUID = Field(foreign_key="plans.id")
+    amount: int = Field(default=0)                  # en ARS, 0 si es gratis
+    currency: str = Field(default="ARS", max_length=10)
+    valid_from: date                                # desde cuándo rige este precio
+    valid_until: date | None = Field(default=None)  # None = vigente hasta nuevo precio
+    promo_label: str | None = Field(default=None)   # "Promo lanzamiento", "3x2", etc.
+    created_by: UUID = Field(foreign_key="users.id")  # admin que lo cargó
+    notes: str | None = Field(default=None)          # uso interno, ej: "acordado con Juan Bar"
+
+    # Relaciones
+    plan: "Plan" = Relationship(back_populates="prices")
+    subscriptions: list["Subscription"] = Relationship(back_populates="plan_price")
+```
+
 #### `subscriptions`
+
 ```python
 class SubscriptionStatus(str, Enum):
-    active  = "active"
-    expired = "expired"
-    cancelled = "cancelled"
+    active          = "active"
+    expired         = "expired"
+    cancelled       = "cancelled"
+    pending_payment = "pending_payment"
 
 class Subscription(SQLModel, table=True):
     __tablename__ = "subscriptions"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id")
-    plan: EventPlan                                # dest | pro (no gratis)
-    status: SubscriptionStatus = Field(default=SubscriptionStatus.active)
-    started_at: datetime
+    plan_id: UUID = Field(foreign_key="plans.id")
+    plan_price_id: UUID = Field(foreign_key="plan_prices.id")  # precio congelado al momento de compra
+    status: SubscriptionStatus = Field(default=SubscriptionStatus.pending_payment)
+    starts_at: datetime
     expires_at: datetime
-    amount: int                                    # monto pagado en ARS
-    mp_payment_id: str | None = Field(default=None)       # ID pago en MercadoPago
-    mp_subscription_id: str | None = Field(default=None)  # ID suscripción MP
+    mp_payment_id: str | None = Field(default=None)       # solo para fixed
+    mp_subscription_id: str | None = Field(default=None)
+    amount_paid: int                                # lo que efectivamente pagó, copia del price al momento
+    currency: str = Field(default="ARS", max_length=10)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_by: UUID | None = Field(default=None, foreign_key="users.id")  # admin que aprobó (custom/banner)
+    notes: str | None = Field(default=None)
 
     # Relaciones
     user: "User" = Relationship(back_populates="subscriptions")
+    plan: "Plan" = Relationship(back_populates="subscriptions")
+    plan_price: "PlanPrice" = Relationship(back_populates="subscriptions")
 ```
 
 #### `ad_slots`

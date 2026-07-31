@@ -31,4 +31,7 @@ class User(SQLModel, table=True):
 
     city: "City" = Relationship(back_populates="users")
     organized_events: list["Event"] = Relationship(back_populates="organizer")
-    subscriptions: list["Subscription"] = Relationship(back_populates="user")
+    subscriptions: list["Subscription"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[Subscription.user_id]"},
+    )

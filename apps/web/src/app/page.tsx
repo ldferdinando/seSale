@@ -28,7 +28,9 @@ export default function HomePage() {
             Alto Valle · Patagonia
           </p>
           <h1 className="mb-2.5 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
-            Descubrí lo que <em className="text-primary not-italic">se sale</em> en tu ciudad
+            Todo lo que pasa en <em className="text-primary not-italic">General Roca</em>,
+            <br />
+            en un lugar.
           </h1>
           <p className="text-sm leading-relaxed text-ink-4">
             Música, teatro, ferias, fiestas y más. Los mejores planes cerca tuyo.

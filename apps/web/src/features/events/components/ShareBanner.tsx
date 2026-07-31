@@ -1,11 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ChevronRight, MessageCircle } from "lucide-react";
 
 const SHARE_TEXT = "Descubrí los mejores planes culturales en seSALE 🎉";
 
 export function ShareBanner() {
-  const url = typeof window !== "undefined" ? window.location.origin : "";
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    setUrl(window.location.origin);
+  }, []);
+
   const href = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${SHARE_TEXT} ${url}`.trim())}`;
 
   return (

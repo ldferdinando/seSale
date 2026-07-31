@@ -3,7 +3,7 @@ from datetime import date, time
 from httpx import AsyncClient
 from sqlmodel import Session
 
-from app.models import City, Event, EventPlan, EventStatus, Location, User
+from app.models import City, Event, EventStatus, Location, PlanType, User
 
 
 def _make_event(session: Session, *, city: City, organizer: User, location: Location, **kwargs) -> Event:
@@ -13,7 +13,7 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         time=time(21, 0),
         category="musica",
         status=EventStatus.approved,
-        plan=EventPlan.gratis,
+        plan=PlanType.gratis,
         is_active=True,
     )
     defaults.update(kwargs)
@@ -91,9 +91,9 @@ async def test_get_events_excludes_past_and_non_approved(client: AsyncClient, se
 
 
 async def test_get_events_orders_by_plan_priority(client: AsyncClient, session: Session, city, organizer, location):
-    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-1", plan=EventPlan.gratis, date=date(2099, 1, 1))
-    _make_event(session, city=city, organizer=organizer, location=location, title="pro-1", plan=EventPlan.pro, date=date(2099, 1, 1))
-    _make_event(session, city=city, organizer=organizer, location=location, title="dest-1", plan=EventPlan.dest, date=date(2099, 1, 1))
+    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-1", plan=PlanType.gratis, date=date(2099, 1, 1))
+    _make_event(session, city=city, organizer=organizer, location=location, title="pro-1", plan=PlanType.pro, date=date(2099, 1, 1))
+    _make_event(session, city=city, organizer=organizer, location=location, title="dest-1", plan=PlanType.dest, date=date(2099, 1, 1))
 
     response = await client.get("/api/events")
 

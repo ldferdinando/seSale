@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlmodel import Session
 
-from app.models import City, Event, EventPlan, EventStatus, Location, User
+from app.models import City, Event, EventStatus, Location, PlanType, User
 from app.services.event_service import (
     create_event,
     get_events_for_organizer,
@@ -22,7 +22,7 @@ def _make_event(
     organizer: User,
     location: Location,
     title: str,
-    plan: EventPlan = EventPlan.gratis,
+    plan: PlanType = PlanType.gratis,
     status: EventStatus = EventStatus.approved,
     is_active: bool = True,
     category: str = "musica",
@@ -49,9 +49,9 @@ def _make_event(
 
 
 def test_orders_pro_before_dest_before_gratis(session, city, organizer, location):
-    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-1", plan=EventPlan.gratis)
-    _make_event(session, city=city, organizer=organizer, location=location, title="pro-1", plan=EventPlan.pro)
-    _make_event(session, city=city, organizer=organizer, location=location, title="dest-1", plan=EventPlan.dest)
+    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-1", plan=PlanType.gratis)
+    _make_event(session, city=city, organizer=organizer, location=location, title="pro-1", plan=PlanType.pro)
+    _make_event(session, city=city, organizer=organizer, location=location, title="dest-1", plan=PlanType.dest)
 
     result = list_public_events(session, today=TODAY)
 
@@ -61,8 +61,8 @@ def test_orders_pro_before_dest_before_gratis(session, city, organizer, location
 def test_ties_within_same_plan_order_by_created_at_desc(session, city, organizer, location):
     older = datetime(2026, 1, 1, tzinfo=timezone.utc)
     newer = datetime(2026, 1, 10, tzinfo=timezone.utc)
-    _make_event(session, city=city, organizer=organizer, location=location, title="older", plan=EventPlan.dest, created_at=older)
-    _make_event(session, city=city, organizer=organizer, location=location, title="newer", plan=EventPlan.dest, created_at=newer)
+    _make_event(session, city=city, organizer=organizer, location=location, title="older", plan=PlanType.dest, created_at=older)
+    _make_event(session, city=city, organizer=organizer, location=location, title="newer", plan=PlanType.dest, created_at=newer)
 
     result = list_public_events(session, today=TODAY)
 

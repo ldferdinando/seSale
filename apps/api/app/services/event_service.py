@@ -5,13 +5,14 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from app.models.event import Event, EventPlan, EventStatus, TicketType
+from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
+from app.models.plan import PlanType
 from app.models.user import User
 
 _PLAN_RANK = case(
-    (Event.plan == EventPlan.pro, 0),
-    (Event.plan == EventPlan.dest, 1),
+    (Event.plan == PlanType.pro, 0),
+    (Event.plan == PlanType.dest, 1),
     else_=2,
 )
 

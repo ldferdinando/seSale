@@ -8,12 +8,12 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlmodel import Session, SQLModel, delete
 
 from app.core.deps import engine
-from app.models import AdSlot, City, Event, EventPlan, EventStatus, Location, Subscription, User
+from app.models import AdSlot, City, Event, EventStatus, Location, Plan, PlanPrice, PlanType, Subscription, User
 from app.models.event import TicketType
 
 
 def _wipe(session: Session) -> None:
-    for model in (Subscription, Event, AdSlot, Location, User, City):
+    for model in (Subscription, PlanPrice, Plan, Event, AdSlot, Location, User, City):
         session.exec(delete(model))
     session.commit()
 
@@ -66,14 +66,14 @@ def seed() -> None:
         today = date.today()
 
         events_data = [
-            dict(title="Noche de Rock Nacional", category="musica", plan=EventPlan.pro, days_offset=3, location=locations[0]),
-            dict(title="Feria de Artesanos del Valle", category="feria", plan=EventPlan.dest, days_offset=5, location=locations[2]),
-            dict(title="Obra: La Casa de Bernarda Alba", category="teatro", plan=EventPlan.gratis, days_offset=7, location=locations[1]),
-            dict(title="Fiesta Electrónica Under", category="dj", plan=EventPlan.dest, days_offset=10, location=locations[0]),
-            dict(title="Milonga de los Jueves", category="milonga", plan=EventPlan.gratis, days_offset=1, location=locations[1]),
-            dict(title="Stand Up: Risas del Alto Valle", category="standup", plan=EventPlan.pro, days_offset=14, location=locations[0]),
-            dict(title="Recital Solidario", category="recital", plan=EventPlan.gratis, days_offset=-2, location=locations[2]),
-            dict(title="Peña Folclórica de Otoño", category="pena", plan=EventPlan.dest, days_offset=-10, location=locations[1]),
+            dict(title="Noche de Rock Nacional", category="musica", plan=PlanType.pro, days_offset=3, location=locations[0]),
+            dict(title="Feria de Artesanos del Valle", category="feria", plan=PlanType.dest, days_offset=5, location=locations[2]),
+            dict(title="Obra: La Casa de Bernarda Alba", category="teatro", plan=PlanType.gratis, days_offset=7, location=locations[1]),
+            dict(title="Fiesta Electrónica Under", category="dj", plan=PlanType.dest, days_offset=10, location=locations[0]),
+            dict(title="Milonga de los Jueves", category="milonga", plan=PlanType.gratis, days_offset=1, location=locations[1]),
+            dict(title="Stand Up: Risas del Alto Valle", category="standup", plan=PlanType.pro, days_offset=14, location=locations[0]),
+            dict(title="Recital Solidario", category="recital", plan=PlanType.gratis, days_offset=-2, location=locations[2]),
+            dict(title="Peña Folclórica de Otoño", category="pena", plan=PlanType.dest, days_offset=-10, location=locations[1]),
         ]
 
         for data in events_data:

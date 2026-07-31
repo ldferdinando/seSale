@@ -4,17 +4,13 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.models.plan import PlanType
+
 
 class EventStatus(str, Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
-
-
-class EventPlan(str, Enum):
-    gratis = "gratis"
-    dest = "dest"
-    pro = "pro"
 
 
 class TicketType(str, Enum):
@@ -40,7 +36,7 @@ class Event(SQLModel, table=True):
 
     # Estado y visibilidad
     status: EventStatus = Field(default=EventStatus.pending)
-    plan: EventPlan = Field(default=EventPlan.gratis)
+    plan: PlanType = Field(default=PlanType.gratis)
     is_featured: bool = Field(default=False)
     featured_until: datetime | None = Field(default=None)
     is_active: bool = Field(default=True)
