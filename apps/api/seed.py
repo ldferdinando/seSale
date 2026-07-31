@@ -8,8 +8,11 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlmodel import Session, SQLModel, delete
 
 from app.core.deps import engine
+from app.core.security import hash_password
 from app.models import AdSlot, City, Event, EventStatus, Location, Plan, PlanPrice, PlanType, Subscription, User
 from app.models.event import TicketType
+
+SEED_PASSWORD = "Password123!"
 
 
 def _wipe(session: Session) -> None:
@@ -54,14 +57,26 @@ def seed() -> None:
 
         organizer = User(
             email="organizador@sesale.com.ar",
+            hashed_password=hash_password(SEED_PASSWORD),
             full_name="Juan Pérez",
             public_name="El Tinglado Bar",
             city_id=general_roca.id,
             is_verified=True,
         )
+        admin = User(
+            email="admin@sesale.com.ar",
+            hashed_password=hash_password(SEED_PASSWORD),
+            role="admin",
+            full_name="Admin seSALE",
+            public_name="Admin seSALE",
+            city_id=general_roca.id,
+            is_verified=True,
+        )
         session.add(organizer)
+        session.add(admin)
         session.commit()
         session.refresh(organizer)
+        session.refresh(admin)
 
         today = date.today()
 
@@ -95,7 +110,9 @@ def seed() -> None:
             session.add(event)
 
         session.commit()
-        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos.")
+        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios.")
+        print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
+        print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")
 
 
 if __name__ == "__main__":
