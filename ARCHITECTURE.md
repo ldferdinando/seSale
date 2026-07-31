@@ -59,8 +59,9 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
          ▼                    ▼                  ▼
 ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐
 │  PostgreSQL  │   │   Supabase   │   │   MercadoPago    │
-│  (Railway)   │   │  Auth +      │   │   API            │
-│  datos app   │   │  Storage     │   │   (pagos planes) │
+│  (Railway)   │   │  Storage     │   │   API            │
+│  datos app + │   │  (flyers)    │   │   (pagos planes) │
+│  auth (JWT)  │   │              │   │                  │
 └──────────────┘   └──────────────┘   └──────────────────┘
 ```
 
@@ -69,7 +70,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 - **Modelo de datos completo desde la Etapa 1.** Todos los campos y tablas se crean al inicio aunque no se usen todavía. Evita migraciones disruptivas.
 - **Separación de capas:** routers → services → ORM. La lógica de negocio nunca vive en los routers.
 - **Stateless API:** el backend no guarda estado de sesión — el JWT viaja en cada request.
-- **Auth delegada:** Supabase maneja el ciclo de vida de usuarios. El backend valida el JWT pero no gestiona contraseñas.
+- **Auth propia (Etapa 3):** el backend emite y valida sus propios JWT (`python-jose`) y gestiona las contraseñas hasheadas con `passlib`/`bcrypt` contra la tabla `users` de Postgres. Se evaluó Supabase Auth pero se difirió — ver nota en la sección 6.
 - **Multi-ciudad por diseño:** cada evento, ubicación y slot publicitario pertenece a una ciudad desde el día 1.
 - **Un solo idioma por capa:** TypeScript en clientes, Python en backend. No mezclar.
 
@@ -82,7 +83,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 | Responsabilidad | Descripción |
 |---|---|
 | Renderizado de páginas | Next.js App Router, SSR para Home y detalle de evento (SEO) |
-| Autenticación cliente | Supabase Auth SDK — login, registro con Google y WhatsApp, refresh |
+| Autenticación cliente | Login/registro propios contra `/api/auth`. `access_token` en memoria (nunca localStorage), `refresh_token` en cookie httpOnly que gestiona el backend |
 | Comunicación con API | TanStack Query — fetching, cache, estados de loading/error |
 | Formularios | React Hook Form + validación Zod |
 | UI | Shadcn/UI sobre Tailwind CSS, tokens de color del prototipo |
@@ -103,7 +104,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 |---|---|---|
 | Entry point | `main.py` | Configuración de FastAPI, middlewares, CORS, rate limiting |
 | Config | `core/config.py` | Variables de entorno con Pydantic Settings |
-| Seguridad | `core/security.py` | Validación JWT Supabase, utilidades de auth |
+| Seguridad | `core/security.py` | Hash de passwords (`passlib`/`bcrypt`), emisión y validación de JWT propios (`python-jose`) |
 | Dependencias | `core/deps.py` | Inyección de dependencias (DB session, usuario autenticado) |
 | Modelos | `models/` | SQLModel — estructura de la base de datos |
 | Schemas | `schemas/` | Pydantic — contratos de request y response |
@@ -493,28 +494,47 @@ Un evento con is_featured=True sube al tope de su grupo de plan.
 
 ## 4. Flujos principales
 
-### Flujo de autenticación (con opciones sociales)
+### Flujo de autenticación (JWT propio — Etapa 3)
 
 ```
-Usuario elige método:
-  ├── Email + password
-  ├── Continuar con Google    ─┐
-  └── Continuar con WhatsApp  ─┤→ OAuth via Supabase Auth
-                               │
-                               ▼
-                     Supabase devuelve JWT + refresh token
-                               │
-                               ▼
-                     Cliente guarda tokens en memoria / secure storage
-                               │
-                               ▼
-                     Cada request → Authorization: Bearer <JWT>
-                               │
-                               ▼
-                     Backend valida JWT (core/security.py)
-                       ├── ✓ Válido → extrae user_id → deps.py
-                       └── ✗ Inválido → 401 Unauthorized
+POST /api/auth/register (email, password, datos privados y públicos)
+        │
+        ▼
+  Backend hashea password (bcrypt) y crea el user (role="user")
+
+POST /api/auth/login (email, password)
+        │
+        ▼
+  Backend valida credenciales → emite access_token (30 min) + refresh_token (7 días)
+        │
+        ├── access_token   → body de la respuesta → frontend lo guarda EN MEMORIA
+        └── refresh_token  → cookie httpOnly + Secure (prod) + SameSite → el
+                              frontend nunca la lee directamente
+
+Cada request protegido → Authorization: Bearer <access_token>
+        │
+        ▼
+  Backend valida el JWT (core/security.py + core/deps.py)
+    ├── ✓ Válido y usuario activo → deps.get_current_user()
+    └── ✗ Inválido / expirado    → 401 Unauthorized
+
+POST /api/auth/refresh (sin body, usa la cookie)
+        │
+        ▼
+  Backend valida el refresh_token contra el hash guardado en users.refresh_token_hash
+    ├── ✓ Válido → rota el refresh token (nuevo access + nuevo refresh + nueva cookie)
+    └── ✗ Inválido / vencido / ya reemplazado → 401 (el frontend redirige a /login)
+
+POST /api/auth/logout (requiere access_token)
+        │
+        ▼
+  Backend borra users.refresh_token_hash y expira la cookie → sesión terminada
 ```
+
+**Sesión única:** cada login sobreescribe el `refresh_token_hash` anterior en
+`users`, así que iniciar sesión en un dispositivo nuevo cierra la sesión anterior.
+Se puede migrar a una tabla `refresh_tokens` dedicada si en el futuro hace falta
+soportar múltiples sesiones/dispositivos activos por usuario.
 
 ### Flujo de publicación de evento
 
@@ -587,12 +607,12 @@ Usuario toca "Compartir" en el detalle del evento
 Los endpoints se implementan por etapas pero se documentan completos acá
 para que el agente conozca el plan antes de diseñar cualquier parte.
 
-### Auth (`/api/auth`)
+### Auth (`/api/auth`) — implementado en Etapa 3, JWT propio
 ```
-POST   /api/auth/register              Registro con email/password
-POST   /api/auth/login                 Login (delegado a Supabase)
-POST   /api/auth/refresh               Refresh token
-POST   /api/auth/logout                Logout
+POST   /api/auth/register              Registro con email/password + datos privados/públicos
+POST   /api/auth/login                 Login → access_token en el body, refresh_token en cookie httpOnly
+POST   /api/auth/refresh               Renueva el access_token (lee la cookie, la rota)
+POST   /api/auth/logout                Invalida el refresh_token (requiere estar autenticado)
 ```
 
 ### Eventos (`/api/events`)
@@ -612,21 +632,21 @@ GET    /api/events/mine                Mis eventos: pending + approved + rejecte
 
 ### Usuarios (`/api/users`)
 ```
-GET    /api/users/me                   Perfil completo del usuario autenticado
-PUT    /api/users/me                   Actualizar perfil propio
-GET    /api/users                      Listar usuarios (admin)
-GET    /api/users/{id}                 Ver usuario (admin)
-PATCH  /api/users/{id}/role            Cambiar rol (admin)
-PATCH  /api/users/{id}/verify          Marcar como verificado (admin)
-DELETE /api/users/{id}                 Desactivar usuario (admin)
+GET    /api/users/me                   Perfil completo del usuario autenticado    ✓ Etapa 3
+PUT    /api/users/me                   Actualizar perfil propio                   ✓ Etapa 3
+GET    /api/users                      Listar usuarios (admin)                    ✓ Etapa 3
+GET    /api/users/{id}                 Ver usuario (admin)                        ✓ Etapa 3
+PATCH  /api/users/{id}/verify          Marcar como verificado (admin)             ✓ Etapa 3
+PATCH  /api/users/{id}/role            Cambiar rol (admin)                        planificado
+DELETE /api/users/{id}                 Desactivar usuario (admin)                 planificado
 ```
 
 ### Ciudades (`/api/cities`)
 ```
-GET    /api/cities                     Listar todas las ciudades (público)
-GET    /api/cities/{id}                Detalle de ciudad (público)
-POST   /api/cities                     Crear ciudad (admin)
-PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)
+GET    /api/cities                     Listar ciudades activas (público)          ✓ Etapa 3
+GET    /api/cities/{id}                Detalle de ciudad (público)                planificado
+POST   /api/cities                     Crear ciudad (admin)                       planificado
+PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)    planificado
 ```
 
 ### Ubicaciones (`/api/locations`)
@@ -669,7 +689,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 |---|---|---|
 | **1** | Home con lista de eventos. GET /api/events con filtros. SQLite local + Alembic configurado. **Modelo de datos completo** creado aunque los campos no se usen todavía. | Datos de prueba (seed) incluidos |
 | **2** | API para crear eventos + frontend del formulario. Fechas futuras, ocultar eventos vencidos. | Eventos en `pending` por defecto |
-| **3** | Usuarios, roles, login (Google + WhatsApp + email). El usuario ve sus eventos por estado. Verificación DNI/CUIT en modelo (campo guardado, sin validación externa por ahora). | Auth con Supabase |
+| **3** | Usuarios, roles, login con JWT propio (email + password). Migración a PostgreSQL (Docker Compose). El usuario ve sus eventos por estado. Verificación DNI/CUIT en modelo (campo guardado, sin validación externa por ahora). | Auth JWT propia (`python-jose` + `passlib`/`bcrypt`) — Supabase Auth se evalúa en Etapa 6 si hace falta login social |
 | **4** | Vista detalle del evento + todos los links de contacto (WA, IG, web, email, mapa). | Read-only, sin pagos todavía |
 | **5** | Sistema de destacados: ordenamiento pro → dest → gratis. Admin puede marcar `is_featured` manualmente. | Sin pago todavía |
 | **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | Integración compleja — etapa propia |
@@ -687,12 +707,13 @@ Ver [`.env.example`](./.env.example) para la lista completa.
 
 ```bash
 # ── Backend ──────────────────────────────────────────────
-DATABASE_URL=sqlite:///./sesale.db          # Etapa 1 local
-# DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/sesale  # producción
+DATABASE_URL=postgresql+psycopg://sesale:sesale@localhost:5432/sesale  # Etapa 3+ (Docker Compose)
+# DATABASE_URL=sqlite:///./sesale.db          # Etapa 1-2 (histórico, ya no se usa)
 
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_JWT_SECRET=tu-jwt-secret-de-supabase
-SUPABASE_ANON_KEY=tu-anon-key
+SECRET_KEY=tu-secret-key-larga-y-aleatoria   # firma de los JWT propios
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 
 MERCADOPAGO_ACCESS_TOKEN=tu-access-token   # Etapa 6
 MERCADOPAGO_WEBHOOK_SECRET=tu-webhook-secret
@@ -702,8 +723,6 @@ ALLOWED_ORIGINS=http://localhost:3000,https://sesale.com.ar
 
 # ── Frontend (Next.js — NEXT_PUBLIC_ se expone al cliente) ──
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
 NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp
 ```
 
@@ -711,8 +730,8 @@ NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp
 
 | Entorno | Frontend | Backend | Base de datos |
 |---|---|---|---|
-| **Local (Etapa 1-2)** | `localhost:3000` | `localhost:8000` | SQLite (archivo local) |
-| **Local (Etapa 3+)** | `localhost:3000` | `localhost:8000` | PostgreSQL en Docker |
+| **Local (Etapa 1-2, histórico)** | `localhost:3000` | `localhost:8000` | SQLite (archivo local) |
+| **Local (Etapa 3+)** | `localhost:3000` | `localhost:8000` | PostgreSQL en Docker Compose |
 | **Staging** | Vercel preview | Railway (staging) | Railway Postgres |
 | **Producción** | Vercel production | Railway (prod) | Railway Postgres |
 
@@ -727,21 +746,24 @@ cd sesale
 cp .env.example .env
 # Completar .env con los valores reales
 
-# 3. Backend (Etapas 1-2 — SQLite, sin Docker necesario)
-cd apps/api
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head          # crea las tablas
-python seed.py                # carga datos de prueba
-uvicorn app.main:app --reload  # http://localhost:8000
-                               # docs: http://localhost:8000/docs
+# 3. Base de datos (Etapa 3+ — PostgreSQL vía Docker Compose)
+docker compose up -d db
 
-# 4. Frontend
+# 4. Backend
+cd apps/api
+uv sync --all-extras
+uv run alembic upgrade head    # crea las tablas
+uv run python seed.py          # carga datos de prueba
+uv run uvicorn app.main:app --reload  # http://localhost:8000
+                               # docs: http://localhost:8000/docs
+# nota: los tests (pytest) siguen usando SQLite in-memory, no necesitan Docker
+
+# 5. Frontend
 cd ../../apps/web
 npm install
 npm run dev                    # http://localhost:3000
 
-# 5. Tests (siempre antes de commitear)
-cd apps/api && pytest --cov=app
+# 6. Tests (siempre antes de commitear)
+cd apps/api && uv run pytest --cov=app
 cd apps/web && npm run test
 ```

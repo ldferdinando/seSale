@@ -9,8 +9,14 @@ class User(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     email: str = Field(unique=True, index=True, max_length=255)
+    hashed_password: str = Field(max_length=255)
     role: str = Field(default="user")  # "user" | "admin"
     is_active: bool = Field(default=True)
+
+    # Sesión activa (refresh token). Una sola sesión por usuario: el login
+    # pisa el hash anterior, el logout lo borra.
+    refresh_token_hash: str | None = Field(default=None, max_length=255)
+    refresh_token_expires_at: datetime | None = Field(default=None)
 
     # Datos privados — solo visibles para admin
     full_name: str = Field(max_length=255)

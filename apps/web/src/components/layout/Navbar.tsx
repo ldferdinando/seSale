@@ -1,7 +1,13 @@
+"use client";
+
 import { ChevronRight, MapPin, User } from "lucide-react";
 import Link from "next/link";
 
+import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+
 export function Navbar() {
+  const { data: currentUser } = useCurrentUser();
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="relative h-[72px] overflow-hidden">
@@ -25,11 +31,11 @@ export function Navbar() {
             </button>
 
             <Link
-              href="/mis-eventos"
+              href={currentUser ? "/mis-eventos" : "/login"}
               className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground"
             >
               <User className="h-3.5 w-3.5" aria-hidden />
-              Ingresar
+              {currentUser ? "Mi cuenta" : "Ingresar"}
             </Link>
           </div>
         </div>

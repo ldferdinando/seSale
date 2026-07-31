@@ -89,11 +89,16 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 ### Base de datos y servicios
 | Servicio | Etapa | Uso |
 |---|---|---|
-| SQLite | Etapas 1-2 | DB local sin configuración (archivo `.db`) |
-| PostgreSQL 16 | Etapa 3+ | DB de producción y desarrollo avanzado |
-| Supabase Auth | Etapa 3+ | Autenticación y gestión de usuarios |
+| SQLite | Etapas 1-2 (histórico) | DB local sin configuración (archivo `.db`) — reemplazada por Postgres en Etapa 3 |
+| PostgreSQL 16 | Etapa 3+ | DB de producción y desarrollo avanzado (vía Docker Compose en local) |
+| JWT propio (python-jose + passlib/bcrypt) | Etapa 3+ | Autenticación y gestión de usuarios — ver nota abajo |
 | Supabase Storage | Etapa 3+ | Archivos e imágenes (flyers de eventos) |
 | MercadoPago API | Etapa 6 | Procesamiento de pagos de planes |
+
+> **Nota — Supabase Auth:** se evaluó usarlo en Etapa 3 pero se decidió emitir JWT
+> propios (access + refresh) contra la tabla `users` de Postgres, para no atar la
+> identidad de usuarios a un proveedor externo todavía. Se reevalúa en Etapa 6 si
+> hace falta login social (Google/WhatsApp) o gestión externa de usuarios.
 
 ### Infraestructura y DevOps
 | Herramienta | Uso |
@@ -191,8 +196,7 @@ root/
 │       ├── ci-backend.yml
 │       └── ci-frontend.yml
 │
-├── docker-compose.yml              # Entorno de desarrollo local (Etapa 3+)
-├── docker-compose.test.yml         # Entorno de tests con Postgres
+├── docker-compose.yml              # Postgres para desarrollo local (Etapa 3+) — los tests siguen en SQLite in-memory
 ├── .env.example                    # Variables de entorno de ejemplo (sin valores reales)
 ├── .gitignore                      # Incluye .env, *.db, __pycache__, node_modules
 ├── AGENTS.md                       # Este archivo
@@ -342,8 +346,13 @@ Estas reglas son **no negociables** y aplican desde el primer commit.
 - El archivo `.env.example` sí se commitea, con las keys pero sin valores reales
 
 ### Autenticación y autorización
-- Supabase Auth maneja el ciclo de vida de sesiones (Etapa 3+)
-- El backend valida el JWT de Supabase en cada request protegido
+- Auth propia con JWT (Etapa 3+): `access_token` de corta duración (30 min) +
+  `refresh_token` de larga duración (7 días), emitidos con `python-jose` y
+  passwords hasheadas con `passlib`/`bcrypt`
+- El `refresh_token` viaja como cookie `httpOnly` (nunca accesible por JS); el
+  `access_token` vive solo en memoria en el frontend
+- Una sola sesión activa por usuario: el login pisa el `refresh_token_hash`
+  anterior en `users`, el logout lo borra; cada `/api/auth/refresh` rota el token
 - Usar roles: `admin` y `user` como mínimo
 - Todos los endpoints que modifican datos requieren autenticación
 

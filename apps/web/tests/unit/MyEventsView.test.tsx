@@ -5,11 +5,10 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { MyEventsView } from "@/features/events/components/MyEventsView";
-import { makeEvent } from "./mocks/handlers";
+import { makeEvent, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
-const USER_ID = "11111111-1111-1111-1111-111111111111";
 
 function renderWithClient() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -20,28 +19,31 @@ function renderWithClient() {
   );
 }
 
+function mockLoggedIn() {
+  server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
+}
+
 describe("MyEventsView", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it("prompts for an organizer id when none is set", () => {
+  it("prompts to log in when there is no active session", async () => {
     renderWithClient();
 
-    expect(screen.getByText(/Ingresá tu ID de organizador/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Iniciá sesión para ver tus eventos/i)).toBeInTheDocument();
   });
 
-  it("shows the three status groups and defaults to pending", async () => {
-    const user = userEvent.setup();
+  it("shows the three status groups and defaults to pending when logged in", async () => {
+    mockLoggedIn();
     renderWithClient();
-
-    await user.type(screen.getByLabelText(/ID de organizador/i), USER_ID);
 
     expect(await screen.findByText("Noche de Rock Nacional")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Pendientes" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("switches groups and shows an empty state", async () => {
+    mockLoggedIn();
     server.use(
       http.get(`${API_URL}/api/events/mine`, () =>
         HttpResponse.json({
@@ -54,7 +56,6 @@ describe("MyEventsView", () => {
     const user = userEvent.setup();
     renderWithClient();
 
-    await user.type(screen.getByLabelText(/ID de organizador/i), USER_ID);
     await screen.findByText("Noche de Rock Nacional");
 
     await user.click(screen.getByRole("tab", { name: "Aprobados" }));
@@ -63,11 +64,9 @@ describe("MyEventsView", () => {
   });
 
   it("shows an error state when the request fails", async () => {
+    mockLoggedIn();
     server.use(http.get(`${API_URL}/api/events/mine`, () => new HttpResponse(null, { status: 500 })));
-    const user = userEvent.setup();
     renderWithClient();
-
-    await user.type(screen.getByLabelText(/ID de organizador/i), USER_ID);
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
   });

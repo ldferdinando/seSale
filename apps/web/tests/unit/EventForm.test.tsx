@@ -8,7 +8,6 @@ import { EventForm } from "@/features/events/components/EventForm";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
-const VALID_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 function renderWithClient() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -20,7 +19,6 @@ function renderWithClient() {
 }
 
 async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/ID de organizador/i), VALID_USER_ID);
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
   fireEvent.change(screen.getByLabelText(/Fecha/), { target: { value: "2099-01-01" } });
   fireEvent.change(screen.getByLabelText(/Hora inicio/), { target: { value: "21:00" } });
@@ -42,7 +40,6 @@ describe("EventForm", () => {
     const user = userEvent.setup();
     renderWithClient();
 
-    expect(screen.getByLabelText(/ID de organizador/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toBeInTheDocument();

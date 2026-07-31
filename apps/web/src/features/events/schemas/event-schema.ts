@@ -8,7 +8,6 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export const eventFormSchema = z
   .object({
-    user_id: z.string().uuid({ message: "Ingresá un ID de organizador válido (UUID)" }),
     title: z.string().min(1, "El título es obligatorio").max(255),
     description: z.string().max(2000).optional().or(z.literal("")),
     date: z.string().min(1, "La fecha es obligatoria").refine((value) => value >= todayIso(), {

@@ -68,8 +68,6 @@ class EventListParams(BaseModel):
 
 
 class EventCreate(BaseModel):
-    user_id: UUID  # reemplazado por auth real (JWT) en Etapa 3
-
     title: str = Field(max_length=255, min_length=1)
     description: str | None = None
     date: date

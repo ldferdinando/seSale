@@ -4,9 +4,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session
 
-from app.core.deps import get_session, require_admin
+from app.core.deps import get_current_user, get_session, require_admin
 from app.core.limiter import limiter
 from app.models.event import EventStatus
+from app.models.user import User
 from app.schemas.event import EventCreate, EventRead, EventsByStatus, EventStatusUpdate
 from app.services.event_service import (
     create_event,
@@ -45,11 +46,12 @@ async def post_event(
     request: Request,
     payload: EventCreate,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> EventRead:
     try:
         return create_event(
             session,
-            user_id=payload.user_id,
+            user_id=current_user.id,
             title=payload.title,
             description=payload.description,
             event_date=payload.date,
@@ -75,10 +77,10 @@ async def post_event(
 @limiter.limit("60/minute")
 async def get_my_events(
     request: Request,
-    user_id: UUID = Query(...),
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> EventsByStatus:
-    grouped = get_events_for_organizer(session, user_id)
+    grouped = get_events_for_organizer(session, current_user.id)
     return EventsByStatus(
         pending=grouped[EventStatus.pending],
         approved=grouped[EventStatus.approved],

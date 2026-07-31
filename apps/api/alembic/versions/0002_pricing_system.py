@@ -78,24 +78,36 @@ def upgrade() -> None:
     # events.plan: gratis/dest/pro (eventplan) -> gratis/dest/pro/banner (plantype)
     # Los valores existentes son un subconjunto válido del nuevo enum, así que
     # los eventos ya cargados conservan su plan actual; el default sigue en "gratis".
-    with op.batch_alter_table('events', schema=None) as batch_op:
-        batch_op.alter_column(
-            'plan',
-            existing_type=sa.Enum('gratis', 'dest', 'pro', name='eventplan'),
-            type_=sa.Enum('gratis', 'dest', 'pro', 'banner', name='plantype'),
-            existing_nullable=False,
-            existing_server_default=sa.text("'gratis'"),
-        )
+    # batch_alter_table es un workaround de SQLite; en Postgres el ALTER TYPE de un
+    # enum necesita un USING explícito, así que se hace por dialecto.
+    if op.get_bind().dialect.name == 'postgresql':
+        op.execute("ALTER TABLE events ALTER COLUMN plan DROP DEFAULT")
+        op.execute("ALTER TABLE events ALTER COLUMN plan TYPE plantype USING plan::text::plantype")
+        op.execute("ALTER TABLE events ALTER COLUMN plan SET DEFAULT 'gratis'")
+    else:
+        with op.batch_alter_table('events', schema=None) as batch_op:
+            batch_op.alter_column(
+                'plan',
+                existing_type=sa.Enum('gratis', 'dest', 'pro', name='eventplan'),
+                type_=sa.Enum('gratis', 'dest', 'pro', 'banner', name='plantype'),
+                existing_nullable=False,
+                existing_server_default=sa.text("'gratis'"),
+            )
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('events', schema=None) as batch_op:
-        batch_op.alter_column(
-            'plan',
-            existing_type=sa.Enum('gratis', 'dest', 'pro', 'banner', name='plantype'),
-            type_=sa.Enum('gratis', 'dest', 'pro', name='eventplan'),
-            existing_nullable=False,
-        )
+    if op.get_bind().dialect.name == 'postgresql':
+        op.execute("ALTER TABLE events ALTER COLUMN plan DROP DEFAULT")
+        op.execute("ALTER TABLE events ALTER COLUMN plan TYPE eventplan USING plan::text::eventplan")
+        op.execute("ALTER TABLE events ALTER COLUMN plan SET DEFAULT 'gratis'")
+    else:
+        with op.batch_alter_table('events', schema=None) as batch_op:
+            batch_op.alter_column(
+                'plan',
+                existing_type=sa.Enum('gratis', 'dest', 'pro', 'banner', name='plantype'),
+                type_=sa.Enum('gratis', 'dest', 'pro', name='eventplan'),
+                existing_nullable=False,
+            )
 
     op.drop_table('subscriptions')
 

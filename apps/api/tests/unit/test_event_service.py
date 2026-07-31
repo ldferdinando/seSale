@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlmodel import Session
 
+from app.core.security import hash_password
 from app.models import City, Event, EventStatus, Location, PlanType, User
 from app.services.event_service import (
     create_event,
@@ -194,7 +195,12 @@ def test_create_event_raises_for_unknown_organizer(session):
 
 
 def test_create_event_raises_when_organizer_has_no_city(session):
-    organizer = User(email="sin-ciudad@sesale.com.ar", full_name="Sin Ciudad", public_name="Sin Ciudad")
+    organizer = User(
+        email="sin-ciudad@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Sin Ciudad",
+        public_name="Sin Ciudad",
+    )
     session.add(organizer)
     session.commit()
     session.refresh(organizer)
@@ -208,7 +214,13 @@ def test_get_events_for_organizer_groups_by_status(session, city, organizer, loc
     _make_event(session, city=city, organizer=organizer, location=location, title="a", status=EventStatus.approved)
     _make_event(session, city=city, organizer=organizer, location=location, title="r", status=EventStatus.rejected)
 
-    other_organizer = User(email="otro@sesale.com.ar", full_name="Otro", public_name="Otro", city_id=city.id)
+    other_organizer = User(
+        email="otro@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Otro",
+        public_name="Otro",
+        city_id=city.id,
+    )
     session.add(other_organizer)
     session.commit()
     session.refresh(other_organizer)

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
+import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { QueryProvider } from "@/lib/query-client";
 
 const inter = Inter({
@@ -21,9 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={inter.variable}>
       <body className="flex min-h-screen flex-col pb-[70px]">
         <QueryProvider>
-          <Navbar />
-          <div className="flex-1">{children}</div>
-          <BottomNav />
+          <AuthProvider>
+            <Navbar />
+            <div className="flex-1">{children}</div>
+            <BottomNav />
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

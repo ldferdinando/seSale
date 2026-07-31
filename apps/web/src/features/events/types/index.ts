@@ -46,7 +46,6 @@ export interface EventFiltersState {
 }
 
 export interface EventCreateInput {
-  user_id: string;
   title: string;
   description?: string;
   date: string;

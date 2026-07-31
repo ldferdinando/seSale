@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   AlarmClockOff,
@@ -38,7 +38,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
-import { useOrganizerId } from "@/features/events/hooks/useOrganizerId";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
 import { EVENT_CATEGORIES, type TicketType } from "@/features/events/types";
 import { ApiError } from "@/lib/api-client";
@@ -146,7 +145,6 @@ function AcquisitionCheck({ icon: Icon, iconColor, label, checked, onChange }: A
 }
 
 export function EventForm() {
-  const { organizerId, setOrganizerId } = useOrganizerId();
   const createEvent = useCreateEvent();
 
   const [timeOfDay, setTimeOfDay] = useState<"nocturno" | "diurno">("nocturno");
@@ -170,7 +168,6 @@ export function EventForm() {
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      user_id: organizerId,
       title: "",
       description: "",
       date: "",
@@ -187,18 +184,12 @@ export function EventForm() {
     },
   });
 
-  useEffect(() => {
-    if (organizerId) setValue("user_id", organizerId);
-  }, [organizerId, setValue]);
-
   const ticketType = watch("ticket_type");
   const category = watch("category");
 
   async function onSubmit(values: EventFormValues) {
-    setOrganizerId(values.user_id);
     try {
       await createEvent.mutateAsync({
-        user_id: values.user_id,
         title: values.title,
         description: values.description || undefined,
         date: values.date,
@@ -222,12 +213,6 @@ export function EventForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="user_id">ID de organizador (temporal, sin login todavía)</Label>
-        <Input id="user_id" {...register("user_id")} placeholder="UUID del organizador" />
-        <FieldError message={errors.user_id?.message} />
-      </div>
-
       <div className="flex flex-col gap-1">
         <FieldLabel icon={Pencil} htmlFor="title" required>
           Nombre del evento

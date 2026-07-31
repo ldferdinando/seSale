@@ -14,10 +14,10 @@ export async function createEvent(input: EventCreateInput): Promise<Event> {
   return apiPost<Event>("/api/events", input);
 }
 
-export async function fetchMyEvents(userId: string): Promise<EventsByStatus> {
-  return apiGet<EventsByStatus>("/api/events/mine", { user_id: userId });
+export async function fetchMyEvents(): Promise<EventsByStatus> {
+  return apiGet<EventsByStatus>("/api/events/mine");
 }
 
-export async function updateEventStatus(eventId: string, status: EventStatus, adminKey: string): Promise<Event> {
-  return apiPatch<Event>(`/api/events/${eventId}/status`, { status }, { "x-admin-key": adminKey });
+export async function updateEventStatus(eventId: string, status: EventStatus): Promise<Event> {
+  return apiPatch<Event>(`/api/events/${eventId}/status`, { status });
 }

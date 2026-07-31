@@ -8,14 +8,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     allowed_origins: str = "http://localhost:3000"
 
-    supabase_url: str | None = None
-    supabase_jwt_secret: str | None = None
-    supabase_anon_key: str | None = None
+    secret_key: str = "change-me-in-dev"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
 
     mercadopago_access_token: str | None = None
     mercadopago_webhook_secret: str | None = None
-
-    admin_key: str | None = None
 
     @property
     def allowed_origins_list(self) -> list[str]:

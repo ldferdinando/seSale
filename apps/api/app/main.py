@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.routers import events
+from app.routers import auth, cities, events, users
 
 app = FastAPI(title="seSALE API")
 
@@ -20,6 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(cities.router)
 app.include_router(events.router)
 
 

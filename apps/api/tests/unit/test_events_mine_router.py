@@ -1,5 +1,4 @@
 from datetime import date, time
-from uuid import uuid4
 
 from httpx import AsyncClient
 from sqlmodel import Session
@@ -24,12 +23,19 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
     return event
 
 
-async def test_get_my_events_groups_by_status(client: AsyncClient, session: Session, city, organizer, location):
+async def test_get_my_events_groups_by_status(
+    client: AsyncClient,
+    session: Session,
+    city,
+    organizer,
+    location,
+    user_token_headers: dict[str, str],
+):
     _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
     _make_event(session, city=city, organizer=organizer, location=location, title="a", status=EventStatus.approved)
     _make_event(session, city=city, organizer=organizer, location=location, title="r", status=EventStatus.rejected)
 
-    response = await client.get("/api/events/mine", params={"user_id": str(organizer.id)})
+    response = await client.get("/api/events/mine", headers=user_token_headers)
 
     assert response.status_code == 200
     body = response.json()
@@ -38,21 +44,16 @@ async def test_get_my_events_groups_by_status(client: AsyncClient, session: Sess
     assert [e["title"] for e in body["rejected"]] == ["r"]
 
 
-async def test_get_my_events_returns_empty_groups_for_organizer_without_events(client: AsyncClient, organizer: User):
-    response = await client.get("/api/events/mine", params={"user_id": str(organizer.id)})
+async def test_get_my_events_returns_empty_groups_for_organizer_without_events(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    response = await client.get("/api/events/mine", headers=user_token_headers)
 
     assert response.status_code == 200
     assert response.json() == {"pending": [], "approved": [], "rejected": []}
 
 
-async def test_get_my_events_returns_empty_groups_for_unknown_user(client: AsyncClient):
-    response = await client.get("/api/events/mine", params={"user_id": str(uuid4())})
-
-    assert response.status_code == 200
-    assert response.json() == {"pending": [], "approved": [], "rejected": []}
-
-
-async def test_get_my_events_missing_user_id_returns_422(client: AsyncClient):
+async def test_get_my_events_without_token_returns_401(client: AsyncClient):
     response = await client.get("/api/events/mine")
 
-    assert response.status_code == 422
+    assert response.status_code == 401
