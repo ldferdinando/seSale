@@ -6,10 +6,13 @@ from sqlmodel import Session
 
 from app.core.security import hash_password
 from app.models import City, Event, EventStatus, Location, PlanType, User
+from app.schemas.event import EventUpdate
 from app.services.event_service import (
     create_event,
+    get_event_detail,
     get_events_for_organizer,
     list_public_events,
+    update_event,
     update_event_status,
 )
 
@@ -252,3 +255,101 @@ def test_update_event_status_approves_event(session, city, organizer, location):
 def test_update_event_status_raises_for_unknown_event(session):
     with pytest.raises(LookupError):
         update_event_status(session, uuid4(), EventStatus.approved)
+
+
+def test_get_event_detail_returns_approved_event_for_anonymous(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.approved)
+
+    result = get_event_detail(session, event.id, None)
+
+    assert result.id == event.id
+    assert result.organizer.public_name == organizer.public_name
+    assert result.city.name == city.name
+
+
+def test_get_event_detail_raises_for_pending_and_anonymous(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
+
+    with pytest.raises(LookupError):
+        get_event_detail(session, event.id, None)
+
+
+def test_get_event_detail_allows_owner_to_see_pending(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
+
+    result = get_event_detail(session, event.id, organizer)
+
+    assert result.id == event.id
+
+
+def test_get_event_detail_raises_for_other_user_on_pending(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
+    other = User(
+        email="otro@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Otro",
+        public_name="Otro",
+        city_id=city.id,
+    )
+    session.add(other)
+    session.commit()
+    session.refresh(other)
+
+    with pytest.raises(LookupError):
+        get_event_detail(session, event.id, other)
+
+
+def test_get_event_detail_raises_for_unknown_event(session):
+    with pytest.raises(LookupError):
+        get_event_detail(session, uuid4(), None)
+
+
+def test_update_event_by_owner_sets_status_pending(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.approved)
+
+    updated = update_event(session, event.id, organizer, EventUpdate(title="Nuevo título"))
+
+    assert updated.title == "Nuevo título"
+    assert updated.status == EventStatus.pending
+
+
+def test_update_event_by_admin_keeps_status(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.approved)
+    admin = User(
+        email="admin@sesale.com.ar",
+        hashed_password=hash_password("AdminPass123!"),
+        role="admin",
+        full_name="Admin",
+        public_name="Admin",
+        city_id=city.id,
+    )
+    session.add(admin)
+    session.commit()
+    session.refresh(admin)
+
+    updated = update_event(session, event.id, admin, EventUpdate(title="Editado admin"))
+
+    assert updated.title == "Editado admin"
+    assert updated.status == EventStatus.approved
+
+
+def test_update_event_by_other_user_raises_permission_error(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="p")
+    other = User(
+        email="otro@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Otro",
+        public_name="Otro",
+        city_id=city.id,
+    )
+    session.add(other)
+    session.commit()
+    session.refresh(other)
+
+    with pytest.raises(PermissionError):
+        update_event(session, event.id, other, EventUpdate(title="Hackeado"))
+
+
+def test_update_event_raises_for_unknown_event(session, organizer):
+    with pytest.raises(LookupError):
+        update_event(session, uuid4(), organizer, EventUpdate(title="X"))

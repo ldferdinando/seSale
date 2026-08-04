@@ -1,6 +1,7 @@
 export type EventStatus = "pending" | "approved" | "rejected";
 export type EventPlan = "gratis" | "dest" | "pro";
 export type TicketType = "gratis" | "pago" | "anticipo";
+export type EventTimeOfDay = "diurno" | "nocturno";
 
 export interface EventLocation {
   id: string;
@@ -19,6 +20,8 @@ export interface Event {
   description: string | null;
   date: string;
   time: string;
+  time_end: string | null;
+  moment: EventTimeOfDay | null;
   category: string;
   status: EventStatus;
   plan: EventPlan;
@@ -26,12 +29,25 @@ export interface Event {
   ticket_type: TicketType;
   price_at_door: number | null;
   price_advance: number | null;
+  available_on_site: boolean;
   contact_whatsapp: string | null;
   contact_instagram: string | null;
   contact_web: string | null;
   contact_email: string | null;
   flyer_url: string | null;
   location: EventLocation;
+}
+
+export interface EventOrganizerPublic {
+  public_name: string;
+  public_whatsapp: string | null;
+  city: string | null;
+}
+
+export interface EventDetail extends Event {
+  organizer_id: string;
+  city_name: string;
+  organizer: EventOrganizerPublic;
 }
 
 export type EventMoment = "dia" | "noche";
@@ -50,17 +66,22 @@ export interface EventCreateInput {
   description?: string;
   date: string;
   time: string;
+  time_end?: string;
+  moment?: EventTimeOfDay;
   category: string;
   location_name: string;
   location_address: string;
   ticket_type: TicketType;
   price_at_door?: number;
   price_advance?: number;
+  available_on_site?: boolean;
   contact_whatsapp?: string;
   contact_instagram?: string;
   contact_web?: string;
   contact_email?: string;
 }
+
+export type EventUpdateInput = Partial<EventCreateInput>;
 
 export interface EventsByStatus {
   pending: Event[];

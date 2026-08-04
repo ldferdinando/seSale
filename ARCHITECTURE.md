@@ -282,6 +282,10 @@ class TicketType(str, Enum):
     pago     = "pago"
     anticipo = "anticipo"
 
+class EventMoment(str, Enum):
+    diurno   = "diurno"     # agregado en Etapa 4
+    nocturno = "nocturno"
+
 class Event(SQLModel, table=True):
     __tablename__ = "events"
 
@@ -294,7 +298,9 @@ class Event(SQLModel, table=True):
     title: str = Field(max_length=255)
     description: str | None = Field(default=None)
     date: date                                     # fecha del evento
-    time: time                                     # hora en UTC
+    time: time                                     # hora inicio, en UTC
+    time_end: time | None = Field(default=None)    # hora fin (Etapa 4)
+    moment: EventMoment | None = Field(default=None)  # diurno/nocturno (Etapa 4)
     category: str = Field(max_length=50)           # "musica" | "teatro" | etc.
 
     # Estado y visibilidad
@@ -303,6 +309,7 @@ class Event(SQLModel, table=True):
     is_featured: bool = Field(default=False)       # admin puede marcar manualmente
     featured_until: datetime | None = Field(default=None)  # vencimiento del plan pago
     is_active: bool = Field(default=True)
+    available_on_site: bool = Field(default=False)  # "habrá lugar en la puerta" (Etapa 4)
 
     # Entradas
     ticket_type: TicketType = Field(default=TicketType.gratis)
@@ -621,9 +628,16 @@ GET    /api/events                     Listar eventos aprobados y activos
                                        Filtros: city_id, category, date_from,
                                                 date_to, moment (dia|noche),
                                                 plan, search
-GET    /api/events/{id}                Detalle de un evento (público)
+GET    /api/events/{id}                Detalle completo de un evento     ✓ Etapa 4
+                                       (evento + ubicación + ciudad + datos
+                                       públicos del organizador). approved+activo:
+                                       público. pending/rejected: solo el
+                                       organizador (JWT). Resto: 404
 POST   /api/events                     Crear evento (user autenticado → pending)
-PUT    /api/events/{id}                Editar evento propio (user) o cualquiera (admin)
+PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
+                                       (admin). Si edita el organizador, status
+                                       vuelve a pending; si edita el admin, no
+                                       cambia. 403 para cualquier otro usuario
 DELETE /api/events/{id}                Eliminar (admin) o desactivar (user propio)
 PATCH  /api/events/{id}/status         Aprobar / rechazar (admin)
 PATCH  /api/events/{id}/featured       Marcar como destacado (admin)

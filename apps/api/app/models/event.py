@@ -19,6 +19,11 @@ class TicketType(str, Enum):
     anticipo = "anticipo"
 
 
+class EventMoment(str, Enum):
+    diurno = "diurno"
+    nocturno = "nocturno"
+
+
 class Event(SQLModel, table=True):
     __tablename__ = "events"
 
@@ -32,6 +37,8 @@ class Event(SQLModel, table=True):
     description: str | None = Field(default=None)
     date: date
     time: time
+    time_end: time | None = Field(default=None)
+    moment: EventMoment | None = Field(default=None)
     category: str = Field(max_length=50)
 
     # Estado y visibilidad
@@ -40,6 +47,7 @@ class Event(SQLModel, table=True):
     is_featured: bool = Field(default=False)
     featured_until: datetime | None = Field(default=None)
     is_active: bool = Field(default=True)
+    available_on_site: bool = Field(default=False)
 
     # Entradas
     ticket_type: TicketType = Field(default=TicketType.gratis)

@@ -13,6 +13,8 @@ def _valid_payload() -> dict:
         "description": "Un show de prueba",
         "date": (date.today() + timedelta(days=10)).isoformat(),
         "time": "21:00:00",
+        "time_end": "23:30:00",
+        "moment": "nocturno",
         "category": "musica",
         "location_name": "El Tinglado Bar",
         "location_address": "Av. Roca 1240",

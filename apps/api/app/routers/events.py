@@ -4,15 +4,25 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session
 
-from app.core.deps import get_current_user, get_session, require_admin
+from app.core.deps import get_current_user, get_current_user_optional, get_session, require_admin
 from app.core.limiter import limiter
 from app.models.event import EventStatus
 from app.models.user import User
-from app.schemas.event import EventCreate, EventRead, EventsByStatus, EventStatusUpdate
+from app.schemas.event import (
+    EventCreate,
+    EventDetailRead,
+    EventRead,
+    EventsByStatus,
+    EventStatusUpdate,
+    EventUpdate,
+    OrganizerPublicRead,
+)
 from app.services.event_service import (
     create_event,
+    get_event_detail,
     get_events_for_organizer,
     list_public_events,
+    update_event,
     update_event_status,
 )
 
@@ -56,12 +66,15 @@ async def post_event(
             description=payload.description,
             event_date=payload.date,
             event_time=payload.time,
+            time_end=payload.time_end,
+            moment=payload.moment,
             category=payload.category,
             location_name=payload.location_name,
             location_address=payload.location_address,
             ticket_type=payload.ticket_type,
             price_at_door=payload.price_at_door,
             price_advance=payload.price_advance,
+            available_on_site=payload.available_on_site,
             contact_whatsapp=payload.contact_whatsapp,
             contact_instagram=payload.contact_instagram,
             contact_web=payload.contact_web,
@@ -86,6 +99,50 @@ async def get_my_events(
         approved=grouped[EventStatus.approved],
         rejected=grouped[EventStatus.rejected],
     )
+
+
+@router.get("/{event_id}", response_model=EventDetailRead)
+@limiter.limit("60/minute")
+async def get_event(
+    request: Request,
+    event_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> EventDetailRead:
+    try:
+        event = get_event_detail(session, event_id, current_user)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return EventDetailRead(
+        **EventRead.model_validate(event).model_dump(),
+        organizer_id=event.organizer_id,
+        city_name=event.city.name,
+        organizer=OrganizerPublicRead(
+            public_name=event.organizer.public_name,
+            public_whatsapp=event.organizer.public_whatsapp,
+            city=event.organizer.city.name if event.organizer.city else None,
+        ),
+    )
+
+
+@router.put("/{event_id}", response_model=EventRead)
+@limiter.limit("30/minute")
+async def put_event(
+    request: Request,
+    event_id: UUID,
+    payload: EventUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> EventRead:
+    try:
+        return update_event(session, event_id, current_user, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.patch("/{event_id}/status", response_model=EventRead, dependencies=[Depends(require_admin)])

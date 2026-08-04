@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-import type { Event } from "@/features/events/types";
+import type { Event, EventDetail } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 
 const API_URL = "http://localhost:8000";
@@ -14,6 +14,8 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     description: "Un evento de prueba",
     date: "2099-01-01",
     time: "21:00:00",
+    time_end: "23:30:00",
+    moment: "nocturno",
     category: "musica",
     status: "approved",
     plan: "gratis",
@@ -21,6 +23,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     ticket_type: "gratis",
     price_at_door: null,
     price_advance: null,
+    available_on_site: false,
     contact_whatsapp: null,
     contact_instagram: null,
     contact_web: null,
@@ -33,6 +36,20 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
       city_id: "22222222-2222-2222-2222-222222222222",
       latitude: null,
       longitude: null,
+    },
+    ...overrides,
+  };
+}
+
+export function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDetail {
+  return {
+    ...makeEvent(),
+    organizer_id: "44444444-4444-4444-4444-444444444444",
+    city_name: "General Roca",
+    organizer: {
+      public_name: "El Tinglado Bar",
+      public_whatsapp: "+5492984567890",
+      city: "General Roca",
     },
     ...overrides,
   };
@@ -68,6 +85,13 @@ export const handlers = [
   }),
   http.get(`${API_URL}/api/events/mine`, () => {
     return HttpResponse.json({ pending: [makeEvent({ status: "pending" })], approved: [], rejected: [] });
+  }),
+  http.get(`${API_URL}/api/events/:id`, () => {
+    return HttpResponse.json(makeEventDetail());
+  }),
+  http.put(`${API_URL}/api/events/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeEvent({ ...body, status: "pending" } as Partial<Event>));
   }),
 
   // Sin sesión por defecto: los tests que necesiten un usuario logueado

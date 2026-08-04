@@ -38,8 +38,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
+import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
-import { EVENT_CATEGORIES, type TicketType } from "@/features/events/types";
+import { EVENT_CATEGORIES, type Event, type TicketType } from "@/features/events/types";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -144,18 +145,26 @@ function AcquisitionCheck({ icon: Icon, iconColor, label, checked, onChange }: A
   );
 }
 
-export function EventForm() {
-  const createEvent = useCreateEvent();
+interface EventFormProps {
+  mode?: "create" | "edit";
+  eventId?: string;
+  initialValues?: Partial<EventFormValues>;
+  onSuccess?: (event: Event) => void;
+}
 
-  const [timeOfDay, setTimeOfDay] = useState<"nocturno" | "diurno">("nocturno");
-  const [timeEnd, setTimeEnd] = useState("");
+export function EventForm({ mode = "create", eventId, initialValues, onSuccess }: EventFormProps) {
+  const createEvent = useCreateEvent();
+  const updateEvent = useUpdateEvent(eventId ?? "");
+  const mutation = mode === "edit" ? updateEvent : createEvent;
+
+  const [timeOfDay, setTimeOfDay] = useState<"nocturno" | "diurno">(initialValues?.moment ?? "nocturno");
   const [plan, setPlan] = useState<PublishPlan>("dest");
   const [acquisition, setAcquisition] = useState({
     whatsapp: true,
-    instagram: false,
-    web: false,
-    email: false,
-    onSite: true,
+    instagram: Boolean(initialValues?.contact_instagram),
+    web: Boolean(initialValues?.contact_web),
+    email: Boolean(initialValues?.contact_email),
+    onSite: initialValues?.available_on_site ?? true,
   });
 
   const {
@@ -172,15 +181,19 @@ export function EventForm() {
       description: "",
       date: "",
       time: "",
+      time_end: "",
+      moment: "nocturno",
       category: undefined,
       location_name: "",
       location_address: "",
       ticket_type: "gratis",
       price_at_door: "",
       price_advance: "",
+      available_on_site: true,
       contact_instagram: "",
       contact_web: "",
       contact_email: "",
+      ...initialValues,
     },
   });
 
@@ -188,27 +201,38 @@ export function EventForm() {
   const category = watch("category");
 
   async function onSubmit(values: EventFormValues) {
+    const payload = {
+      title: values.title,
+      description: values.description || undefined,
+      date: values.date,
+      time: values.time,
+      time_end: values.time_end || undefined,
+      moment: timeOfDay,
+      category: values.category,
+      location_name: values.location_name,
+      location_address: values.location_address,
+      ticket_type: values.ticket_type,
+      price_at_door: values.price_at_door ? Number(values.price_at_door) : undefined,
+      price_advance: values.price_advance ? Number(values.price_advance) : undefined,
+      available_on_site: acquisition.onSite,
+      contact_instagram: acquisition.instagram ? values.contact_instagram || undefined : undefined,
+      contact_web: acquisition.web ? values.contact_web || undefined : undefined,
+      contact_email: acquisition.email ? values.contact_email || undefined : undefined,
+    };
+
+    let result: Event;
     try {
-      await createEvent.mutateAsync({
-        title: values.title,
-        description: values.description || undefined,
-        date: values.date,
-        time: values.time,
-        category: values.category,
-        location_name: values.location_name,
-        location_address: values.location_address,
-        ticket_type: values.ticket_type,
-        price_at_door: values.price_at_door ? Number(values.price_at_door) : undefined,
-        price_advance: values.price_advance ? Number(values.price_advance) : undefined,
-        contact_instagram: acquisition.instagram ? values.contact_instagram || undefined : undefined,
-        contact_web: acquisition.web ? values.contact_web || undefined : undefined,
-        contact_email: acquisition.email ? values.contact_email || undefined : undefined,
-      });
+      result = await mutation.mutateAsync(payload);
     } catch {
       return;
     }
-    reset({ ...values, title: "", description: "", date: "", time: "", location_name: "", location_address: "" });
-    setTimeEnd("");
+
+    if (mode === "edit") {
+      onSuccess?.(result);
+      return;
+    }
+
+    reset({ ...values, title: "", description: "", date: "", time: "", time_end: "", location_name: "", location_address: "" });
   }
 
   return (
@@ -240,12 +264,19 @@ export function EventForm() {
         <FieldError message={errors.category?.message} />
       </div>
 
-      {/* Momento del evento: aún no existe en el modelo, ver informe de campos faltantes */}
       <div className="flex flex-col gap-1">
         <FieldLabel icon={Clock} required>
           Momento del evento
         </FieldLabel>
-        <ToggleGrid options={TIME_OF_DAY_OPTIONS} value={timeOfDay} onChange={setTimeOfDay} columns={2} />
+        <ToggleGrid
+          options={TIME_OF_DAY_OPTIONS}
+          value={timeOfDay}
+          onChange={(value) => {
+            setTimeOfDay(value);
+            setValue("moment", value, { shouldValidate: true });
+          }}
+          columns={2}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -265,12 +296,11 @@ export function EventForm() {
         </div>
       </div>
 
-      {/* Hora fin: aún no existe en el modelo, ver informe de campos faltantes */}
       <div className="flex flex-col gap-1">
         <FieldLabel icon={AlarmClockOff} htmlFor="time_end">
           Hora fin (opc.)
         </FieldLabel>
-        <Input id="time_end" type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} />
+        <Input id="time_end" type="time" {...register("time_end")} />
       </div>
 
       <div className="flex flex-col gap-1">
@@ -431,20 +461,20 @@ export function EventForm() {
         </div>
       </div>
 
-      {createEvent.isError && (
+      {mutation.isError && (
         <p className="text-sm text-destructive">
-          {createEvent.error instanceof ApiError ? createEvent.error.message : "No pudimos publicar el evento."}
+          {mutation.error instanceof ApiError ? mutation.error.message : "No pudimos guardar el evento."}
         </p>
       )}
 
-      {createEvent.isSuccess && (
+      {mode === "create" && mutation.isSuccess && (
         <p className="text-sm text-primary">
           Evento enviado. Quedó pendiente de aprobación — podés verlo en &quot;Mis eventos&quot;.
         </p>
       )}
 
       <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-xl text-base">
-        {isSubmitting ? "Publicando..." : "Continuar"}
+        {isSubmitting ? "Guardando..." : mode === "edit" ? "Guardar cambios" : "Continuar"}
         <ArrowRight className="h-4 w-4" aria-hidden />
       </Button>
     </form>

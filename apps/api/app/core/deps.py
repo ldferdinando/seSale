@@ -42,6 +42,22 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    token: str | None = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
+) -> User | None:
+    if token is None:
+        return None
+    try:
+        payload = decode_token(token, expected_type="access")
+    except ValueError:
+        return None
+    user = session.get(User, UUID(payload["sub"]))
+    if user is None or not user.is_active:
+        return None
+    return user
+
+
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requiere rol admin")

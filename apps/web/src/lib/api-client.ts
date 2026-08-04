@@ -136,3 +136,22 @@ export async function apiPatch<T>(path: string, body: unknown, headers?: Record<
 
   return response.json() as Promise<T>;
 }
+
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetchWithAuthRetry(
+    new URL(path, API_URL).toString(),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+    },
+    false,
+  );
+
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null);
+    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+  }
+
+  return response.json() as Promise<T>;
+}
