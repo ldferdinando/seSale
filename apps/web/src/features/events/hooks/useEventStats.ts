@@ -1,14 +1,17 @@
-import { useEvents } from "@/features/events/hooks/useEvents";
+import { useQuery } from "@tanstack/react-query";
 
-/**
- * Estadísticas derivadas de /api/events (sin filtros). "Organizadores" no se
- * puede calcular todavía: EventRead no expone organizer_id — ver a_revisar.md.
- */
+import { fetchStats } from "@/features/events/services/events-api";
+
 export function useEventStats() {
-  const { data, isLoading } = useEvents({});
+  const { data, isLoading } = useQuery({
+    queryKey: ["stats"],
+    queryFn: fetchStats,
+  });
 
-  const eventsCount = data?.length ?? 0;
-  const citiesCount = data ? new Set(data.map((event) => event.city_id)).size : 0;
-
-  return { eventsCount, citiesCount, isLoading };
+  return {
+    eventsCount: data?.total_events ?? 0,
+    organizersCount: data?.total_organizers ?? 0,
+    citiesCount: data?.total_cities ?? 0,
+    isLoading,
+  };
 }

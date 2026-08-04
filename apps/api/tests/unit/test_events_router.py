@@ -34,6 +34,7 @@ async def test_get_events_returns_200_with_list(client: AsyncClient, session: Se
     assert len(body) == 1
     assert body[0]["title"] == "Evento de prueba"
     assert "location" in body[0]
+    assert body[0]["organizer_id"] == str(organizer.id)
 
 
 async def test_get_events_returns_empty_list_when_no_matches(client: AsyncClient, session: Session, city, organizer, location):

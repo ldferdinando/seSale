@@ -109,8 +109,16 @@ def seed() -> None:
             )
             session.add(event)
 
+        ad_slots = [
+            AdSlot(slot_key="home-0", city_id=general_roca.id, is_active=False, sort_order=0),
+            AdSlot(slot_key="home-1", city_id=general_roca.id, is_active=False, sort_order=1),
+            AdSlot(slot_key="home-2", city_id=general_roca.id, is_active=False, sort_order=2),
+        ]
+        for ad_slot in ad_slots:
+            session.add(ad_slot)
+
         session.commit()
-        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios.")
+        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots.")
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")
 

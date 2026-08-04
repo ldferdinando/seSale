@@ -59,6 +59,20 @@ def list_public_events(
     return list(session.exec(stmt).all())
 
 
+def get_public_stats(session: Session) -> dict[str, int]:
+    """Estadísticas agregadas sobre eventos approved + activos (sin filtro de fecha)."""
+    stmt = select(Event).where(
+        Event.status == EventStatus.approved,
+        Event.is_active == True,  # noqa: E712
+    )
+    events = session.exec(stmt).all()
+    return {
+        "total_events": len(events),
+        "total_organizers": len({event.organizer_id for event in events}),
+        "total_cities": len({event.city_id for event in events}),
+    }
+
+
 def _find_or_create_location(session: Session, *, city_id: UUID, name: str, address: str) -> Location:
     stmt = select(Location).where(
         Location.city_id == city_id,

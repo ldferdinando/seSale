@@ -169,6 +169,7 @@ root/
 │       │   │   ├── locations.py
 │       │   │   ├── subscriptions.py
 │       │   │   ├── ads.py
+│       │   │   ├── stats.py
 │       │   │   └── webhooks.py
 │       │   └── services/           # Lógica de negocio desacoplada
 │       │       ├── event_service.py

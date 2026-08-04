@@ -4,6 +4,7 @@ import type {
   EventCreateInput,
   EventDetail,
   EventFiltersState,
+  EventStats,
   EventStatus,
   EventsByStatus,
   EventUpdateInput,
@@ -36,4 +37,8 @@ export async function updateEvent(eventId: string, input: EventUpdateInput): Pro
 
 export async function updateEventStatus(eventId: string, status: EventStatus): Promise<Event> {
   return apiPatch<Event>(`/api/events/${eventId}/status`, { status });
+}
+
+export async function fetchStats(): Promise<EventStats> {
+  return apiGet<EventStats>("/api/stats");
 }

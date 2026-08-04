@@ -39,6 +39,7 @@ class LocationRead(BaseModel):
 class EventRead(BaseModel):
     id: UUID
     city_id: UUID
+    organizer_id: UUID
     location_id: UUID
     title: str
     description: str | None

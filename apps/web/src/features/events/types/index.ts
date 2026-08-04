@@ -3,6 +3,12 @@ export type EventPlan = "gratis" | "dest" | "pro";
 export type TicketType = "gratis" | "pago" | "anticipo";
 export type EventTimeOfDay = "diurno" | "nocturno";
 
+export interface EventStats {
+  total_events: number;
+  total_organizers: number;
+  total_cities: number;
+}
+
 export interface EventLocation {
   id: string;
   name: string;
@@ -15,6 +21,7 @@ export interface EventLocation {
 export interface Event {
   id: string;
   city_id: string;
+  organizer_id: string;
   location_id: string;
   title: string;
   description: string | null;

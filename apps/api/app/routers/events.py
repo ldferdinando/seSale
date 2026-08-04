@@ -116,7 +116,6 @@ async def get_event(
 
     return EventDetailRead(
         **EventRead.model_validate(event).model_dump(),
-        organizer_id=event.organizer_id,
         city_name=event.city.name,
         organizer=OrganizerPublicRead(
             public_name=event.organizer.public_name,

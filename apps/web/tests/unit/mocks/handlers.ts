@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-import type { Event, EventDetail } from "@/features/events/types";
+import type { Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 
 const API_URL = "http://localhost:8000";
@@ -9,6 +9,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
   return {
     id: "11111111-1111-1111-1111-111111111111",
     city_id: "22222222-2222-2222-2222-222222222222",
+    organizer_id: "44444444-4444-4444-4444-444444444444",
     location_id: "33333333-3333-3333-3333-333333333333",
     title: "Noche de Rock Nacional",
     description: "Un evento de prueba",
@@ -51,6 +52,15 @@ export function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDeta
       public_whatsapp: "+5492984567890",
       city: "General Roca",
     },
+    ...overrides,
+  };
+}
+
+export function makeStats(overrides: Partial<EventStats> = {}): EventStats {
+  return {
+    total_events: 8,
+    total_organizers: 2,
+    total_cities: 1,
     ...overrides,
   };
 }
@@ -113,6 +123,9 @@ export const handlers = [
   }),
   http.post(`${API_URL}/api/auth/logout`, () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+  http.get(`${API_URL}/api/stats`, () => {
+    return HttpResponse.json(makeStats());
   }),
   http.get(`${API_URL}/api/cities`, () => {
     return HttpResponse.json([

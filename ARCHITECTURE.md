@@ -671,6 +671,14 @@ POST   /api/locations                  Crear ubicación (user autenticado)
 PUT    /api/locations/{id}             Editar (admin)
 ```
 
+### Estadísticas (`/api/stats`)
+```
+GET    /api/stats                      Estadísticas agregadas (público)         ✓ Etapa 4.5
+                                       { total_events, total_organizers,
+                                         total_cities } — sobre eventos
+                                       status=approved e is_active=True
+```
+
 ### Suscripciones y pagos (`/api/subscriptions`)
 ```
 GET    /api/subscriptions/me           Ver mis suscripciones activas
@@ -705,6 +713,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **2** | API para crear eventos + frontend del formulario. Fechas futuras, ocultar eventos vencidos. | Eventos en `pending` por defecto |
 | **3** | Usuarios, roles, login con JWT propio (email + password). Migración a PostgreSQL (Docker Compose). El usuario ve sus eventos por estado. Verificación DNI/CUIT en modelo (campo guardado, sin validación externa por ahora). | Auth JWT propia (`python-jose` + `passlib`/`bcrypt`) — Supabase Auth se evalúa en Etapa 6 si hace falta login social |
 | **4** | Vista detalle del evento + todos los links de contacto (WA, IG, web, email, mapa). | Read-only, sin pagos todavía |
+| **4.5** | Correcciones de modelo y endpoints pendientes: migración AdSlot, organizer_id en EventRead, endpoint GET /api/stats | Etapa de limpieza, sin features nuevas |
 | **5** | Sistema de destacados: ordenamiento pro → dest → gratis. Admin puede marcar `is_featured` manualmente. | Sin pago todavía |
 | **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | Integración compleja — etapa propia |
 | **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
