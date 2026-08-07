@@ -32,6 +32,10 @@ class User(SQLModel, table=True):
     city_id: UUID | None = Field(default=None, foreign_key="cities.id")
     is_verified: bool = Field(default=False)
 
+    # None -> el usuario se registró solo. UUID -> el admin que creó la cuenta
+    # (flujo de admin creando cuentas para clientes de banner, Etapa 5.6).
+    created_by: UUID | None = Field(default=None, foreign_key="users.id")
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

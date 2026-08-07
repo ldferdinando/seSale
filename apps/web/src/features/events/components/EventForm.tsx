@@ -21,11 +21,9 @@ import {
   Mail,
   MapPin,
   MapPinned,
-  Megaphone,
   MessageCircle,
   Moon,
   Pencil,
-  Star,
   Sun,
   Tag,
   Ticket,
@@ -37,10 +35,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
+import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
+import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
-import { EVENT_CATEGORIES, type Event, type TicketType } from "@/features/events/types";
+import { EVENT_CATEGORIES, type Event, type EventCreateInput, type TicketType } from "@/features/events/types";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -53,15 +53,6 @@ const TICKET_TYPE_STYLES: { value: TicketType; label: string; icon: LucideIcon }
   { value: "gratis", label: "Gratis", icon: CheckCircle2 },
   { value: "pago", label: "Pago", icon: Banknote },
   { value: "anticipo", label: "Anticipo", icon: Tag },
-];
-
-type PublishPlan = "gratis" | "dest" | "pro" | "banner";
-
-const PLAN_OPTIONS: { value: PublishPlan; label: string; icon: LucideIcon; price: string; desc: string }[] = [
-  { value: "gratis", label: "Gratuito", icon: Ticket, price: "$0", desc: "1 evento · básico · sin prioridad" },
-  { value: "dest", label: "Destacado", icon: Star, price: "$X.XXX/mes", desc: "Ilimitado · fondo destacado · 2° prioridad" },
-  { value: "pro", label: "Destacado Plus", icon: Crown, price: "$X.XXX/mes", desc: "Imagen · banner · stats · 1° prioridad" },
-  { value: "banner", label: "Banner web", icon: Megaphone, price: "Consultar", desc: "Home + categorías · máxima visibilidad" },
 ];
 
 interface FieldErrorProps {
@@ -149,16 +140,27 @@ interface EventFormProps {
   mode?: "create" | "edit";
   eventId?: string;
   initialValues?: Partial<EventFormValues>;
+  /** Plan de publicación con el que arranca el formulario (ej. al volver desde el resumen). */
+  initialPlan?: PublishPlan;
   onSuccess?: (event: Event) => void;
+  /** Modo create: en vez de publicar, pasa los datos cargados + plan elegido al resumen. */
+  onContinue?: (payload: EventCreateInput, plan: PublishPlan) => void;
 }
 
-export function EventForm({ mode = "create", eventId, initialValues, onSuccess }: EventFormProps) {
-  const createEvent = useCreateEvent();
+export function EventForm({
+  mode = "create",
+  eventId,
+  initialValues,
+  initialPlan,
+  onSuccess,
+  onContinue,
+}: EventFormProps) {
   const updateEvent = useUpdateEvent(eventId ?? "");
-  const mutation = mode === "edit" ? updateEvent : createEvent;
+  const { data: currentUser } = useCurrentUser();
 
   const [timeOfDay, setTimeOfDay] = useState<"nocturno" | "diurno">(initialValues?.moment ?? "nocturno");
-  const [plan, setPlan] = useState<PublishPlan>("dest");
+  const [plan, setPlan] = useState<PublishPlan>(initialPlan ?? "dest");
+  const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
   const [acquisition, setAcquisition] = useState({
     whatsapp: true,
     instagram: Boolean(initialValues?.contact_instagram),
@@ -172,7 +174,6 @@ export function EventForm({ mode = "create", eventId, initialValues, onSuccess }
     handleSubmit,
     watch,
     setValue,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -201,7 +202,7 @@ export function EventForm({ mode = "create", eventId, initialValues, onSuccess }
   const category = watch("category");
 
   async function onSubmit(values: EventFormValues) {
-    const payload = {
+    const payload: EventCreateInput = {
       title: values.title,
       description: values.description || undefined,
       date: values.date,
@@ -218,25 +219,31 @@ export function EventForm({ mode = "create", eventId, initialValues, onSuccess }
       contact_instagram: acquisition.instagram ? values.contact_instagram || undefined : undefined,
       contact_web: acquisition.web ? values.contact_web || undefined : undefined,
       contact_email: acquisition.email ? values.contact_email || undefined : undefined,
+      ...(mode === "create" && currentUser?.role === "admin" ? { organizer_id: organizerId } : {}),
     };
 
-    let result: Event;
-    try {
-      result = await mutation.mutateAsync(payload);
-    } catch {
-      return;
-    }
-
     if (mode === "edit") {
+      let result: Event;
+      try {
+        result = await updateEvent.mutateAsync(payload);
+      } catch {
+        return;
+      }
       onSuccess?.(result);
       return;
     }
 
-    reset({ ...values, title: "", description: "", date: "", time: "", time_end: "", location_name: "", location_address: "" });
+    // El evento todavía no se publica acá — el resumen decide si va directo
+    // a /api/events (plan gratis) o a la pantalla de pago (plan pago).
+    onContinue?.(payload, plan);
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+      {mode === "create" && currentUser?.role === "admin" && (
+        <OrganizerPicker value={organizerId} onChange={setOrganizerId} />
+      )}
+
       <div className="flex flex-col gap-1">
         <FieldLabel icon={Pencil} htmlFor="title" required>
           Nombre del evento
@@ -436,7 +443,7 @@ export function EventForm({ mode = "create", eventId, initialValues, onSuccess }
       <div className="flex flex-col gap-2">
         <FieldLabel icon={Crown}>Elegí tu plan</FieldLabel>
         <div className="grid grid-cols-2 gap-2">
-          {PLAN_OPTIONS.map((option) => {
+          {PUBLISH_PLAN_OPTIONS.map((option) => {
             const Icon = option.icon;
             const on = plan === option.value;
             return (
@@ -461,15 +468,9 @@ export function EventForm({ mode = "create", eventId, initialValues, onSuccess }
         </div>
       </div>
 
-      {mutation.isError && (
+      {mode === "edit" && updateEvent.isError && (
         <p className="text-sm text-destructive">
-          {mutation.error instanceof ApiError ? mutation.error.message : "No pudimos guardar el evento."}
-        </p>
-      )}
-
-      {mode === "create" && mutation.isSuccess && (
-        <p className="text-sm text-primary">
-          Evento enviado. Quedó pendiente de aprobación — podés verlo en &quot;Mis eventos&quot;.
+          {updateEvent.error instanceof ApiError ? updateEvent.error.message : "No pudimos guardar el evento."}
         </p>
       )}
 

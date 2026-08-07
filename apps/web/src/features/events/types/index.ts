@@ -33,6 +33,7 @@ export interface Event {
   status: EventStatus;
   plan: EventPlan;
   is_featured: boolean;
+  featured_until: string | null;
   ticket_type: TicketType;
   price_at_door: number | null;
   price_advance: number | null;
@@ -86,15 +87,49 @@ export interface EventCreateInput {
   contact_instagram?: string;
   contact_web?: string;
   contact_email?: string;
+  /** Solo tiene efecto si quien publica es admin: crea el evento en nombre de este organizador. */
+  organizer_id?: string;
 }
 
 export type EventUpdateInput = Partial<EventCreateInput>;
+
+export interface EventFeaturedUpdateInput {
+  is_featured: boolean;
+  featured_until?: string | null;
+}
 
 export interface EventsByStatus {
   pending: Event[];
   approved: Event[];
   rejected: Event[];
 }
+
+export interface AdminEvent extends Event {
+  organizer_public_name: string;
+  is_active: boolean;
+}
+
+export interface AdminEventFilters {
+  status?: EventStatus;
+  city_id?: string;
+  category?: string;
+  plan?: EventPlan;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [
+  { value: "pending", label: "Pendiente" },
+  { value: "approved", label: "Aprobado" },
+  { value: "rejected", label: "Rechazado" },
+];
+
+export const PLAN_OPTIONS: { value: EventPlan; label: string }[] = [
+  { value: "gratis", label: "Gratis" },
+  { value: "dest", label: "Destacado" },
+  { value: "pro", label: "Destacado Plus" },
+];
 
 export const TICKET_TYPE_OPTIONS: { value: TicketType; label: string }[] = [
   { value: "gratis", label: "Gratis" },

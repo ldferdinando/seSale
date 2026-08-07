@@ -11,6 +11,8 @@ from app.models.user import User
 from app.schemas.event import (
     EventCreate,
     EventDetailRead,
+    EventFeaturedUpdate,
+    EventPlanUpdate,
     EventRead,
     EventsByStatus,
     EventStatusUpdate,
@@ -19,10 +21,13 @@ from app.schemas.event import (
 )
 from app.services.event_service import (
     create_event,
+    delete_event,
     get_event_detail,
     get_events_for_organizer,
     list_public_events,
     update_event,
+    update_event_featured,
+    update_event_plan,
     update_event_status,
 )
 
@@ -79,6 +84,8 @@ async def post_event(
             contact_instagram=payload.contact_instagram,
             contact_web=payload.contact_web,
             contact_email=payload.contact_email,
+            organizer_id=payload.organizer_id,
+            is_admin=current_user.role == "admin",
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -144,6 +151,22 @@ async def put_event(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
+@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def delete_event_endpoint(
+    request: Request,
+    event_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    try:
+        delete_event(session, event_id, current_user)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
 @router.patch("/{event_id}/status", response_model=EventRead, dependencies=[Depends(require_admin)])
 @limiter.limit("60/minute")
 async def patch_event_status(
@@ -154,5 +177,33 @@ async def patch_event_status(
 ) -> EventRead:
     try:
         return update_event_status(session, event_id, payload.status)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{event_id}/featured", response_model=EventRead, dependencies=[Depends(require_admin)])
+@limiter.limit("60/minute")
+async def patch_event_featured(
+    request: Request,
+    event_id: UUID,
+    payload: EventFeaturedUpdate,
+    session: Session = Depends(get_session),
+) -> EventRead:
+    try:
+        return update_event_featured(session, event_id, payload.is_featured, payload.featured_until)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{event_id}/plan", response_model=EventRead, dependencies=[Depends(require_admin)])
+@limiter.limit("60/minute")
+async def patch_event_plan(
+    request: Request,
+    event_id: UUID,
+    payload: EventPlanUpdate,
+    session: Session = Depends(get_session),
+) -> EventRead:
+    try:
+        return update_event_plan(session, event_id, payload.plan)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

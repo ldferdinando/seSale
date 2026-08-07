@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { CURRENT_USER_QUERY_KEY } from "@/features/auth/hooks/useCurrentUser";
 import { clearToken } from "@/features/auth/lib/token-store";
 import { logoutUser } from "@/features/auth/services/auth-api";
 
@@ -9,9 +8,13 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: logoutUser,
-    onSettled: async () => {
+    onSettled: () => {
       clearToken();
-      await queryClient.invalidateQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      // No alcanza con invalidar current-user: hay que tirar todo el cache
+      // (mis-eventos, panel admin, listado de usuarios, etc.) para que nada
+      // quede mostrando datos de la sesión que se acaba de cerrar. Los
+      // observers activos (ej. Navbar) refetchean solos al quedarse sin data.
+      queryClient.clear();
     },
   });
 }

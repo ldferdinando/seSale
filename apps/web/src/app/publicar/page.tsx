@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { EventForm } from "@/features/events/components/EventForm";
+import { PublishFlow } from "@/features/events/components/PublishFlow";
 
 export default function PublicarEventoPage() {
   return (
@@ -19,7 +19,7 @@ export default function PublicarEventoPage() {
         </div>
       </header>
 
-      <EventForm />
+      <PublishFlow />
     </main>
   );
 }

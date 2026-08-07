@@ -11,6 +11,8 @@ export function useUpdateEvent(eventId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["my-events"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
     },
   });
 }

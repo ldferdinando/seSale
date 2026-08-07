@@ -9,7 +9,11 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: (input: EventCreateInput) => createEvent(input),
     onSuccess: () => {
+      // Un evento nuevo (pending) también debe reflejarse en el listado
+      // público cacheado y en el panel admin si ya estaban en cache.
       queryClient.invalidateQueries({ queryKey: ["my-events"] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
     },
   });
 }

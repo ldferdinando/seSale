@@ -12,6 +12,21 @@ async def test_get_me_returns_current_user(client: AsyncClient, organizer: User,
     assert response.json()["email"] == organizer.email
 
 
+async def test_get_me_returns_profile_fields(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    response = await client.get("/api/users/me", headers=user_token_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["public_name"] == organizer.public_name
+    assert body["is_verified"] is False
+    assert body["phone_verified"] is False
+    assert body["email_verified"] is False
+    assert "created_at" in body
+    assert body["created_by"] is None
+
+
 async def test_get_me_without_token_returns_401(client: AsyncClient):
     response = await client.get("/api/users/me")
 

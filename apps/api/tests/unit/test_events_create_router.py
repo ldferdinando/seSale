@@ -71,6 +71,30 @@ async def test_create_event_past_date_returns_422(
     assert response.status_code == 422
 
 
+async def test_create_event_with_organizer_id_by_admin_uses_that_organizer(
+    client: AsyncClient, session: Session, city, organizer: User, admin_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["organizer_id"] = str(organizer.id)
+
+    response = await client.post("/api/events", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["organizer_id"] == str(organizer.id)
+
+
+async def test_create_event_with_organizer_id_by_user_is_ignored(
+    client: AsyncClient, session: Session, organizer: User, admin: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["organizer_id"] = str(admin.id)
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["organizer_id"] == str(organizer.id)
+
+
 async def test_create_event_organizer_without_city_returns_422(client: AsyncClient, session: Session):
     organizer_sin_ciudad = User(
         email="sin-ciudad@sesale.com.ar",

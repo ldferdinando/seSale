@@ -137,6 +137,25 @@ export async function apiPatch<T>(path: string, body: unknown, headers?: Record<
   return response.json() as Promise<T>;
 }
 
+export async function apiDelete<T = void>(path: string): Promise<T> {
+  const response = await fetchWithAuthRetry(
+    new URL(path, API_URL).toString(),
+    { method: "DELETE", headers: authHeaders() },
+    false,
+  );
+
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null);
+    throw new ApiError(detail?.detail ?? `Error al eliminar ${path}`, response.status);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const response = await fetchWithAuthRetry(
     new URL(path, API_URL).toString(),

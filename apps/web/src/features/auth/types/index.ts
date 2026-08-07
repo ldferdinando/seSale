@@ -13,6 +13,8 @@ export interface User {
   public_whatsapp: string | null;
   city_id: string | null;
   is_verified: boolean;
+  created_at: string;
+  created_by: string | null;
 }
 
 export interface TokenResponse {

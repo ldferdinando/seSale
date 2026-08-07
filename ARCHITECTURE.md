@@ -255,6 +255,10 @@ class User(SQLModel, table=True):
     city_id: UUID | None = Field(default=None, foreign_key="cities.id")
     is_verified: bool = Field(default=False)       # admin marca como verificado
 
+    # None -> el usuario se registró solo. UUID -> el admin que creó la cuenta
+    # (flujo de admin creando cuentas para clientes de banner — Etapa 5.6)
+    created_by: UUID | None = Field(default=None, foreign_key="users.id")
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -486,15 +490,20 @@ Mapeadas del prototipo HTML. Se guardan como string en la DB.
 
 ### Lógica de ordenamiento en el listado
 
-El orden de eventos sigue siempre esta prioridad, dentro del mismo filtro aplicado:
+El orden de eventos en `GET /api/events` sigue siempre esta prioridad (implementado
+como un único `ORDER BY` en el ORM — Etapa 5), sin importar qué filtros
+(`city_id`, `category`, `date_from`, `date_to`, `search`) estén activos: los filtros
+reducen el conjunto de resultados, pero el orden interno no cambia.
 
 ```
-1° → plan = "pro"   (Destacado Plus)   → más reciente primero
-2° → plan = "dest"  (Destacado)        → más reciente primero
-3° → plan = "gratis"                   → más reciente primero
+1° → plan = "pro"    + is_featured = True   → más reciente primero
+2° → plan = "pro"    + is_featured = False  → más reciente primero
+3° → plan = "dest"   + is_featured = True   → más reciente primero
+4° → plan = "dest"   + is_featured = False  → más reciente primero
+5° → plan = "gratis" + is_featured = True   → más reciente primero
+6° → plan = "gratis" + is_featured = False  → más reciente primero
 
-Dentro del mismo plan, se ordena por created_at DESC.
-Un evento con is_featured=True sube al tope de su grupo de plan.
+Dentro de cada uno de estos 6 niveles, se ordena por created_at DESC.
 ```
 
 ---
@@ -634,13 +643,26 @@ GET    /api/events/{id}                Detalle completo de un evento     ✓ Eta
                                        público. pending/rejected: solo el
                                        organizador (JWT). Resto: 404
 POST   /api/events                     Crear evento (user autenticado → pending)
+                                       body admite organizer_id opcional        ✓ Etapa 5.6
+                                       (solo tiene efecto si quien publica es
+                                       admin: crea el evento en nombre de ese
+                                       organizador; para "user" se ignora)
 PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
                                        (admin). Si edita el organizador, status
                                        vuelve a pending; si edita el admin, no
                                        cambia. 403 para cualquier otro usuario
-DELETE /api/events/{id}                Eliminar (admin) o desactivar (user propio)
+DELETE /api/events/{id}                Soft delete (is_active=False). Permitido    ✓ Etapa 5.6
+                                       para el organizador dueño o un admin
 PATCH  /api/events/{id}/status         Aprobar / rechazar (admin)
-PATCH  /api/events/{id}/featured       Marcar como destacado (admin)
+PATCH  /api/events/{id}/featured       Marcar/desmarcar destacado (admin)              ✓ Etapa 5
+                                       body: { is_featured: bool, featured_until:
+                                       datetime|null }. featured_until=null → destacado
+                                       indefinido. El vencimiento automático (cron/job)
+                                       se implementa en Etapa 6 junto con MercadoPago
+PATCH  /api/events/{id}/plan           Cambiar plan del evento (admin)                  ✓ Etapa 5
+                                       body: { plan: "gratis"|"dest"|"pro" }. Asignación
+                                       manual sin cobro — el pago automático vía
+                                       MercadoPago llega en Etapa 6
 GET    /api/events/mine                Mis eventos: pending + approved + rejected (user)
 ```
 
@@ -653,6 +675,25 @@ GET    /api/users/{id}                 Ver usuario (admin)                      
 PATCH  /api/users/{id}/verify          Marcar como verificado (admin)             ✓ Etapa 3
 PATCH  /api/users/{id}/role            Cambiar rol (admin)                        planificado
 DELETE /api/users/{id}                 Desactivar usuario (admin)                 planificado
+```
+
+### Admin (`/api/admin`)
+
+Todas las rutas requieren rol `admin` (401 sin auth, 403 para `user`).
+
+```
+GET    /api/admin/events               Todos los eventos, sin filtrar por status   ✓ Etapa 5.6
+                                       ni is_active. Incluye organizer_id y
+                                       organizer_public_name (join con User).
+                                       Filtros: status, city_id, category, plan,
+                                       search, date_from, date_to. Paginación:
+                                       limit (default 50) / offset. Orden: pending
+                                       primero, luego created_at DESC
+POST   /api/admin/users                Crea una cuenta en nombre de un cliente     ✓ Etapa 5.6
+                                       (ej. de banner). Guarda created_by = id
+                                       del admin autenticado. Body: email,
+                                       password, public_name, full_name, city_id,
+                                       role, doc_type, doc_number, phone
 ```
 
 ### Ciudades (`/api/cities`)
@@ -714,7 +755,8 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **3** | Usuarios, roles, login con JWT propio (email + password). Migración a PostgreSQL (Docker Compose). El usuario ve sus eventos por estado. Verificación DNI/CUIT en modelo (campo guardado, sin validación externa por ahora). | Auth JWT propia (`python-jose` + `passlib`/`bcrypt`) — Supabase Auth se evalúa en Etapa 6 si hace falta login social |
 | **4** | Vista detalle del evento + todos los links de contacto (WA, IG, web, email, mapa). | Read-only, sin pagos todavía |
 | **4.5** | Correcciones de modelo y endpoints pendientes: migración AdSlot, organizer_id en EventRead, endpoint GET /api/stats | Etapa de limpieza, sin features nuevas |
-| **5** | Sistema de destacados: ordenamiento pro → dest → gratis. Admin puede marcar `is_featured` manualmente. | Sin pago todavía |
+| **5** | Sistema de destacados: ordenamiento por plan en GET /api/events, endpoints admin para gestión de plan e is_featured, badges visuales en cards del home | Sin pago todavía |
+| **5.6** | Bugs de auth y navbar, perfil en Mi cuenta, panel admin completo de eventos, admin crea usuarios y eventos para otros | `created_by` en `users`, `GET /api/admin/events`, `POST /api/admin/users` |
 | **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | Integración compleja — etapa propia |
 | **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |

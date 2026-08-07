@@ -1,21 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { HttpResponse, http } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
-import { server } from "./mocks/server";
 
-const API_URL = "http://localhost:8000";
-
-function renderWithClient() {
+function renderWithClient(onContinue = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={queryClient}>
-      <EventForm />
+      <EventForm onContinue={onContinue} />
     </QueryClientProvider>,
   );
+  return onContinue;
 }
 
 async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEvent.setup>) {
@@ -75,30 +72,25 @@ describe("EventForm", () => {
     expect(screen.getByText("La dirección es obligatoria")).toBeInTheDocument();
   });
 
-  it("submits successfully and shows a confirmation message", async () => {
+  it("does not call the API — Continuar pasa los datos cargados y el plan elegido a onContinue", async () => {
     const user = userEvent.setup();
-    renderWithClient();
+    const onContinue = renderWithClient();
 
     await fillRequiredFieldsExceptCategory(user);
     await selectCategory(user, "Música en vivo");
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByText(/Evento enviado/i)).toBeInTheDocument();
-  });
-
-  it("shows an error message when the API call fails", async () => {
-    server.use(
-      http.post(`${API_URL}/api/events`, () => HttpResponse.json({ detail: "Organizador no encontrado" }, { status: 404 })),
-    );
-    const user = userEvent.setup();
-    renderWithClient();
-
-    await fillRequiredFieldsExceptCategory(user);
-    await selectCategory(user, "Música en vivo");
-
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-
-    await waitFor(() => expect(screen.getByText("Organizador no encontrado")).toBeInTheDocument());
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    const [payload, plan] = onContinue.mock.calls[0];
+    expect(payload).toMatchObject({
+      title: "Mi evento de prueba",
+      date: "2099-01-01",
+      time: "21:00",
+      location_name: "El Tinglado Bar",
+      location_address: "Av. Roca 1240",
+      category: "musica",
+    });
+    expect(plan).toBe("dest");
   });
 });

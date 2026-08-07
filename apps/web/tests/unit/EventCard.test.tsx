@@ -15,11 +15,21 @@ describe("EventCard", () => {
     expect(screen.getByText("Destacado Plus")).toBeInTheDocument();
   });
 
-  it("renders the free plan label for gratis events", () => {
+  it("renders the destacado badge for dest events", () => {
+    const event = makeEvent({ plan: "dest" });
+
+    render(<EventCard event={event} />);
+
+    expect(screen.getByText("Destacado")).toBeInTheDocument();
+  });
+
+  it("renders no plan badge for gratis events", () => {
     const event = makeEvent({ plan: "gratis" });
 
     render(<EventCard event={event} />);
 
-    expect(screen.getByText("Gratis")).toBeInTheDocument();
+    expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gratis")).not.toBeInTheDocument();
   });
 });

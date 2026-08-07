@@ -126,7 +126,8 @@ root/
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/
 │   │   │   │   ├── cities/
-│   │   │   │   └── ads/
+│   │   │   │   ├── ads/
+│   │   │   │   └── admin/          # Panel admin (gestión de destacados — Etapa 5)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   └── types/              # Tipos TypeScript globales
@@ -162,6 +163,7 @@ root/
 │       │   │   └── ad_slot.py
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
 │       │   ├── routers/            # Endpoints organizados por recurso
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6
 │       │   │   ├── auth.py
 │       │   │   ├── events.py
 │       │   │   ├── users.py

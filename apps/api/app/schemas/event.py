@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from datetime import date as _Date
 from datetime import time as _Time
 from uuid import UUID
@@ -51,6 +51,7 @@ class EventRead(BaseModel):
     status: EventStatus
     plan: PlanType
     is_featured: bool
+    featured_until: datetime | None
     ticket_type: TicketType
     price_at_door: int | None
     price_advance: int | None
@@ -87,6 +88,23 @@ class EventListParams(BaseModel):
     search: str | None = None
 
 
+class AdminEventListParams(BaseModel):
+    status: EventStatus | None = None
+    city_id: UUID | None = None
+    category: str | None = None
+    plan: PlanType | None = None
+    search: str | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    limit: int = Field(default=50, le=200, ge=1)
+    offset: int = Field(default=0, ge=0)
+
+
+class AdminEventRead(EventRead):
+    organizer_public_name: str
+    is_active: bool
+
+
 class EventCreate(BaseModel):
     title: str = Field(max_length=255, min_length=1)
     description: str | None = None
@@ -95,6 +113,11 @@ class EventCreate(BaseModel):
     time_end: time | None = None
     moment: EventMoment | None = None
     category: str
+
+    # Solo tiene efecto si quien crea el evento es admin (Etapa 5.6): permite
+    # cargar el evento en nombre de otro organizador. Un "user" lo ignora
+    # aunque lo mande — el organizador siempre es el usuario autenticado.
+    organizer_id: UUID | None = None
 
     location_name: str = Field(max_length=255, min_length=1)
     location_address: str = Field(max_length=500, min_length=1)
@@ -170,6 +193,15 @@ class EventStatusUpdate(BaseModel):
         if value not in (EventStatus.approved, EventStatus.rejected):
             raise ValueError("El status solo puede actualizarse a approved o rejected")
         return value
+
+
+class EventFeaturedUpdate(BaseModel):
+    is_featured: bool
+    featured_until: datetime | None = None
+
+
+class EventPlanUpdate(BaseModel):
+    plan: PlanType
 
 
 class EventsByStatus(BaseModel):

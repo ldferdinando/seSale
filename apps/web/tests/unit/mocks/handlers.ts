@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-import type { Event, EventDetail, EventStats } from "@/features/events/types";
+import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 
 const API_URL = "http://localhost:8000";
@@ -21,6 +21,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     status: "approved",
     plan: "gratis",
     is_featured: false,
+    featured_until: null,
     ticket_type: "gratis",
     price_at_door: null,
     price_advance: null,
@@ -81,6 +82,17 @@ export function makeUser(overrides: Partial<User> = {}): User {
     public_whatsapp: null,
     city_id: "22222222-2222-2222-2222-222222222222",
     is_verified: false,
+    created_at: "2024-03-01T00:00:00Z",
+    created_by: null,
+    ...overrides,
+  };
+}
+
+export function makeAdminEvent(overrides: Partial<AdminEvent> = {}): AdminEvent {
+  return {
+    ...makeEvent(),
+    organizer_public_name: "El Tinglado Bar",
+    is_active: true,
     ...overrides,
   };
 }
@@ -102,6 +114,38 @@ export const handlers = [
   http.put(`${API_URL}/api/events/:id`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(makeEvent({ ...body, status: "pending" } as Partial<Event>));
+  }),
+  http.patch(`${API_URL}/api/events/:id/featured`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeEvent(body as Partial<Event>));
+  }),
+  http.patch(`${API_URL}/api/events/:id/plan`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeEvent(body as Partial<Event>));
+  }),
+  http.patch(`${API_URL}/api/events/:id/status`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeEvent(body as Partial<Event>));
+  }),
+  http.delete(`${API_URL}/api/events/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.get(`${API_URL}/api/admin/events`, () => {
+    return HttpResponse.json([makeAdminEvent()]);
+  }),
+  http.get(`${API_URL}/api/users`, () => {
+    return HttpResponse.json([makeUser()]);
+  }),
+  http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      makeUser({ email: body.email as string, public_name: body.public_name as string, created_by: "55555555-5555-5555-5555-555555555555" }),
+      { status: 201 },
+    );
+  }),
+  http.put(`${API_URL}/api/users/me`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeUser(body as Partial<User>));
   }),
 
   // Sin sesión por defecto: los tests que necesiten un usuario logueado

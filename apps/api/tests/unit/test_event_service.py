@@ -9,8 +9,10 @@ from app.models import City, Event, EventStatus, Location, PlanType, User
 from app.schemas.event import EventUpdate
 from app.services.event_service import (
     create_event,
+    delete_event,
     get_event_detail,
     get_events_for_organizer,
+    list_admin_events,
     list_public_events,
     update_event,
     update_event_status,
@@ -29,6 +31,7 @@ def _make_event(
     plan: PlanType = PlanType.gratis,
     status: EventStatus = EventStatus.approved,
     is_active: bool = True,
+    is_featured: bool = False,
     category: str = "musica",
     event_date: date = TODAY,
     created_at: datetime | None = None,
@@ -44,6 +47,7 @@ def _make_event(
         status=status,
         plan=plan,
         is_active=is_active,
+        is_featured=is_featured,
         created_at=created_at or datetime.now(timezone.utc),
     )
     session.add(event)
@@ -60,6 +64,37 @@ def test_orders_pro_before_dest_before_gratis(session, city, organizer, location
     result = list_public_events(session, today=TODAY)
 
     assert [e.title for e in result] == ["pro-1", "dest-1", "gratis-1"]
+
+
+def test_orders_featured_before_non_featured_within_same_plan(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="pro-plain", plan=PlanType.pro, is_featured=False)
+    _make_event(session, city=city, organizer=organizer, location=location, title="pro-feat", plan=PlanType.pro, is_featured=True)
+    _make_event(session, city=city, organizer=organizer, location=location, title="dest-plain", plan=PlanType.dest, is_featured=False)
+    _make_event(session, city=city, organizer=organizer, location=location, title="dest-feat", plan=PlanType.dest, is_featured=True)
+    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-plain", plan=PlanType.gratis, is_featured=False)
+    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-feat", plan=PlanType.gratis, is_featured=True)
+
+    result = list_public_events(session, today=TODAY)
+
+    assert [e.title for e in result] == [
+        "pro-feat",
+        "pro-plain",
+        "dest-feat",
+        "dest-plain",
+        "gratis-feat",
+        "gratis-plain",
+    ]
+
+
+def test_ordering_is_kept_when_filters_are_active(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="pro", plan=PlanType.pro, category="musica")
+    _make_event(session, city=city, organizer=organizer, location=location, title="dest", plan=PlanType.dest, category="musica")
+    _make_event(session, city=city, organizer=organizer, location=location, title="gratis", plan=PlanType.gratis, category="musica")
+    _make_event(session, city=city, organizer=organizer, location=location, title="other-category", plan=PlanType.pro, category="teatro")
+
+    result = list_public_events(session, today=TODAY, category="musica")
+
+    assert [e.title for e in result] == ["pro", "dest", "gratis"]
 
 
 def test_ties_within_same_plan_order_by_created_at_desc(session, city, organizer, location):
@@ -353,3 +388,114 @@ def test_update_event_by_other_user_raises_permission_error(session, city, organ
 def test_update_event_raises_for_unknown_event(session, organizer):
     with pytest.raises(LookupError):
         update_event(session, uuid4(), organizer, EventUpdate(title="X"))
+
+
+def test_create_event_with_organizer_id_by_admin_uses_that_organizer(session, city, organizer, admin):
+    event = create_event(
+        session,
+        user_id=admin.id,
+        title="Cargado por admin",
+        description=None,
+        event_date=TODAY + timedelta(days=10),
+        event_time=time(21, 0),
+        category="musica",
+        location_name="Nuevo lugar",
+        location_address="Calle Falsa 123",
+        organizer_id=organizer.id,
+        is_admin=True,
+    )
+
+    assert event.organizer_id == organizer.id
+
+
+def test_create_event_ignores_organizer_id_for_non_admin(session, city, organizer, admin):
+    event = create_event(
+        session,
+        user_id=organizer.id,
+        title="Evento propio",
+        description=None,
+        event_date=TODAY + timedelta(days=10),
+        event_time=time(21, 0),
+        category="musica",
+        location_name="Nuevo lugar",
+        location_address="Calle Falsa 123",
+        organizer_id=admin.id,
+        is_admin=False,
+    )
+
+    assert event.organizer_id == organizer.id
+
+
+def test_delete_event_by_owner_soft_deletes(session, city, organizer, location):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="a-borrar")
+
+    deleted = delete_event(session, event.id, organizer)
+
+    assert deleted.is_active is False
+
+
+def test_delete_event_by_admin_soft_deletes(session, city, organizer, location, admin):
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="a-borrar")
+
+    deleted = delete_event(session, event.id, admin)
+
+    assert deleted.is_active is False
+
+
+def test_delete_event_by_other_user_raises_permission_error(session, city, organizer, location):
+    other = User(
+        email="otro-delete@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Otro",
+        public_name="Otro",
+        city_id=city.id,
+    )
+    session.add(other)
+    session.commit()
+    session.refresh(other)
+
+    event = _make_event(session, city=city, organizer=organizer, location=location, title="a-borrar")
+
+    with pytest.raises(PermissionError):
+        delete_event(session, event.id, other)
+
+
+def test_delete_event_raises_for_unknown_event(session, organizer):
+    with pytest.raises(LookupError):
+        delete_event(session, uuid4(), organizer)
+
+
+def test_list_admin_events_returns_all_statuses(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
+    _make_event(session, city=city, organizer=organizer, location=location, title="a", status=EventStatus.approved)
+    _make_event(session, city=city, organizer=organizer, location=location, title="r", status=EventStatus.rejected)
+
+    events = list_admin_events(session)
+
+    assert {e.title for e in events} == {"p", "a", "r"}
+
+
+def test_list_admin_events_orders_pending_first(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="approved-1", status=EventStatus.approved)
+    _make_event(session, city=city, organizer=organizer, location=location, title="pending-1", status=EventStatus.pending)
+
+    events = list_admin_events(session)
+
+    assert events[0].title == "pending-1"
+
+
+def test_list_admin_events_filters_by_status(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="p", status=EventStatus.pending)
+    _make_event(session, city=city, organizer=organizer, location=location, title="a", status=EventStatus.approved)
+
+    events = list_admin_events(session, status=EventStatus.pending)
+
+    assert {e.title for e in events} == {"p"}
+
+
+def test_list_admin_events_includes_inactive(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="inactivo", is_active=False)
+
+    events = list_admin_events(session)
+
+    assert any(e.title == "inactivo" for e in events)
