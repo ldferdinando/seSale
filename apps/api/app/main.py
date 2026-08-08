@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.routers import admin, auth, cities, events, stats, users
+from app.routers import admin, auth, cities, events, plans, stats, subscriptions, users, webhooks
 
 app = FastAPI(title="seSALE API")
 
@@ -26,6 +26,9 @@ app.include_router(cities.router)
 app.include_router(events.router)
 app.include_router(stats.router)
 app.include_router(admin.router)
+app.include_router(plans.router)
+app.include_router(subscriptions.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/health")

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { MyEventsView } from "@/features/events/components/MyEventsView";
+import { MySubscriptionsSection } from "@/features/subscriptions/components/MySubscriptionsSection";
 import { AccountProfile, AccountProfileSkeleton } from "@/features/users/components/AccountProfile";
 
 export default function MiCuentaPage() {
@@ -32,6 +33,11 @@ export default function MiCuentaPage() {
       )}
 
       {currentUser && <AccountProfile currentUser={currentUser} />}
+
+      <section className="flex flex-col gap-4">
+        <h2 className="px-1 text-lg font-bold text-foreground">Mi plan</h2>
+        <MySubscriptionsSection enabled={Boolean(currentUser)} />
+      </section>
 
       <section className="flex flex-col gap-4">
         <h2 className="px-1 text-lg font-bold text-foreground">Mis eventos</h2>

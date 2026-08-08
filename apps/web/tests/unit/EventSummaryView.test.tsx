@@ -30,20 +30,12 @@ function renderSummary(overrides: Partial<React.ComponentProps<typeof EventSumma
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onBack = vi.fn();
   const onPublished = vi.fn();
-  const onNeedsPayment = vi.fn();
   render(
     <QueryClientProvider client={queryClient}>
-      <EventSummaryView
-        payload={payload}
-        plan="gratis"
-        onBack={onBack}
-        onPublished={onPublished}
-        onNeedsPayment={onNeedsPayment}
-        {...overrides}
-      />
+      <EventSummaryView payload={payload} plan="gratis" onBack={onBack} onPublished={onPublished} {...overrides} />
     </QueryClientProvider>,
   );
-  return { onBack, onPublished, onNeedsPayment };
+  return { onBack, onPublished };
 }
 
 describe("EventSummaryView", () => {
@@ -60,22 +52,20 @@ describe("EventSummaryView", () => {
 
   it("con plan gratis: Publicar llama a POST /api/events y avisa con onPublished", async () => {
     const user = userEvent.setup();
-    const { onPublished, onNeedsPayment } = renderSummary({ plan: "gratis" });
+    const { onPublished } = renderSummary({ plan: "gratis" });
 
     await user.click(screen.getByRole("button", { name: /Publicar/ }));
 
     await waitFor(() => expect(onPublished).toHaveBeenCalledTimes(1));
-    expect(onNeedsPayment).not.toHaveBeenCalled();
   });
 
-  it("con plan pago: Publicar no llama a la API, avisa con onNeedsPayment", async () => {
+  it("con plan pago: Publicar también publica el evento (queda pending, plan se contrata después)", async () => {
     const user = userEvent.setup();
-    const { onPublished, onNeedsPayment } = renderSummary({ plan: "dest" });
+    const { onPublished } = renderSummary({ plan: "dest" });
 
     await user.click(screen.getByRole("button", { name: /Publicar/ }));
 
-    expect(onNeedsPayment).toHaveBeenCalledTimes(1);
-    expect(onPublished).not.toHaveBeenCalled();
+    await waitFor(() => expect(onPublished).toHaveBeenCalledTimes(1));
   });
 
   it("vuelve al formulario al hacer click en Editar datos", async () => {

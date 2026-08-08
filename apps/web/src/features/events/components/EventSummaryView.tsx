@@ -54,10 +54,9 @@ interface EventSummaryViewProps {
   plan: PublishPlan;
   onBack: () => void;
   onPublished: (event: Event) => void;
-  onNeedsPayment: () => void;
 }
 
-export function EventSummaryView({ payload, plan, onBack, onPublished, onNeedsPayment }: EventSummaryViewProps) {
+export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSummaryViewProps) {
   const createEvent = useCreateEvent();
 
   const categoryLabel = EVENT_CATEGORIES.find((c) => c.value === payload.category)?.label ?? payload.category;
@@ -66,11 +65,6 @@ export function EventSummaryView({ payload, plan, onBack, onPublished, onNeedsPa
   const eventDate = parseISO(payload.date);
 
   async function handlePublish() {
-    if (plan !== "gratis") {
-      onNeedsPayment();
-      return;
-    }
-
     try {
       const event = await createEvent.mutateAsync(payload);
       onPublished(event);

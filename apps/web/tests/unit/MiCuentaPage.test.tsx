@@ -4,7 +4,7 @@ import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import MiCuentaPage from "@/app/mi-cuenta/page";
-import { makeUser } from "./mocks/handlers";
+import { makeSubscription, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
@@ -48,5 +48,28 @@ describe("MiCuentaPage", () => {
     expect(await screen.findByText(/Email verificado/i)).toBeInTheDocument();
     expect(screen.getByText(/Teléfono sin verificar/i)).toBeInTheDocument();
     expect(screen.getByText(/Identidad verificada por seSALE/i)).toBeInTheDocument();
+  });
+
+  it("sin plan activo, ofrece ver los planes disponibles", async () => {
+    server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
+
+    renderWithClient();
+
+    expect(await screen.findByText(/No tenés un plan activo todavía/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Ver planes disponibles/i })).toHaveAttribute("href", "/planes");
+  });
+
+  it("muestra las suscripciones activas del usuario", async () => {
+    server.use(
+      http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())),
+      http.get(`${API_URL}/api/subscriptions/me`, () =>
+        HttpResponse.json([makeSubscription({ plan_name: "Destacado", status: "active" })]),
+      ),
+    );
+
+    renderWithClient();
+
+    expect(await screen.findByText("Destacado")).toBeInTheDocument();
+    expect(screen.getByText("Activa")).toBeInTheDocument();
   });
 });

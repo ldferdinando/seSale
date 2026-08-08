@@ -8,12 +8,14 @@ import { Tabs } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
 import { AdminFeaturedPanel } from "@/features/admin/components/AdminFeaturedPanel";
+import { AdminSubscriptionsPanel } from "@/features/admin/components/AdminSubscriptionsPanel";
 import { AdminUsersPanel } from "@/features/admin/components/AdminUsersPanel";
 
 const ADMIN_TABS = [
   { value: "destacados", label: "Destacados" },
   { value: "eventos", label: "Eventos" },
   { value: "usuarios", label: "Usuarios" },
+  { value: "suscripciones", label: "Suscripciones" },
 ];
 
 export default function AdminPage() {
@@ -51,6 +53,7 @@ export default function AdminPage() {
           {tab === "destacados" && <AdminFeaturedPanel />}
           {tab === "eventos" && <AdminEventsPanel />}
           {tab === "usuarios" && <AdminUsersPanel />}
+          {tab === "suscripciones" && <AdminSubscriptionsPanel />}
         </>
       )}
     </main>

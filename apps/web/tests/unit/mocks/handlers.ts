@@ -2,6 +2,8 @@ import { http, HttpResponse } from "msw";
 
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
+import type { Plan } from "@/features/plans/types";
+import type { AdminSubscription, Subscription } from "@/features/subscriptions/types";
 
 const API_URL = "http://localhost:8000";
 
@@ -97,6 +99,47 @@ export function makeAdminEvent(overrides: Partial<AdminEvent> = {}): AdminEvent 
   };
 }
 
+export function makePlan(overrides: Partial<Plan> = {}): Plan {
+  return {
+    id: "66666666-6666-6666-6666-666666666666",
+    name: "Destacado",
+    plan_type: "dest",
+    pricing_type: "fixed",
+    description: "Ilimitado · fondo destacado · 2° prioridad",
+    is_active: true,
+    price: { id: "77777777-7777-7777-7777-777777777777", amount: 3500, currency: "ARS", promo_label: null },
+    ...overrides,
+  };
+}
+
+export function makeSubscription(overrides: Partial<Subscription> = {}): Subscription {
+  return {
+    id: "88888888-8888-8888-8888-888888888888",
+    plan_id: "66666666-6666-6666-6666-666666666666",
+    plan_name: "Destacado",
+    plan_type: "dest",
+    status: "active",
+    starts_at: "2099-01-01T00:00:00Z",
+    expires_at: "2099-01-31T00:00:00Z",
+    amount_paid: 3500,
+    currency: "ARS",
+    promo_label: null,
+    mp_payment_id: "123456789",
+    created_at: "2099-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function makeAdminSubscription(overrides: Partial<AdminSubscription> = {}): AdminSubscription {
+  return {
+    ...makeSubscription(),
+    user_id: "44444444-4444-4444-4444-444444444444",
+    user_email: "organizador@sesale.com.ar",
+    user_public_name: "El Tinglado Bar",
+    ...overrides,
+  };
+}
+
 export const handlers = [
   http.get(`${API_URL}/api/events`, () => {
     return HttpResponse.json([makeEvent()]);
@@ -175,5 +218,26 @@ export const handlers = [
     return HttpResponse.json([
       { id: "22222222-2222-2222-2222-222222222222", name: "General Roca", province: "Río Negro", emoji: "🏙️", is_active: true, sort_order: 0 },
     ]);
+  }),
+  http.get(`${API_URL}/api/plans`, () => {
+    return HttpResponse.json([
+      makePlan({ id: "gratis-plan", name: "Gratuito", plan_type: "gratis", price: { id: "p0", amount: 0, currency: "ARS", promo_label: null } }),
+      makePlan(),
+      makePlan({ id: "pro-plan", name: "Destacado Plus", plan_type: "pro", price: { id: "p2", amount: 6500, currency: "ARS", promo_label: null } }),
+      makePlan({ id: "banner-plan", name: "Banner web", plan_type: "banner", pricing_type: "custom", price: null }),
+    ]);
+  }),
+  http.post(`${API_URL}/api/subscriptions/checkout`, () => {
+    return HttpResponse.json({ init_point: "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123" });
+  }),
+  http.get(`${API_URL}/api/subscriptions/me`, () => {
+    return HttpResponse.json([]);
+  }),
+  http.get(`${API_URL}/api/admin/subscriptions`, () => {
+    return HttpResponse.json([makeAdminSubscription()]);
+  }),
+  http.patch(`${API_URL}/api/admin/subscriptions/:id/activate`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminSubscription({ status: "active", expires_at: body.expires_at as string }));
   }),
 ];

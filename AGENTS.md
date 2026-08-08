@@ -127,7 +127,9 @@ root/
 │   │   │   │   ├── users/
 │   │   │   │   ├── cities/
 │   │   │   │   ├── ads/
-│   │   │   │   └── admin/          # Panel admin (gestión de destacados — Etapa 5)
+│   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6
+│   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6
+│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   └── types/              # Tipos TypeScript globales
@@ -159,16 +161,20 @@ root/
 │       │   │   ├── user.py
 │       │   │   ├── event.py
 │       │   │   ├── location.py
+│       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   └── ad_slot.py
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
+│       │   │   ├── plan.py         # Etapa 6
+│       │   │   └── subscription.py # Etapa 6
 │       │   ├── routers/            # Endpoints organizados por recurso
-│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6
 │       │   │   ├── auth.py
 │       │   │   ├── events.py
 │       │   │   ├── users.py
 │       │   │   ├── cities.py
 │       │   │   ├── locations.py
+│       │   │   ├── plans.py        # Etapa 6
 │       │   │   ├── subscriptions.py
 │       │   │   ├── ads.py
 │       │   │   ├── stats.py

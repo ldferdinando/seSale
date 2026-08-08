@@ -50,7 +50,7 @@ describe("PublishFlow", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/mis-eventos?published=1"));
   });
 
-  it("con un plan pago, Publicar en el resumen va a la pantalla de pago (placeholder)", async () => {
+  it("con un plan pago, Publicar en el resumen igual publica el evento (queda pending)", async () => {
     const user = userEvent.setup();
     renderWithClient();
 
@@ -61,8 +61,7 @@ describe("PublishFlow", () => {
     expect(await screen.findByText("Mi evento de prueba")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Publicar/ }));
 
-    expect(await screen.findByText(/El pago todavía no está disponible/i)).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalled();
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/mis-eventos?published=1"));
   });
 
   it("Editar datos vuelve al formulario conservando lo cargado", async () => {

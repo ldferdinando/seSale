@@ -16,6 +16,7 @@ import {
   Pencil,
   Share2,
   ShieldCheck,
+  Sparkles,
   Ticket,
 } from "lucide-react";
 import Link from "next/link";
@@ -63,6 +64,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const eventDate = parseISO(event.date);
 
   const canEdit = Boolean(currentUser && (currentUser.id === event.organizer_id || currentUser.role === "admin"));
+  const isOwner = Boolean(currentUser && currentUser.id === event.organizer_id);
 
   const whatsappHref = event.contact_whatsapp
     ? `https://wa.me/${event.contact_whatsapp.replace(/\D/g, "")}`
@@ -247,6 +249,16 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           >
             <Pencil className="h-4 w-4" aria-hidden />
             Editar evento
+          </Link>
+        )}
+
+        {isOwner && event.plan === "gratis" && (
+          <Link
+            href="/planes"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-primary p-3 text-sm font-bold text-primary-foreground"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Elegir plan
           </Link>
         )}
 

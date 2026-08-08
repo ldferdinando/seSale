@@ -571,34 +571,65 @@ Usuario completa formulario de publicación
   Admin rechaza → status = "rejected"  →  usuario es notificado
 ```
 
-### Flujo de pago de plan (MercadoPago) — Etapa 6
+### Flujo de pago de plan (MercadoPago) — Etapa 6 ✓ implementado
 
 ```
-Usuario selecciona plan (Destacado / Destacado Plus / Banner)
+Usuario ve /planes (desde "Elegir plan" en el evento ya publicado,
+o desde "Mi cuenta" → Mi plan)
         │
         ▼
-  POST /api/subscriptions/checkout
+  Plan gratis → botón deshabilitado "Tu plan actual"
+  Plan banner → botón "Consultar" → abre WhatsApp (SESALE_WHATSAPP), sin pasar por MP
+  Plan dest/pro → botón "Contratar"
         │
         ▼
-  Backend crea preferencia de pago en MercadoPago API
-  → devuelve init_point URL
+  POST /api/subscriptions/checkout { plan_id }
         │
         ▼
-  Frontend redirige al Checkout Pro de MercadoPago
+  Backend valida que el plan sea fixed (no gratis/banner), obtiene el
+  PlanPrice vigente, crea la preferencia en MercadoPago API (SDK oficial,
+  ACCESS_TOKEN solo en el backend) y guarda una Subscription
+  status="pending_payment" con mp_payment_id=preference_id
+  → devuelve { init_point }
         │
         ▼
-  Usuario paga en MP
+  Frontend: window.location.href = init_point (redirect completo a
+  Checkout Pro, no Bricks/embedded)
         │
         ▼
-  MP llama al webhook: POST /api/webhooks/mercadopago
+  Usuario paga en MP → MP redirige a /planes/pago-exitoso,
+  /planes/pago-fallido o /planes/pago-pendiente según el resultado
         │
         ▼
-  Backend verifica la firma del webhook (seguridad)
-  → actualiza Subscription a status="active"
-  → actualiza Event.plan y Event.featured_until
+  En paralelo, MP llama al webhook: POST /api/webhooks/mercadopago
         │
         ▼
-  Usuario regresa a la app → ve su plan activo
+  Backend verifica la firma (header x-signature: ts+v1, HMAC-SHA256 con
+  MERCADOPAGO_WEBHOOK_SECRET) → 400 si no coincide, sin tocar la DB
+        │
+        ▼
+  Con firma válida, reconfirma el pago contra la API de MP
+  (nunca confía en el body del webhook)
+        │
+        ├── approved → activa/crea la Subscription (idempotente por
+        │              mp_payment_id real), status="active",
+        │              starts_at=ahora, expires_at=ahora+30 días, y
+        │              actualiza Event.plan/Event.featured_until de todos
+        │              los eventos approved+activos del organizador
+        │
+        └── rejected/cancelled → Subscription.status="cancelled"
+        │
+        ▼
+  Responde 200 a MP siempre (salvo firma inválida)
+
+Vencimiento: POST /api/admin/subscriptions/expire (admin o llamada
+interna, sin scheduler todavía) marca status="expired" las Subscription
+vencidas y revierte los eventos del organizador a plan="gratis".
+
+Plan Banner (pricing_type=custom): no pasa por MP. El admin carga la
+Subscription y la activa manualmente con
+PATCH /api/admin/subscriptions/{id}/activate, mismo efecto que el
+webhook aprobado.
 ```
 
 ### Flujo de compartir evento por WhatsApp
@@ -720,17 +751,53 @@ GET    /api/stats                      Estadísticas agregadas (público)       
                                        status=approved e is_active=True
 ```
 
-### Suscripciones y pagos (`/api/subscriptions`)
+### Planes (`/api/plans`) ✓ Etapa 6
 ```
-GET    /api/subscriptions/me           Ver mis suscripciones activas
-POST   /api/subscriptions/checkout     Crear preferencia de pago en MP → devuelve init_point
-GET    /api/subscriptions              Listar todas (admin)
+GET    /api/plans                      Público. Planes activos con su PlanPrice
+                                       vigente (valid_from <= hoy y valid_until
+                                       null o >= hoy). price=null si no hay
+                                       precio vigente (ej. plan Banner)
 ```
 
-### Webhooks (`/api/webhooks`)
+### Suscripciones y pagos (`/api/subscriptions`) ✓ Etapa 6
 ```
-POST   /api/webhooks/mercadopago       Recibe notificaciones de pago de MP
-                                       Valida firma → actualiza subscription + evento
+POST   /api/subscriptions/checkout     User o admin autenticado. Body: { plan_id }.
+                                       400 si el plan es gratis o banner (no pasan
+                                       por MP) o si no tiene precio vigente. Crea
+                                       la preferencia en MercadoPago y una
+                                       Subscription pending_payment. Devuelve
+                                       { init_point }
+GET    /api/subscriptions/me           Autenticado. Lista las Subscription propias
+                                       (plan, status, fechas, monto pagado, promo)
+```
+
+### Webhooks (`/api/webhooks`) ✓ Etapa 6
+```
+POST   /api/webhooks/mercadopago       Sin JWT (MP no manda token de usuario), pero
+                                       con verificación obligatoria de x-signature.
+                                       400 si falta o no coincide la firma. Con
+                                       firma válida, reconfirma el pago contra la
+                                       API de MP y activa/cancela la Subscription
+                                       correspondiente. Idempotente por
+                                       mp_payment_id. Siempre responde 200 salvo
+                                       firma inválida
+```
+
+### Suscripciones — administración (`/api/admin`) ✓ Etapa 6
+```
+GET    /api/admin/subscriptions               Admin. Filtros: status, plan_id,
+                                              user_id, date_from, date_to. Orden:
+                                              created_at DESC. Incluye datos del
+                                              usuario (email, public_name)
+PATCH  /api/admin/subscriptions/{id}/activate  Admin. Body: { expires_at }. Activa
+                                              una Subscription a mano (flujo del
+                                              plan Banner) con el mismo efecto que
+                                              el webhook aprobado
+POST   /api/admin/subscriptions/expire         Admin (o llamada interna). Marca
+                                              expired las Subscription vencidas y
+                                              revierte los eventos del organizador
+                                              a plan=gratis. Sin scheduler todavía
+                                              — se invoca periódicamente a mano
 ```
 
 ### Espacios publicitarios (`/api/ads`)
@@ -757,7 +824,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **4.5** | Correcciones de modelo y endpoints pendientes: migración AdSlot, organizer_id en EventRead, endpoint GET /api/stats | Etapa de limpieza, sin features nuevas |
 | **5** | Sistema de destacados: ordenamiento por plan en GET /api/events, endpoints admin para gestión de plan e is_featured, badges visuales en cards del home | Sin pago todavía |
 | **5.6** | Bugs de auth y navbar, perfil en Mi cuenta, panel admin completo de eventos, admin crea usuarios y eventos para otros | `created_by` en `users`, `GET /api/admin/events`, `POST /api/admin/users` |
-| **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | Integración compleja — etapa propia |
+| **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | ✓ Completa: pantalla `/planes`, checkout con SDK oficial, webhook con verificación de firma + reconfirmación contra la API de MP, activación automática de eventos, vencimiento (`/api/admin/subscriptions/expire`), gestión admin de suscripciones y activación manual del plan Banner |
 | **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
@@ -780,15 +847,21 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
-MERCADOPAGO_ACCESS_TOKEN=tu-access-token   # Etapa 6
+MERCADOPAGO_ACCESS_TOKEN=tu-access-token   # Etapa 6 — solo backend, nunca en el frontend
+MERCADOPAGO_PUBLIC_KEY=tu-public-key-de-mp
 MERCADOPAGO_WEBHOOK_SECRET=tu-webhook-secret
+
+SESALE_WHATSAPP=549XXXXXXXXXX              # contacto para el plan Banner ("Consultar")
+FRONTEND_URL=http://localhost:3000         # back_urls de la preferencia de MP
+API_URL=http://localhost:8000              # notification_url del webhook de MP
 
 ENVIRONMENT=development                    # development | production
 ALLOWED_ORIGINS=http://localhost:3000,https://sesale.com.ar
 
 # ── Frontend (Next.js — NEXT_PUBLIC_ se expone al cliente) ──
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp
+NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp   # no se usa en Etapa 6 (checkout es redirect, no Bricks)
+NEXT_PUBLIC_SESALE_WHATSAPP=549XXXXXXXXXX       # mismo número que SESALE_WHATSAPP, expuesto al cliente
 ```
 
 ### Entornos

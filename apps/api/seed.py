@@ -11,6 +11,7 @@ from app.core.deps import engine
 from app.core.security import hash_password
 from app.models import AdSlot, City, Event, EventStatus, Location, Plan, PlanPrice, PlanType, Subscription, User
 from app.models.event import TicketType
+from app.models.plan import PricingType
 
 SEED_PASSWORD = "Password123!"
 
@@ -117,8 +118,28 @@ def seed() -> None:
         for ad_slot in ad_slots:
             session.add(ad_slot)
 
+        plans = [
+            Plan(name="Gratuito", plan_type=PlanType.gratis, pricing_type=PricingType.fixed, description="1 evento · básico · sin prioridad"),
+            Plan(name="Destacado", plan_type=PlanType.dest, pricing_type=PricingType.fixed, description="Ilimitado · fondo destacado · 2° prioridad"),
+            Plan(name="Destacado Plus", plan_type=PlanType.pro, pricing_type=PricingType.fixed, description="Imagen · banner · stats · 1° prioridad"),
+            Plan(name="Banner web", plan_type=PlanType.banner, pricing_type=PricingType.custom, description="Home + categorías · máxima visibilidad"),
+        ]
+        for plan in plans:
+            session.add(plan)
         session.commit()
-        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots.")
+        for plan in plans:
+            session.refresh(plan)
+
+        plan_prices = [
+            PlanPrice(plan_id=plans[0].id, amount=0, valid_from=today, created_by=admin.id),
+            PlanPrice(plan_id=plans[1].id, amount=3500, valid_from=today, created_by=admin.id, promo_label="Promo lanzamiento"),
+            PlanPrice(plan_id=plans[2].id, amount=6500, valid_from=today, created_by=admin.id, promo_label="Promo lanzamiento"),
+        ]
+        for price in plan_prices:
+            session.add(price)
+
+        session.commit()
+        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots, 4 planes.")
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")
 

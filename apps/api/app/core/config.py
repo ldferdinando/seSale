@@ -14,7 +14,12 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     mercadopago_access_token: str | None = None
+    mercadopago_public_key: str | None = None
     mercadopago_webhook_secret: str | None = None
+
+    sesale_whatsapp: str = "5492994000000"
+    frontend_url: str = "http://localhost:3000"
+    api_url: str = "http://localhost:8000"
 
     @property
     def allowed_origins_list(self) -> list[str]:
