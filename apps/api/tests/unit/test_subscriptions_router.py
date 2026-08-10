@@ -48,6 +48,22 @@ async def test_checkout_with_dest_plan_returns_init_point(
     assert fake_mp_sdk.last_preference_data["external_reference"]
 
 
+async def test_checkout_with_mp_api_error_returns_502(
+    client: AsyncClient,
+    plan_dest: Plan,
+    plan_price_dest,
+    user_token_headers: dict[str, str],
+    fake_mp_sdk: FakeMPSDK,
+):
+    fake_mp_sdk.preference_should_fail = True
+
+    response = await client.post(
+        "/api/subscriptions/checkout", json={"plan_id": str(plan_dest.id)}, headers=user_token_headers
+    )
+
+    assert response.status_code == 502
+
+
 async def test_checkout_with_plan_without_price_returns_404(
     client: AsyncClient, session: Session, plan_dest: Plan, user_token_headers: dict[str, str], fake_mp_sdk: FakeMPSDK
 ):

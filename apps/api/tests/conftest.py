@@ -148,6 +148,8 @@ class FakePreferenceAPI:
 
     def create(self, data: dict) -> dict:
         self.sdk.last_preference_data = data
+        if self.sdk.preference_should_fail:
+            return {"status": 401, "response": {"message": "invalid access token"}}
         return {"response": {"id": self.sdk.preference_id, "init_point": self.sdk.init_point}}
 
 
@@ -169,6 +171,7 @@ class FakeMPSDK:
         self.payment_response: dict = {}
         self.last_preference_data: dict | None = None
         self.last_payment_id_requested: str | None = None
+        self.preference_should_fail = False
 
     def preference(self) -> FakePreferenceAPI:
         return FakePreferenceAPI(self)

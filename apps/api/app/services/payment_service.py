@@ -83,7 +83,10 @@ def create_checkout_preference(session: Session, *, user: User, plan_id: UUID) -
 
     sdk = _get_mp_sdk()
     result = sdk.preference().create(preference_data)
-    response = result["response"]
+    response = result.get("response", {})
+    if result.get("status", 200) >= 300 or "id" not in response or "init_point" not in response:
+        raise RuntimeError(f"MercadoPago rechazó la creación de la preferencia: {response}")
+
     preference_id = str(response["id"])
     init_point = response["init_point"]
 

@@ -43,6 +43,9 @@ async def post_checkout(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        # La preferencia de MP no se pudo crear (token inválido/vacío, error de la API de MP, etc.)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return CheckoutResponse(init_point=init_point)
 
 
