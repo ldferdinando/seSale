@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.moment import calculate_moments
+from app.core.timezone import argentina_today, utc_time_to_argentina
 from app.models.category import EventCategory
 from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
@@ -25,9 +26,16 @@ def _sync_event_categories(session: Session, event: Event, categories: list[str]
 
 
 def _sync_event_moments(session: Session, event: Event) -> None:
-    """Recalcula y reemplaza los momentos del evento desde time/time_end."""
+    """Recalcula y reemplaza los momentos del evento desde time/time_end.
+
+    `event.time`/`event.time_end` se guardan en UTC — hay que pasarlos a
+    hora Argentina antes de clasificar diurno/nocturno, que es una noción
+    de horario local.
+    """
     session.exec(delete(EventMoment).where(EventMoment.event_id == event.id))
-    for moment in calculate_moments(event.time, event.time_end):
+    local_start = utc_time_to_argentina(event.date, event.time)
+    local_end = utc_time_to_argentina(event.date, event.time_end) if event.time_end else None
+    for moment in calculate_moments(local_start, local_end):
         session.add(EventMoment(event_id=event.id, moment=moment))
 
 _ORDER_RANK = case(
@@ -68,7 +76,7 @@ def list_public_events(
     horario dual aparece en ambos filtros).
     """
     if today is None:
-        today = datetime.now(timezone.utc).date()
+        today = argentina_today()
 
     stmt = (
         select(Event)

@@ -13,6 +13,7 @@ import type {
   EventsByStatus,
   EventUpdateInput,
 } from "@/features/events/types";
+import { localTimeToUtc } from "@/lib/date-helpers";
 
 export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> {
   return apiGet<Event[]>("/api/events", {
@@ -24,8 +25,24 @@ export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> 
   });
 }
 
+/**
+ * `date`/`time`/`time_end` en el payload vienen en hora argentina (lo que
+ * tipeó el usuario en el formulario). La API guarda `time`/`time_end` en
+ * UTC — esta es la única conversión antes de mandarlos, para que quede
+ * consistente con `formatEventTime` (que asume que lo que devuelve la API
+ * ya es UTC). `date` no se convierte: es el día de negocio en Argentina.
+ */
+function toUtcPayload<T extends { date?: string; time?: string; time_end?: string }>(input: T): T {
+  if (!input.date || !input.time) return input;
+  return {
+    ...input,
+    time: localTimeToUtc(input.date, input.time),
+    time_end: input.time_end ? localTimeToUtc(input.date, input.time_end) : input.time_end,
+  };
+}
+
 export async function createEvent(input: EventCreateInput): Promise<Event> {
-  return apiPost<Event>("/api/events", input);
+  return apiPost<Event>("/api/events", toUtcPayload(input));
 }
 
 export async function fetchMyEvents(): Promise<EventsByStatus> {
@@ -37,7 +54,7 @@ export async function fetchEventById(eventId: string): Promise<EventDetail> {
 }
 
 export async function updateEvent(eventId: string, input: EventUpdateInput): Promise<Event> {
-  return apiPut<Event>(`/api/events/${eventId}`, input);
+  return apiPut<Event>(`/api/events/${eventId}`, toUtcPayload(input));
 }
 
 export async function updateEventStatus(eventId: string, status: EventStatus): Promise<Event> {

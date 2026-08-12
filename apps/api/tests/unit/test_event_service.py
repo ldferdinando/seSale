@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.security import hash_password
 from app.models import City, Event, EventCategory, EventMoment, EventStatus, Location, PlanType, User
@@ -265,6 +265,20 @@ def test_create_event_reuses_existing_location(session, city, organizer, locatio
     )
 
     assert event.location_id == location.id
+
+
+def test_create_event_computes_moment_from_argentina_time_not_utc(session, city, organizer):
+    """`time` se guarda en UTC. 23:00 UTC == 20:00 ART (nocturno) — si el
+    cálculo de momento no convirtiera a hora Argentina, clasificaría este
+    evento como diurno por error."""
+    event = create_event(
+        session,
+        user_id=organizer.id,
+        **_create_event_kwargs(event_time=time(23, 0)),
+    )
+
+    moments = session.exec(select(EventMoment).where(EventMoment.event_id == event.id)).all()
+    assert [m.moment for m in moments] == ["nocturno"]
 
 
 def test_create_event_raises_for_unknown_organizer(session):

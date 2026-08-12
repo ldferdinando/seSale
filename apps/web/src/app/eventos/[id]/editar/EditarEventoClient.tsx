@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { EventForm } from "@/features/events/components/EventForm";
 import { useEvent } from "@/features/events/hooks/useEvent";
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
+import { utcTimeToLocal } from "@/lib/date-helpers";
 
 interface EditarEventoClientProps {
   eventId: string;
@@ -63,8 +64,11 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     title: event.title,
     description: event.description ?? "",
     date: event.date,
-    time: event.time.slice(0, 5),
-    time_end: event.time_end ? event.time_end.slice(0, 5) : "",
+    // event.time/time_end vienen en UTC de la API — el form los muestra y
+    // los reenvía en hora argentina (events-api.ts hace la conversión de
+    // vuelta a UTC recién al mandar el payload).
+    time: utcTimeToLocal(event.date, event.time.slice(0, 5)),
+    time_end: event.time_end ? utcTimeToLocal(event.date, event.time_end.slice(0, 5)) : "",
     categories: event.categories,
     location_name: event.location.name,
     location_address: event.location.address,

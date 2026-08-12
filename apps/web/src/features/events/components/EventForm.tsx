@@ -1,6 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -29,12 +31,14 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CategoryMultiSelect } from "@/features/events/components/CategoryMultiSelect";
 import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
+import { TimePicker } from "@/features/events/components/TimePicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
@@ -153,6 +157,7 @@ export function EventForm({
 
   const [plan, setPlan] = useState<PublishPlan>(initialPlan ?? "dest");
   const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [acquisition, setAcquisition] = useState({
     whatsapp: true,
     instagram: Boolean(initialValues?.contact_instagram),
@@ -191,6 +196,9 @@ export function EventForm({
 
   const ticketType = watch("ticket_type");
   const categories = watch("categories");
+  const dateValue = watch("date");
+  const timeValue = watch("time");
+  const timeEndValue = watch("time_end");
 
   async function onSubmit(values: EventFormValues) {
     const payload: EventCreateInput = {
@@ -255,26 +263,56 @@ export function EventForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
-          <FieldLabel icon={Calendar} htmlFor="date" required>
+          <FieldLabel icon={Calendar} required>
             Fecha
           </FieldLabel>
-          <Input id="date" type="date" {...register("date")} />
+          <button
+            id="date"
+            type="button"
+            onClick={() => setShowCalendar((s) => !s)}
+            className={cn(
+              "flex h-9 items-center rounded-full border border-border bg-card px-4 text-left text-sm",
+              dateValue ? "text-foreground" : "text-ink-5",
+            )}
+          >
+            {dateValue ? format(parseISO(dateValue), "d 'de' MMMM yyyy", { locale: es }) : "Elegir fecha"}
+          </button>
           <FieldError message={errors.date?.message} />
         </div>
         <div className="flex flex-col gap-1">
           <FieldLabel icon={Clock} htmlFor="time" required>
             Hora inicio
           </FieldLabel>
-          <Input id="time" type="time" {...register("time")} />
+          <TimePicker
+            id="time"
+            label="Hora inicio"
+            value={timeValue}
+            onChange={(value) => setValue("time", value, { shouldValidate: true })}
+          />
           <FieldError message={errors.time?.message} />
         </div>
       </div>
+
+      {showCalendar && (
+        <CalendarWidget
+          selected={dateValue ? parseISO(dateValue) : undefined}
+          onSelect={(day) => {
+            setValue("date", format(day, "yyyy-MM-dd"), { shouldValidate: true });
+            setShowCalendar(false);
+          }}
+        />
+      )}
 
       <div className="flex flex-col gap-1">
         <FieldLabel icon={AlarmClockOff} htmlFor="time_end">
           Hora fin (opc.)
         </FieldLabel>
-        <Input id="time_end" type="time" {...register("time_end")} />
+        <TimePicker
+          id="time_end"
+          label="Hora fin"
+          value={timeEndValue ?? ""}
+          onChange={(value) => setValue("time_end", value, { shouldValidate: true })}
+        />
       </div>
 
       <div className="flex flex-col gap-1">

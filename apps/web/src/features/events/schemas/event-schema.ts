@@ -1,10 +1,14 @@
 import { z } from "zod";
 
 import { EVENT_CATEGORIES, MAX_EVENT_CATEGORIES, MIN_EVENT_CATEGORIES } from "@/features/events/types";
+import { argentinaTodayIso } from "@/lib/date-helpers";
 
 const CATEGORY_VALUES = EVENT_CATEGORIES.map((c) => c.value) as [string, ...string[]];
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// El día de hoy en Argentina, no en UTC — cerca de la medianoche argentina
+// (21:00–23:59 ART) el día UTC ya cambió y usar new Date().toISOString()
+// rechazaba fechas que en Argentina todavía eran válidas.
+const todayIso = () => argentinaTodayIso();
 
 export const eventFormSchema = z
   .object({

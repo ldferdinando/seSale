@@ -1,4 +1,4 @@
-import { format, toZonedTime } from "date-fns-tz";
+import { format, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 /** Zona horaria de Argentina — UTC-3, sin cambio de horario estacional. */
 export const ARGENTINA_TZ = "America/Argentina/Buenos_Aires";
@@ -19,4 +19,30 @@ export function formatEventTime(isoString: string): string {
  */
 export function toEventDateTimeISO(date: string, time: string): string {
   return `${date}T${time}Z`;
+}
+
+/**
+ * Convierte una hora tipeada por el usuario en hora argentina ("HH:mm") a
+ * UTC ("HH:mm"), lista para mandar a la API. `date` solo se usa como
+ * referencia para el cálculo — la API guarda `date` sin convertir (es el
+ * día de negocio en Argentina, no cambia por el corrimiento de horario).
+ */
+export function localTimeToUtc(date: string, localTime: string): string {
+  const utcDate = fromZonedTime(`${date}T${localTime}`, ARGENTINA_TZ);
+  return format(toZonedTime(utcDate, "UTC"), "HH:mm", { timeZone: "UTC" });
+}
+
+/**
+ * Inverso de `localTimeToUtc`: convierte una hora en UTC (como la devuelve
+ * la API) a hora argentina ("HH:mm"), para precargar el formulario de
+ * edición.
+ */
+export function utcTimeToLocal(date: string, utcTime: string): string {
+  const utcDate = new Date(`${date}T${utcTime}Z`);
+  return format(toZonedTime(utcDate, ARGENTINA_TZ), "HH:mm", { timeZone: ARGENTINA_TZ });
+}
+
+/** Fecha de hoy en Argentina (no la fecha UTC del browser/servidor). */
+export function argentinaTodayIso(): string {
+  return format(toZonedTime(new Date(), ARGENTINA_TZ), "yyyy-MM-dd", { timeZone: ARGENTINA_TZ });
 }

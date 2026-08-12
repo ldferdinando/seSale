@@ -158,6 +158,7 @@ root/
 │       │   │   ├── security.py
 │       │   │   ├── deps.py
 │       │   │   ├── moment.py       # calculate_moments() — Etapa 6.5
+│       │   │   ├── timezone.py     # argentina_today(), utc_time_to_argentina() — Etapa 6.5
 │       │   │   └── email.py        # send_report_email() (Resend) — Etapa 6.5
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py

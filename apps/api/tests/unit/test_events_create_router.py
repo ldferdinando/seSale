@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from httpx import AsyncClient
 from sqlmodel import Session
@@ -35,6 +36,42 @@ async def test_create_event_without_token_returns_401(client: AsyncClient, organ
     response = await client.post("/api/events", json=_valid_payload())
 
     assert response.status_code == 401
+
+
+async def test_create_event_uses_argentina_date_not_server_clock(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    """Reproduce el bug real: un evento para 'hoy en Argentina' no debe
+    rechazarse aunque el reloj del servidor (UTC) ya esté un día adelante
+    — algo que pasa todas las noches entre las 21:00 y las 23:59 ART."""
+    fake_argentina_today = date(2026, 8, 11)
+    payload = {
+        "title": "Show esta noche",
+        "date": fake_argentina_today.isoformat(),
+        "time": "23:30:00",
+        "categories": ["musica"],
+        "location_name": "El Tinglado Bar",
+        "location_address": "Av. Roca 1240",
+        "ticket_type": "gratis",
+    }
+
+    with patch("app.schemas.event.argentina_today", return_value=fake_argentina_today):
+        response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+
+
+async def test_create_event_still_rejects_dates_before_argentina_today(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    fake_argentina_today = date(2026, 8, 11)
+    payload = _valid_payload()
+    payload["date"] = (fake_argentina_today - timedelta(days=1)).isoformat()
+
+    with patch("app.schemas.event.argentina_today", return_value=fake_argentina_today):
+        response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
 
 
 async def test_create_event_invalid_category_returns_422(

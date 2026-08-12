@@ -40,9 +40,11 @@ describe("EventForm — modo edición", () => {
 
     expect(screen.getByLabelText(/Nombre del evento/)).toHaveValue("Show original");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Descripción original");
-    expect(screen.getByLabelText(/Fecha/)).toHaveValue("2099-01-01");
-    expect(screen.getByLabelText(/Hora inicio/)).toHaveValue("21:00");
-    expect(screen.getByLabelText(/Hora fin/)).toHaveValue("23:30");
+    expect(screen.getByRole("button", { name: "1 de enero 2099" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Hora inicio — hora")).toHaveTextContent("21");
+    expect(screen.getByLabelText("Hora inicio — minutos")).toHaveTextContent("00");
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("23");
+    expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("30");
     expect(screen.getByLabelText(/Nombre del lugar/)).toHaveValue("El Tinglado Bar");
     expect(screen.getByLabelText(/Dirección/)).toHaveValue("Av. Roca 1240");
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeInTheDocument();

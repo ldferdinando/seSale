@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { format } from "date-fns";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
@@ -15,10 +16,25 @@ function renderWithClient(onContinue = vi.fn()) {
   return onContinue;
 }
 
+async function selectTime(user: ReturnType<typeof userEvent.setup>, fieldLabel: string, hour: string, minute: string) {
+  await user.click(screen.getByLabelText(`${fieldLabel} — hora`));
+  await user.click(await screen.findByRole("option", { name: hour }));
+  await user.click(screen.getByLabelText(`${fieldLabel} — minutos`));
+  await user.click(await screen.findByRole("option", { name: minute }));
+}
+
+/** Elige el día 15 del mes siguiente al actual — siempre en el futuro, sin depender de la fecha del sistema. */
+async function pickFutureDate(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Elegir fecha" }));
+  await user.click(screen.getByRole("button", { name: "Mes siguiente" }));
+  const days = screen.getAllByText("15", { selector: "button" });
+  await user.click(days[0]);
+}
+
 async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
-  fireEvent.change(screen.getByLabelText(/Fecha/), { target: { value: "2099-01-01" } });
-  fireEvent.change(screen.getByLabelText(/Hora inicio/), { target: { value: "21:00" } });
+  await pickFutureDate(user);
+  await selectTime(user, "Hora inicio", "21", "00");
   await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
 }
@@ -39,9 +55,9 @@ describe("EventForm", () => {
     expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Categorías" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Hora inicio/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Hora fin/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Elegir fecha" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Hora inicio — hora")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hora fin — hora")).toBeInTheDocument();
     expect(screen.getByLabelText(/Nombre del lugar/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Dirección/)).toBeInTheDocument();
     expect(screen.getByText("Tipo de entrada")).toBeInTheDocument();
@@ -74,6 +90,11 @@ describe("EventForm", () => {
     const user = userEvent.setup();
     const onContinue = renderWithClient();
 
+    const nextMonthDate = new Date();
+    nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+    nextMonthDate.setDate(15);
+    const expectedDate = format(nextMonthDate, "yyyy-MM-dd");
+
     await fillRequiredFieldsExceptCategory(user);
     await toggleCategory(user, "Música en vivo");
 
@@ -83,7 +104,7 @@ describe("EventForm", () => {
     const [payload, plan] = onContinue.mock.calls[0];
     expect(payload).toMatchObject({
       title: "Mi evento de prueba",
-      date: "2099-01-01",
+      date: expectedDate,
       time: "21:00",
       location_name: "El Tinglado Bar",
       location_address: "Av. Roca 1240",

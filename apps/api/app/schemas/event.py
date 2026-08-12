@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.timezone import argentina_today
 from app.models.event import EventStatus, TicketType
 from app.models.plan import PlanType
 
@@ -151,7 +152,7 @@ class EventCreate(BaseModel):
     @field_validator("date")
     @classmethod
     def validate_date_not_past(cls, value: date) -> date:
-        if value < date.today():
+        if value < argentina_today():
             raise ValueError("La fecha del evento no puede estar en el pasado")
         return value
 
@@ -187,7 +188,7 @@ class EventUpdate(BaseModel):
     @field_validator("date")
     @classmethod
     def validate_date_not_past(cls, value: _Date | None) -> _Date | None:
-        if value is not None and value < _Date.today():
+        if value is not None and value < argentina_today():
             raise ValueError("La fecha del evento no puede estar en el pasado")
         return value
 

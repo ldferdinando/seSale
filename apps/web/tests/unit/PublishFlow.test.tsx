@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,10 +19,25 @@ function renderWithClient() {
   );
 }
 
+/** Elige el día 15 del mes siguiente al actual — siempre en el futuro, sin depender de la fecha del sistema. */
+async function pickFutureDate(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Elegir fecha" }));
+  await user.click(screen.getByRole("button", { name: "Mes siguiente" }));
+  const days = screen.getAllByText("15", { selector: "button" });
+  await user.click(days[0]);
+}
+
+async function selectTime(user: ReturnType<typeof userEvent.setup>, fieldLabel: string, hour: string, minute: string) {
+  await user.click(screen.getByLabelText(`${fieldLabel} — hora`));
+  await user.click(await screen.findByRole("option", { name: hour }));
+  await user.click(screen.getByLabelText(`${fieldLabel} — minutos`));
+  await user.click(await screen.findByRole("option", { name: minute }));
+}
+
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
-  fireEvent.change(screen.getByLabelText(/Fecha/), { target: { value: "2099-01-01" } });
-  fireEvent.change(screen.getByLabelText(/Hora inicio/), { target: { value: "21:00" } });
+  await pickFutureDate(user);
+  await selectTime(user, "Hora inicio", "21", "00");
   await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
   await user.click(screen.getByLabelText("Música en vivo"));

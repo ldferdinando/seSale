@@ -297,9 +297,9 @@ class Event(SQLModel, table=True):
     # Datos principales
     title: str = Field(max_length=255)
     description: str | None = Field(default=None)
-    date: date                                     # fecha del evento
+    date: date                                     # día de negocio en Argentina — no se convierte
     time: time                                     # hora inicio, en UTC
-    time_end: time | None = Field(default=None)    # hora fin (Etapa 4)
+    time_end: time | None = Field(default=None)    # hora fin (Etapa 4), en UTC
     # category (str único) y moment (str único) vivieron acá hasta la
     # Etapa 6.5 — ahora son las tablas event_categories / event_moments
     # de abajo. moment se calcula siempre desde time/time_end, nunca se
@@ -360,9 +360,15 @@ class EventCategory(SQLModel, table=True):
 #### `event_moments` (Etapa 6.5)
 
 Momento del evento (diurno/nocturno) — reemplaza el campo `Event.moment`
-único. Se recalcula con `app.core.moment.calculate_moments(time, time_end)`
-cada vez que se crea o edita un evento; un evento con horario 18:00-22:00
-tiene ambos registros.
+único. Se recalcula cada vez que se crea o edita un evento; un evento con
+horario 18:00-22:00 (hora Argentina) tiene ambos registros.
+
+`time`/`time_end` se guardan en UTC (ver "Timezone" más abajo), pero
+diurno/nocturno es una noción de horario **local**. Por eso
+`_sync_event_moments` (`app/services/event_service.py`) convierte a hora
+Argentina con `app.core.timezone.utc_time_to_argentina` antes de llamar a
+`app.core.moment.calculate_moments(time_start, time_end)` — pasarle el
+`time`/`time_end` crudo (UTC) clasificaría mal los eventos nocturnos.
 
 ```python
 class EventMoment(SQLModel, table=True):
@@ -373,6 +379,33 @@ class EventMoment(SQLModel, table=True):
 
     event: "Event" = Relationship(back_populates="moment_links")
 ```
+
+#### Timezone (Etapa 6.5)
+
+seSALE opera en horario Argentina (`America/Argentina/Buenos_Aires`,
+UTC-3, sin horario de verano). Convención:
+
+- **`Event.date` nunca se convierte.** Representa el día de negocio en
+  Argentina (para qué día es el evento) — se manda, guarda y filtra tal
+  cual, tanto en el frontend como en el backend.
+- **`Event.time`/`Event.time_end` se guardan en UTC.** El frontend
+  convierte la hora que tipea el usuario (hora Argentina) a UTC recién al
+  mandar el payload (`toUtcPayload` en `events-api.ts`, usando
+  `localTimeToUtc` de `lib/date-helpers.ts`) y hace la conversión inversa
+  al precargar el formulario de edición (`utcTimeToLocal`). Mostrar un
+  evento (`formatEventTime`) siempre asume que lo que devuelve la API ya
+  es UTC.
+- **"Hoy" y "fecha no puede estar en el pasado" se calculan en hora
+  Argentina, no en la del servidor.** El backend corre en UTC — comparar
+  con `date.today()`/`datetime.now(timezone.utc).date()` directamente
+  hace que, entre las 21:00 y las 23:59 hora Argentina, el servidor ya
+  esté "un día adelantado" y rechace fechas válidas o excluya eventos del
+  filtro "hoy". `app/core/timezone.py` centraliza esto
+  (`argentina_today()`, usado en `schemas/event.py` y
+  `services/event_service.py`); el frontend usa el equivalente
+  `argentinaTodayIso()` de `lib/date-helpers.ts`.
+- **El cálculo de diurno/nocturno también es hora Argentina** (ver
+  `event_moments` arriba) — se convierte desde UTC antes de clasificar.
 
 #### `locations`
 ```python
