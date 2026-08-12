@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 import type { Plan } from "@/features/plans/types";
+import type { AdminReport } from "@/features/reports/types";
 import type { AdminSubscription, Subscription } from "@/features/subscriptions/types";
 
 const API_URL = "http://localhost:8000";
@@ -18,8 +19,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     date: "2099-01-01",
     time: "21:00:00",
     time_end: "23:30:00",
-    moment: "nocturno",
-    category: "musica",
+    categories: ["musica"],
     status: "approved",
     plan: "gratis",
     is_featured: false,
@@ -140,6 +140,19 @@ export function makeAdminSubscription(overrides: Partial<AdminSubscription> = {}
   };
 }
 
+export function makeAdminReport(overrides: Partial<AdminReport> = {}): AdminReport {
+  return {
+    id: "99999999-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+    event_id: "11111111-1111-1111-1111-111111111111",
+    event_title: "Noche de Rock Nacional",
+    text: "Este evento tiene información incorrecta",
+    contact_phone: "2984123456",
+    created_at: "2099-01-01T21:00:00Z",
+    status: "pending",
+    ...overrides,
+  };
+}
+
 export const handlers = [
   http.get(`${API_URL}/api/events`, () => {
     return HttpResponse.json([makeEvent()]);
@@ -239,5 +252,26 @@ export const handlers = [
   http.patch(`${API_URL}/api/admin/subscriptions/:id/activate`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(makeAdminSubscription({ status: "active", expires_at: body.expires_at as string }));
+  }),
+  http.post(`${API_URL}/api/events/:id/report`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      {
+        id: "99999999-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+        event_id: "11111111-1111-1111-1111-111111111111",
+        text: body.text as string,
+        contact_phone: body.contact_phone as string,
+        created_at: "2099-01-01T00:00:00Z",
+        status: "pending",
+      },
+      { status: 201 },
+    );
+  }),
+  http.get(`${API_URL}/api/admin/reports`, () => {
+    return HttpResponse.json([makeAdminReport()]);
+  }),
+  http.patch(`${API_URL}/api/admin/reports/:id/status`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminReport({ status: body.status as AdminReport["status"] }));
   }),
 ];

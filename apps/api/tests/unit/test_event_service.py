@@ -5,7 +5,7 @@ import pytest
 from sqlmodel import Session
 
 from app.core.security import hash_password
-from app.models import City, Event, EventStatus, Location, PlanType, User
+from app.models import City, Event, EventCategory, EventMoment, EventStatus, Location, PlanType, User
 from app.schemas.event import EventUpdate
 from app.services.event_service import (
     create_event,
@@ -43,7 +43,6 @@ def _make_event(
         title=title,
         date=event_date,
         time=time(21, 0),
-        category=category,
         status=status,
         plan=plan,
         is_active=is_active,
@@ -51,6 +50,9 @@ def _make_event(
         created_at=created_at or datetime.now(timezone.utc),
     )
     session.add(event)
+    session.commit()
+    session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category=category))
     session.commit()
     session.refresh(event)
     return event
@@ -92,7 +94,7 @@ def test_ordering_is_kept_when_filters_are_active(session, city, organizer, loca
     _make_event(session, city=city, organizer=organizer, location=location, title="gratis", plan=PlanType.gratis, category="musica")
     _make_event(session, city=city, organizer=organizer, location=location, title="other-category", plan=PlanType.pro, category="teatro")
 
-    result = list_public_events(session, today=TODAY, category="musica")
+    result = list_public_events(session, today=TODAY, categories=["musica"])
 
     assert [e.title for e in result] == ["pro", "dest", "gratis"]
 
@@ -158,9 +160,47 @@ def test_filters_by_category(session, city, organizer, location):
     _make_event(session, city=city, organizer=organizer, location=location, title="musica-event", category="musica")
     _make_event(session, city=city, organizer=organizer, location=location, title="teatro-event", category="teatro")
 
-    result = list_public_events(session, category="teatro", today=TODAY)
+    result = list_public_events(session, categories=["teatro"], today=TODAY)
 
     assert [e.title for e in result] == ["teatro-event"]
+
+
+def test_filters_by_multiple_categories_is_or(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="musica-event", category="musica")
+    _make_event(session, city=city, organizer=organizer, location=location, title="teatro-event", category="teatro")
+    _make_event(session, city=city, organizer=organizer, location=location, title="feria-event", category="feria")
+
+    result = list_public_events(session, categories=["musica", "teatro"], today=TODAY)
+
+    assert {e.title for e in result} == {"musica-event", "teatro-event"}
+
+
+def _add_moments(session: Session, event: Event, moments: list[str]) -> None:
+    for moment in moments:
+        session.add(EventMoment(event_id=event.id, moment=moment))
+    session.commit()
+
+
+def test_filters_by_moment_diurno_excludes_only_nocturno(session, city, organizer, location):
+    diurno_event = _make_event(session, city=city, organizer=organizer, location=location, title="diurno-event")
+    nocturno_event = _make_event(session, city=city, organizer=organizer, location=location, title="nocturno-event")
+    _add_moments(session, diurno_event, ["diurno"])
+    _add_moments(session, nocturno_event, ["nocturno"])
+
+    result = list_public_events(session, moment="diurno", today=TODAY)
+
+    assert [e.title for e in result] == ["diurno-event"]
+
+
+def test_filters_by_moment_nocturno_includes_dual_events(session, city, organizer, location):
+    dual_event = _make_event(session, city=city, organizer=organizer, location=location, title="dual-event")
+    diurno_event = _make_event(session, city=city, organizer=organizer, location=location, title="diurno-event")
+    _add_moments(session, dual_event, ["diurno", "nocturno"])
+    _add_moments(session, diurno_event, ["diurno"])
+
+    result = list_public_events(session, moment="nocturno", today=TODAY)
+
+    assert [e.title for e in result] == ["dual-event"]
 
 
 def test_filters_by_date_range(session, city, organizer, location):
@@ -189,7 +229,7 @@ def test_filters_by_search(session, city, organizer, location):
 def test_returns_empty_list_when_no_matches(session, city, organizer, location):
     _make_event(session, city=city, organizer=organizer, location=location, title="musica-event", category="musica")
 
-    result = list_public_events(session, category="teatro", today=TODAY)
+    result = list_public_events(session, categories=["teatro"], today=TODAY)
 
     assert result == []
 
@@ -200,7 +240,7 @@ def _create_event_kwargs(**overrides) -> dict:
         description="Un show",
         event_date=date.today() + timedelta(days=10),
         event_time=time(21, 0),
-        category="musica",
+        categories=["musica"],
         location_name="El Tinglado Bar",
         location_address="Av. Roca 1240",
     )
@@ -398,7 +438,7 @@ def test_create_event_with_organizer_id_by_admin_uses_that_organizer(session, ci
         description=None,
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
-        category="musica",
+        categories=["musica"],
         location_name="Nuevo lugar",
         location_address="Calle Falsa 123",
         organizer_id=organizer.id,
@@ -416,7 +456,7 @@ def test_create_event_ignores_organizer_id_for_non_admin(session, city, organize
         description=None,
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
-        category="musica",
+        categories=["musica"],
         location_name="Nuevo lugar",
         location_address="Calle Falsa 123",
         organizer_id=admin.id,

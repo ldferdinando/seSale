@@ -1,7 +1,9 @@
 export type EventStatus = "pending" | "approved" | "rejected";
 export type EventPlan = "gratis" | "dest" | "pro";
 export type TicketType = "gratis" | "pago" | "anticipo";
-export type EventTimeOfDay = "diurno" | "nocturno";
+
+export const MIN_EVENT_CATEGORIES = 1;
+export const MAX_EVENT_CATEGORIES = 3;
 
 export interface EventStats {
   total_events: number;
@@ -28,8 +30,7 @@ export interface Event {
   date: string;
   time: string;
   time_end: string | null;
-  moment: EventTimeOfDay | null;
-  category: string;
+  categories: string[];
   status: EventStatus;
   plan: EventPlan;
   is_featured: boolean;
@@ -58,14 +59,14 @@ export interface EventDetail extends Event {
   organizer: EventOrganizerPublic;
 }
 
-export type EventMoment = "dia" | "noche";
+/** "diurno" 07:00–19:59 hs · "nocturno" 20:00–06:59 hs — filtro resuelto en el backend. */
+export type EventMoment = "diurno" | "nocturno";
 
 export interface EventFiltersState {
   category?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
-  /** Filtro cliente (día 07:00–19:59 / noche 20:00–06:59): la API no lo soporta todavía. */
   moment?: EventMoment;
 }
 
@@ -75,8 +76,7 @@ export interface EventCreateInput {
   date: string;
   time: string;
   time_end?: string;
-  moment?: EventTimeOfDay;
-  category: string;
+  categories: string[];
   location_name: string;
   location_address: string;
   ticket_type: TicketType;

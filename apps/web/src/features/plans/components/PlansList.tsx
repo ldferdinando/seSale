@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PlanCard } from "@/features/plans/components/PlanCard";
 import { useCheckout } from "@/features/plans/hooks/useCheckout";
 import { usePlans } from "@/features/plans/hooks/usePlans";
-import { ApiError } from "@/lib/api-client";
 
 export function PlansList() {
   const { data: plans, isLoading, isError } = usePlans();
@@ -14,6 +13,12 @@ export function PlansList() {
     checkout.mutate(planId, {
       onSuccess: (response) => {
         window.location.href = response.init_point;
+      },
+      onError: (error) => {
+        // El detalle técnico queda solo en consola/logs — a la UI nunca le
+        // mostramos el texto crudo del backend (que puede exponer detalle
+        // interno de la API de MercadoPago).
+        console.error("Error iniciando el checkout de MercadoPago:", error);
       },
     });
   }
@@ -39,7 +44,7 @@ export function PlansList() {
     <div className="flex flex-col gap-4">
       {checkout.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {checkout.error instanceof ApiError ? checkout.error.message : "No pudimos iniciar el pago."}
+          Hubo un problema al procesar el pago. Intentá de nuevo en unos minutos.
         </p>
       )}
 

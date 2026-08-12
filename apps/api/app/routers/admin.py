@@ -7,15 +7,17 @@ from sqlmodel import Session, select
 
 from app.core.deps import get_current_user, get_session, require_admin
 from app.core.limiter import limiter
-from app.models.event import EventStatus
+from app.models.event import Event, EventStatus
 from app.models.plan import PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 from app.schemas.event import AdminEventRead, EventRead
+from app.schemas.report import AdminReportRead, ReportStatusUpdate
 from app.schemas.subscription import AdminSubscriptionRead, SubscriptionActivateRequest
 from app.schemas.user import AdminUserCreate, UserRead
 from app.services.event_service import list_admin_events
 from app.services.payment_service import activate_subscription_manually, expire_subscriptions
+from app.services.report_service import list_admin_reports, update_report_status
 from app.services.user_service import create_user_by_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -173,3 +175,36 @@ async def patch_admin_subscription_activate(
 async def post_admin_subscriptions_expire(session: Session = Depends(get_session)) -> dict[str, int]:
     expired = expire_subscriptions(session)
     return {"expired_count": len(expired)}
+
+
+@router.get("/reports", response_model=list[AdminReportRead])
+@limiter.limit("60/minute")
+async def get_admin_reports(
+    request: Request,
+    status_filter: str | None = Query(default=None, alias="status"),
+    event_id: UUID | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[AdminReportRead]:
+    rows = list_admin_reports(
+        session, status=status_filter, event_id=event_id, date_from=date_from, date_to=date_to
+    )
+    return [
+        AdminReportRead(**report.model_dump(), event_title=event_title) for report, event_title in rows
+    ]
+
+
+@router.patch("/reports/{report_id}/status", response_model=AdminReportRead)
+async def patch_admin_report_status(
+    report_id: UUID,
+    payload: ReportStatusUpdate,
+    session: Session = Depends(get_session),
+) -> AdminReportRead:
+    try:
+        report = update_report_status(session, report_id, payload.status)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    event = session.get(Event, report.event_id)
+    return AdminReportRead(**report.model_dump(), event_title=event.title if event else "")

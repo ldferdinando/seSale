@@ -22,9 +22,7 @@ import {
   MapPin,
   MapPinned,
   MessageCircle,
-  Moon,
   Pencil,
-  Sun,
   Tag,
   Ticket,
   type LucideIcon,
@@ -33,21 +31,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { CategoryMultiSelect } from "@/features/events/components/CategoryMultiSelect";
 import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
-import { EVENT_CATEGORIES, type Event, type EventCreateInput, type TicketType } from "@/features/events/types";
+import type { Event, EventCreateInput, TicketType } from "@/features/events/types";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-
-const TIME_OF_DAY_OPTIONS: { value: "nocturno" | "diurno"; label: string; icon: LucideIcon }[] = [
-  { value: "nocturno", label: "Nocturno", icon: Moon },
-  { value: "diurno", label: "Diurno", icon: Sun },
-];
 
 const TICKET_TYPE_STYLES: { value: TicketType; label: string; icon: LucideIcon }[] = [
   { value: "gratis", label: "Gratis", icon: CheckCircle2 },
@@ -158,7 +151,6 @@ export function EventForm({
   const updateEvent = useUpdateEvent(eventId ?? "");
   const { data: currentUser } = useCurrentUser();
 
-  const [timeOfDay, setTimeOfDay] = useState<"nocturno" | "diurno">(initialValues?.moment ?? "nocturno");
   const [plan, setPlan] = useState<PublishPlan>(initialPlan ?? "dest");
   const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
   const [acquisition, setAcquisition] = useState({
@@ -183,8 +175,7 @@ export function EventForm({
       date: "",
       time: "",
       time_end: "",
-      moment: "nocturno",
-      category: undefined,
+      categories: [],
       location_name: "",
       location_address: "",
       ticket_type: "gratis",
@@ -199,7 +190,7 @@ export function EventForm({
   });
 
   const ticketType = watch("ticket_type");
-  const category = watch("category");
+  const categories = watch("categories");
 
   async function onSubmit(values: EventFormValues) {
     const payload: EventCreateInput = {
@@ -208,8 +199,7 @@ export function EventForm({
       date: values.date,
       time: values.time,
       time_end: values.time_end || undefined,
-      moment: timeOfDay,
-      category: values.category,
+      categories: values.categories,
       location_name: values.location_name,
       location_address: values.location_address,
       ticket_type: values.ticket_type,
@@ -254,36 +244,13 @@ export function EventForm({
 
       <div className="flex flex-col gap-1">
         <FieldLabel icon={LayoutGrid} required>
-          Categoría
+          Categorías (hasta 3)
         </FieldLabel>
-        <Select value={category} onValueChange={(value) => setValue("category", value, { shouldValidate: true })}>
-          <SelectTrigger id="category" aria-label="Categoría">
-            <SelectValue placeholder="Elegí una categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            {EVENT_CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FieldError message={errors.category?.message} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <FieldLabel icon={Clock} required>
-          Momento del evento
-        </FieldLabel>
-        <ToggleGrid
-          options={TIME_OF_DAY_OPTIONS}
-          value={timeOfDay}
-          onChange={(value) => {
-            setTimeOfDay(value);
-            setValue("moment", value, { shouldValidate: true });
-          }}
-          columns={2}
+        <CategoryMultiSelect
+          value={categories ?? []}
+          onChange={(value) => setValue("categories", value, { shouldValidate: true })}
         />
+        <FieldError message={errors.categories?.message} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

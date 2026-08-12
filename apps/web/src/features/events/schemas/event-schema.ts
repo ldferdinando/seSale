@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { EVENT_CATEGORIES } from "@/features/events/types";
+import { EVENT_CATEGORIES, MAX_EVENT_CATEGORIES, MIN_EVENT_CATEGORIES } from "@/features/events/types";
 
 const CATEGORY_VALUES = EVENT_CATEGORIES.map((c) => c.value) as [string, ...string[]];
 
@@ -15,8 +15,10 @@ export const eventFormSchema = z
     }),
     time: z.string().min(1, "La hora es obligatoria"),
     time_end: z.string().optional().or(z.literal("")),
-    moment: z.enum(["diurno", "nocturno"]),
-    category: z.enum(CATEGORY_VALUES, { message: "Elegí una categoría" }),
+    categories: z
+      .array(z.enum(CATEGORY_VALUES))
+      .min(MIN_EVENT_CATEGORIES, "Elegí al menos una categoría")
+      .max(MAX_EVENT_CATEGORIES, "Máximo 3 categorías"),
     location_name: z.string().min(1, "El lugar es obligatorio").max(255),
     location_address: z.string().min(1, "La dirección es obligatoria").max(500),
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),

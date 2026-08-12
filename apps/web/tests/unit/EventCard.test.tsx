@@ -32,4 +32,14 @@ describe("EventCard", () => {
     expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
     expect(screen.queryByText("Gratis")).not.toBeInTheDocument();
   });
+
+  it("shows a badge per category, up to 2, with a +N badge for the rest", () => {
+    const event = makeEvent({ categories: ["musica", "recital", "arte"] });
+
+    render(<EventCard event={event} />);
+
+    expect(screen.getByText("Música en vivo")).toBeInTheDocument();
+    expect(screen.getByText("Recital")).toBeInTheDocument();
+    expect(screen.getByText("+1")).toBeInTheDocument();
+  });
 });

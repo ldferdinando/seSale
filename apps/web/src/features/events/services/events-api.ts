@@ -17,6 +17,7 @@ import type {
 export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> {
   return apiGet<Event[]>("/api/events", {
     category: filters.category,
+    moment: filters.moment,
     date_from: filters.dateFrom,
     date_to: filters.dateTo,
     search: filters.search,

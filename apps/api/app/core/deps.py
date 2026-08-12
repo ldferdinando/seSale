@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, create_engine
 
@@ -62,3 +62,16 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requiere rol admin")
     return user
+
+
+def get_client_ip(request: Request) -> str | None:
+    """IP real del cliente — usa X-Forwarded-For si está presente (Railway
+    corre detrás de un proxy en producción), si no cae a request.client.host.
+
+    Se usa tanto para auditoría (Report.ip_address) como key_func del rate
+    limit del endpoint de reportes.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else None

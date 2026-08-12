@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
 
+    resend_api_key: str | None = None
+    admin_email: str = "admin@sesale.com.ar"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

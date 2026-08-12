@@ -8,8 +8,23 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlmodel import Session, SQLModel, delete
 
 from app.core.deps import engine
+from app.core.moment import calculate_moments
 from app.core.security import hash_password
-from app.models import AdSlot, City, Event, EventStatus, Location, Plan, PlanPrice, PlanType, Subscription, User
+from app.models import (
+    AdSlot,
+    City,
+    Event,
+    EventCategory,
+    EventMoment,
+    EventStatus,
+    Location,
+    Plan,
+    PlanPrice,
+    PlanType,
+    Report,
+    Subscription,
+    User,
+)
 from app.models.event import TicketType
 from app.models.plan import PricingType
 
@@ -17,7 +32,7 @@ SEED_PASSWORD = "Password123!"
 
 
 def _wipe(session: Session) -> None:
-    for model in (Subscription, PlanPrice, Plan, Event, AdSlot, Location, User, City):
+    for model in (Subscription, PlanPrice, Plan, Report, EventCategory, EventMoment, Event, AdSlot, Location, User, City):
         session.exec(delete(model))
     session.commit()
 
@@ -82,18 +97,20 @@ def seed() -> None:
         today = date.today()
 
         events_data = [
-            dict(title="Noche de Rock Nacional", category="musica", plan=PlanType.pro, days_offset=3, location=locations[0]),
-            dict(title="Feria de Artesanos del Valle", category="feria", plan=PlanType.dest, days_offset=5, location=locations[2]),
-            dict(title="Obra: La Casa de Bernarda Alba", category="teatro", plan=PlanType.gratis, days_offset=7, location=locations[1]),
-            dict(title="Fiesta Electrónica Under", category="dj", plan=PlanType.dest, days_offset=10, location=locations[0]),
-            dict(title="Milonga de los Jueves", category="milonga", plan=PlanType.gratis, days_offset=1, location=locations[1]),
-            dict(title="Stand Up: Risas del Alto Valle", category="standup", plan=PlanType.pro, days_offset=14, location=locations[0]),
-            dict(title="Recital Solidario", category="recital", plan=PlanType.gratis, days_offset=-2, location=locations[2]),
-            dict(title="Peña Folclórica de Otoño", category="pena", plan=PlanType.dest, days_offset=-10, location=locations[1]),
+            dict(title="Noche de Rock Nacional", categories=["musica", "recital"], plan=PlanType.pro, days_offset=3, location=locations[0], time=time(21, 0)),
+            dict(title="Feria de Artesanos del Valle", categories=["feria"], plan=PlanType.dest, days_offset=5, location=locations[2], time=time(11, 0), time_end=time(19, 0)),
+            dict(title="Obra: La Casa de Bernarda Alba", categories=["teatro"], plan=PlanType.gratis, days_offset=7, location=locations[1], time=time(20, 30)),
+            dict(title="Fiesta Electrónica Under", categories=["dj", "fiesta"], plan=PlanType.dest, days_offset=10, location=locations[0], time=time(23, 0)),
+            dict(title="Milonga de los Jueves", categories=["milonga"], plan=PlanType.gratis, days_offset=1, location=locations[1], time=time(18, 0), time_end=time(22, 0)),
+            dict(title="Stand Up: Risas del Alto Valle", categories=["standup"], plan=PlanType.pro, days_offset=14, location=locations[0], time=time(21, 30)),
+            dict(title="Recital Solidario", categories=["recital", "musica"], plan=PlanType.gratis, days_offset=-2, location=locations[2], time=time(17, 0)),
+            dict(title="Peña Folclórica de Otoño", categories=["pena", "musica", "fiesta"], plan=PlanType.dest, days_offset=-10, location=locations[1], time=time(21, 0)),
         ]
 
         for data in events_data:
             event_date = today + timedelta(days=data["days_offset"])
+            event_time = data["time"]
+            event_time_end = data.get("time_end")
             event = Event(
                 city_id=general_roca.id,
                 organizer_id=organizer.id,
@@ -101,14 +118,20 @@ def seed() -> None:
                 title=data["title"],
                 description=f"Evento de prueba: {data['title']}",
                 date=event_date,
-                time=time(21, 0),
-                category=data["category"],
+                time=event_time,
+                time_end=event_time_end,
                 status=EventStatus.approved,
                 plan=data["plan"],
                 ticket_type=TicketType.gratis,
                 created_at=datetime.now(timezone.utc) - timedelta(days=data["days_offset"]),
             )
             session.add(event)
+            session.flush()
+
+            for category in data["categories"]:
+                session.add(EventCategory(event_id=event.id, category=category))
+            for moment in calculate_moments(event_time, event_time_end):
+                session.add(EventMoment(event_id=event.id, moment=moment))
 
         ad_slots = [
             AdSlot(slot_key="home-0", city_id=general_roca.id, is_active=False, sort_order=0),

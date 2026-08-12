@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from sqlmodel import Session
 
 from app.core.security import hash_password
-from app.models import City, Event, EventStatus, Location, PlanType, User
+from app.models import City, Event, EventCategory, EventStatus, Location, PlanType, User
 
 
 def _make_event(session: Session, *, city: City, organizer: User, location: Location, **kwargs) -> Event:
@@ -18,10 +18,13 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         is_active=True,
     )
     defaults.update(kwargs)
+    category = defaults.pop("category")
     event = Event(city_id=city.id, organizer_id=organizer.id, location_id=location.id, **defaults)
     session.add(event)
     session.commit()
     session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category=category))
+    session.commit()
     return event
 
 

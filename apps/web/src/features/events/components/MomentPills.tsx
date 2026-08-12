@@ -16,10 +16,10 @@ export function MomentPills({ value, onChange }: MomentPillsProps) {
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => onChange(value === "dia" ? undefined : "dia")}
+          onClick={() => onChange(value === "diurno" ? undefined : "diurno")}
           className={cn(
             "flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors",
-            value === "dia" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-ink-2",
+            value === "diurno" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-ink-2",
           )}
         >
           <Sun className="h-3.5 w-3.5" aria-hidden />
@@ -27,10 +27,10 @@ export function MomentPills({ value, onChange }: MomentPillsProps) {
         </button>
         <button
           type="button"
-          onClick={() => onChange(value === "noche" ? undefined : "noche")}
+          onClick={() => onChange(value === "nocturno" ? undefined : "nocturno")}
           className={cn(
             "flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors",
-            value === "noche" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-ink-2",
+            value === "nocturno" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-ink-2",
           )}
         >
           <Moon className="h-3.5 w-3.5" aria-hidden />

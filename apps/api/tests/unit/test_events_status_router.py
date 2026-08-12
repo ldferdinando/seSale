@@ -5,7 +5,7 @@ import pytest
 from httpx import AsyncClient
 from sqlmodel import Session
 
-from app.models import City, Event, EventStatus, Location, User
+from app.models import City, Event, EventCategory, EventStatus, Location, User
 
 
 @pytest.fixture(name="pending_event")
@@ -17,12 +17,13 @@ def pending_event_fixture(session: Session, city: City, organizer: User, locatio
         title="Evento pendiente",
         date=date(2099, 1, 1),
         time=time(21, 0),
-        category="musica",
         status=EventStatus.pending,
     )
     session.add(event)
     session.commit()
     session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category="musica"))
+    session.commit()
     return event
 
 

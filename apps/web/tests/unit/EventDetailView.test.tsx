@@ -39,8 +39,9 @@ describe("EventDetailView", () => {
     expect(screen.getByText("Una noche especial de jazz en vivo")).toBeInTheDocument();
     expect(screen.getAllByText("El Tinglado Bar").length).toBeGreaterThan(0);
     expect(screen.getByText("Av. Roca 1240")).toBeInTheDocument();
-    expect(screen.getByText("Nocturno")).toBeInTheDocument();
-    expect(screen.getByText(/21:00 a 23:30 hs/)).toBeInTheDocument();
+    expect(screen.getByText("Música en vivo")).toBeInTheDocument();
+    // event.time = "21:00:00" UTC, event.time_end = "23:30:00" UTC → 18:00/20:30 hora Argentina (UTC-3)
+    expect(screen.getByText(/18:00 a 20:30 hs/)).toBeInTheDocument();
   });
 
   it("shows the available_on_site indicator only when true", () => {
@@ -85,7 +86,8 @@ describe("EventDetailView", () => {
     screen.getByText("Compartir").click();
 
     expect(shareMock).toHaveBeenCalledTimes(1);
-    expect(shareMock.mock.calls[0][0].title).toBe(event.title);
+    expect(shareMock.mock.calls[0][0].title).toBe(`${event.title} — seSALE`);
+    expect(shareMock.mock.calls[0][0].url).toContain(`/eventos/${event.id}`);
   });
 
   it("falls back to wa.me when Web Share API is not available", async () => {
@@ -93,12 +95,14 @@ describe("EventDetailView", () => {
     const openMock = vi.fn();
     vi.stubGlobal("open", openMock);
 
-    renderWithClient();
+    const event = makeEventDetail();
+    renderWithClient(event);
 
     screen.getByText("Compartir").click();
 
     expect(openMock).toHaveBeenCalledTimes(1);
     expect(openMock.mock.calls[0][0]).toContain("https://wa.me/?text=");
+    expect(decodeURIComponent(openMock.mock.calls[0][0])).toContain(`/eventos/${event.id}`);
   });
 
   it("does not show the edit button for an anonymous visitor", async () => {

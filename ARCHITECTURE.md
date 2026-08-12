@@ -286,10 +286,6 @@ class TicketType(str, Enum):
     pago     = "pago"
     anticipo = "anticipo"
 
-class EventMoment(str, Enum):
-    diurno   = "diurno"     # agregado en Etapa 4
-    nocturno = "nocturno"
-
 class Event(SQLModel, table=True):
     __tablename__ = "events"
 
@@ -304,8 +300,10 @@ class Event(SQLModel, table=True):
     date: date                                     # fecha del evento
     time: time                                     # hora inicio, en UTC
     time_end: time | None = Field(default=None)    # hora fin (Etapa 4)
-    moment: EventMoment | None = Field(default=None)  # diurno/nocturno (Etapa 4)
-    category: str = Field(max_length=50)           # "musica" | "teatro" | etc.
+    # category (str único) y moment (str único) vivieron acá hasta la
+    # Etapa 6.5 — ahora son las tablas event_categories / event_moments
+    # de abajo. moment se calcula siempre desde time/time_end, nunca se
+    # elige a mano.
 
     # Estado y visibilidad
     status: EventStatus = Field(default=EventStatus.pending)
@@ -336,6 +334,44 @@ class Event(SQLModel, table=True):
     city: "City" = Relationship(back_populates="events")
     organizer: "User" = Relationship(back_populates="organized_events")
     location: "Location" = Relationship(back_populates="events")
+    category_links: list["EventCategory"] = Relationship(back_populates="event")
+    moment_links: list["EventMoment"] = Relationship(back_populates="event")
+
+    @property
+    def categories(self) -> list[str]:
+        return [link.category for link in self.category_links]
+```
+
+#### `event_categories` (Etapa 6.5)
+
+Many-to-many evento/categoría — reemplaza el campo `Event.category` único.
+Un evento tiene entre 1 y 3 categorías (validado en `EventCreate`/`EventUpdate`).
+
+```python
+class EventCategory(SQLModel, table=True):
+    __tablename__ = "event_categories"
+
+    event_id: UUID = Field(foreign_key="events.id", primary_key=True)
+    category: str = Field(primary_key=True, max_length=50)  # ver enum de categorías más abajo
+
+    event: "Event" = Relationship(back_populates="category_links")
+```
+
+#### `event_moments` (Etapa 6.5)
+
+Momento del evento (diurno/nocturno) — reemplaza el campo `Event.moment`
+único. Se recalcula con `app.core.moment.calculate_moments(time, time_end)`
+cada vez que se crea o edita un evento; un evento con horario 18:00-22:00
+tiene ambos registros.
+
+```python
+class EventMoment(SQLModel, table=True):
+    __tablename__ = "event_moments"
+
+    event_id: UUID = Field(foreign_key="events.id", primary_key=True)
+    moment: str = Field(primary_key=True, max_length=20)  # "diurno" | "nocturno"
+
+    event: "Event" = Relationship(back_populates="moment_links")
 ```
 
 #### `locations`
@@ -459,6 +495,26 @@ class AdSlot(SQLModel, table=True):
     alt_text: str | None = Field(default=None)
     is_active: bool = Field(default=False)
     sort_order: int = Field(default=0)             # orden de rotación
+```
+
+#### `reports` (Etapa 6.5)
+
+Reporte de un evento hecho por un usuario **sin login**. Requiere texto
+descriptivo y teléfono de contacto; el reporte genera un email al admin
+(Resend) y queda visible en el panel admin aunque el email falle.
+
+```python
+class Report(SQLModel, table=True):
+    __tablename__ = "reports"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    event_id: UUID = Field(foreign_key="events.id", index=True)
+    text: str = Field(max_length=1000)              # mín. 10, máx. 1000
+    contact_phone: str = Field(max_length=50)
+    ip_address: str | None = Field(default=None, max_length=45)  # auditoría + rate limit
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    phone_verified: bool = Field(default=False)     # validación futura del teléfono
+    status: str = Field(default="pending")          # "pending" | "reviewed" | "dismissed"
 ```
 
 ### Categorías de eventos (enum)
@@ -632,15 +688,28 @@ PATCH /api/admin/subscriptions/{id}/activate, mismo efecto que el
 webhook aprobado.
 ```
 
-### Flujo de compartir evento por WhatsApp
+### Flujo de compartir por WhatsApp (Etapa 6.5)
+
+Dos puntos de entrada distintos — nunca se mezclan:
 
 ```
-Usuario toca "Compartir" en el detalle del evento
+Home ("Compartir seSALE", ShareBanner) → comparte la app en general
         │
         ▼
-  Frontend arma el mensaje:
-  "{título} · {fecha} · {lugar}. ¡Organicemos para ir!
-   Lo vi en seSALE: {url_del_evento}"
+  Frontend arma: title "seSALE — Agenda cultural del Alto Valle",
+  text "¡Encontrá todos los eventos culturales de la Patagonia en
+  seSALE!", url = window.location.origin (sin /eventos/...)
+        │
+        ▼
+  Si el navegador soporta Web Share API → navigator.share()
+  Si no → window.open("https://wa.me/?text=...")
+
+Detalle del evento ("Compartir", EventDetailView) → comparte ESE evento
+        │
+        ▼
+  Frontend arma: title "{título} — seSALE", text con título, fecha
+  legible, hora en formato 24hs (formatEventTime) y lugar,
+  url = window.location.origin + "/eventos/" + event.id
         │
         ▼
   Si el navegador soporta Web Share API → navigator.share()
@@ -664,10 +733,17 @@ POST   /api/auth/logout                Invalida el refresh_token (requiere estar
 
 ### Eventos (`/api/events`)
 ```
-GET    /api/events                     Listar eventos aprobados y activos
-                                       Filtros: city_id, category, date_from,
-                                                date_to, moment (dia|noche),
-                                                plan, search
+GET    /api/events                     Listar eventos aprobados y activos      ✓ Etapa 6.5
+                                       Filtros: city_id, category (repetible:
+                                                ?category=a&category=b es OR),
+                                                moment (diurno|nocturno, JOIN
+                                                con event_moments — un evento
+                                                dual aparece en ambos),
+                                                date_from, date_to, plan, search
+                                       category ahora es multi-valor por
+                                       evento (event_categories); el filtro
+                                       sigue devolviendo eventos con AL MENOS
+                                       UNA de las categorías/momento pedidos
 GET    /api/events/{id}                Detalle completo de un evento     ✓ Etapa 4
                                        (evento + ubicación + ciudad + datos
                                        públicos del organizador). approved+activo:
@@ -695,6 +771,15 @@ PATCH  /api/events/{id}/plan           Cambiar plan del evento (admin)          
                                        manual sin cobro — el pago automático vía
                                        MercadoPago llega en Etapa 6
 GET    /api/events/mine                Mis eventos: pending + approved + rejected (user)
+POST   /api/events/{id}/report         Reportar un evento (público, sin login)  ✓ Etapa 6.5
+                                       Body: { text (10-1000 chars), contact_phone
+                                       (requerido) }. Rate limit: 3 por IP por hora
+                                       (slowapi, key = X-Forwarded-For o
+                                       request.client.host). 404 si el evento no
+                                       existe o no está approved. Guarda el reporte
+                                       y envía un email al admin (Resend) — si el
+                                       email falla, se loguea pero no se falla el
+                                       endpoint (el reporte ya quedó guardado)
 ```
 
 ### Usuarios (`/api/users`)
@@ -800,6 +885,14 @@ POST   /api/admin/subscriptions/expire         Admin (o llamada interna). Marca
                                               — se invoca periódicamente a mano
 ```
 
+### Reportes — administración (`/api/admin`) ✓ Etapa 6.5
+```
+GET    /api/admin/reports              Admin. Filtros: status, event_id,
+                                       date_from, date_to. Orden: created_at
+                                       DESC. Incluye event_title (join con Event)
+PATCH  /api/admin/reports/{id}/status  Admin. Body: { status: "reviewed"|"dismissed" }
+```
+
 ### Espacios publicitarios (`/api/ads`)
 ```
 GET    /api/ads                        Listar slots activos por city_id y slot_key (público)
@@ -825,6 +918,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **5** | Sistema de destacados: ordenamiento por plan en GET /api/events, endpoints admin para gestión de plan e is_featured, badges visuales en cards del home | Sin pago todavía |
 | **5.6** | Bugs de auth y navbar, perfil en Mi cuenta, panel admin completo de eventos, admin crea usuarios y eventos para otros | `created_by` en `users`, `GET /api/admin/events`, `POST /api/admin/users` |
 | **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | ✓ Completa: pantalla `/planes`, checkout con SDK oficial, webhook con verificación de firma + reconfirmación contra la API de MP, activación automática de eventos, vencimiento (`/api/admin/subscriptions/expire`), gestión admin de suscripciones y activación manual del plan Banner |
+| **6.5** | Mejoras de modelo y features pendientes: hora en formato 24hs (Argentina), categorías múltiples por evento, momento dual (diurno y nocturno calculado), compartir por WhatsApp (home y detalle), reporte de eventos sin login. | ✓ Completa: `event_categories` y `event_moments` reemplazan los campos únicos `category`/`moment` de `events` (migración `0007`), tabla `reports` (migración `0008`), `POST /api/events/{id}/report` con rate limit y email vía Resend, panel admin de reportes |
 | **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
@@ -852,8 +946,11 @@ MERCADOPAGO_PUBLIC_KEY=tu-public-key-de-mp
 MERCADOPAGO_WEBHOOK_SECRET=tu-webhook-secret
 
 SESALE_WHATSAPP=549XXXXXXXXXX              # contacto para el plan Banner ("Consultar")
-FRONTEND_URL=http://localhost:3000         # back_urls de la preferencia de MP
+FRONTEND_URL=http://localhost:3000         # back_urls de la preferencia de MP + link del panel admin en el email de reporte
 API_URL=http://localhost:8000              # notification_url del webhook de MP
+
+RESEND_API_KEY=                            # Etapa 6.5 — email de reporte de eventos
+ADMIN_EMAIL=admin@sesale.com.ar            # Etapa 6.5 — destinatario del email de reporte
 
 ENVIRONMENT=development                    # development | production
 ALLOWED_ORIGINS=http://localhost:3000,https://sesale.com.ar

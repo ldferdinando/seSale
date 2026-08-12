@@ -14,8 +14,7 @@ def _valid_payload() -> dict:
         "date": (date.today() + timedelta(days=10)).isoformat(),
         "time": "21:00:00",
         "time_end": "23:30:00",
-        "moment": "nocturno",
-        "category": "musica",
+        "categories": ["musica"],
         "location_name": "El Tinglado Bar",
         "location_address": "Av. Roca 1240",
         "ticket_type": "gratis",
@@ -42,7 +41,53 @@ async def test_create_event_invalid_category_returns_422(
     client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
 ):
     payload = _valid_payload()
-    payload["category"] = "no-existe"
+    payload["categories"] = ["no-existe"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_with_multiple_categories_success(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["categories"] = ["musica", "recital", "arte"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    # El orden no está garantizado (tabla intermedia sin columna de orden).
+    assert set(response.json()["categories"]) == {"musica", "recital", "arte"}
+
+
+async def test_create_event_zero_categories_returns_422(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["categories"] = []
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_four_categories_returns_422(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["categories"] = ["musica", "recital", "arte", "teatro"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_duplicate_categories_returns_422(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["categories"] = ["musica", "musica"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
 

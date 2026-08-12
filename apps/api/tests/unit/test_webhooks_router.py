@@ -73,7 +73,6 @@ async def test_webhook_approved_activates_subscription_and_updates_events(
         title="Show en vivo",
         date=date.today() + timedelta(days=5),
         time=time(21, 0),
-        category="musica",
         status=EventStatus.approved,
         is_active=True,
     )

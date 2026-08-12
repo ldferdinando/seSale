@@ -31,7 +31,7 @@ describe("useCreateEvent", () => {
       title: "Nuevo evento",
       date: "2099-01-01",
       time: "21:00:00",
-      category: "musica",
+      categories: ["musica"],
       location_name: "Lugar",
       location_address: "Dirección",
       ticket_type: "gratis",

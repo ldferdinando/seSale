@@ -3,7 +3,7 @@ from datetime import date, time
 from httpx import AsyncClient
 from sqlmodel import Session
 
-from app.models import City, Event, EventStatus, Location, User
+from app.models import City, Event, EventCategory, EventStatus, Location, User
 
 
 def _make_event(session: Session, *, city: City, organizer: User, location: Location, title: str, status: EventStatus) -> Event:
@@ -14,12 +14,13 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         title=title,
         date=date(2099, 1, 1),
         time=time(21, 0),
-        category="musica",
         status=status,
     )
     session.add(event)
     session.commit()
     session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category="musica"))
+    session.commit()
     return event
 
 

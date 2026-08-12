@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from httpx import AsyncClient
 from sqlmodel import Session
 
+from app.models.category import EventCategory
 from app.models.event import Event, EventStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
@@ -83,13 +84,14 @@ async def test_activate_subscription_as_admin_updates_events(
         title="Evento del cliente banner",
         date=(datetime.now(timezone.utc) + timedelta(days=5)).date(),
         time=datetime.now(timezone.utc).time(),
-        category="musica",
         status=EventStatus.approved,
         is_active=True,
     )
     session.add(event)
     session.commit()
     session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category="musica"))
+    session.commit()
 
     expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     response = await client.patch(

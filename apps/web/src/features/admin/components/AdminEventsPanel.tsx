@@ -69,7 +69,7 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
           {!event.is_active && <Badge variant="muted">Eliminado</Badge>}
         </div>
         <p className="mt-1 text-xs text-ink-4">
-          {event.organizer_public_name} · {event.location.name} · {event.category}
+          {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
         </p>
         <p className="mt-1 text-xs text-ink-5">{format(parseISO(event.date), "d MMM yyyy", { locale: es })}</p>
       </div>

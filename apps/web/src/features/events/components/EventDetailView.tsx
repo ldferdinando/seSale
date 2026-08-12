@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -24,8 +25,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
+import { ReportEventModal } from "@/features/events/components/ReportEventModal";
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
+import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 
 interface EventDetailViewProps {
   event: EventDetail;
@@ -37,19 +40,16 @@ const TICKET_TYPE_LABEL: Record<EventDetail["ticket_type"], string> = {
   anticipo: "Con anticipo",
 };
 
-const MOMENT_LABEL: Record<NonNullable<EventDetail["moment"]>, string> = {
-  diurno: "Diurno",
-  nocturno: "Nocturno",
-};
-
 function shareEvent(event: EventDetail) {
   const eventDate = parseISO(event.date);
-  const dateLabel = format(eventDate, "EEE d 'de' MMMM", { locale: es });
-  const url = typeof window !== "undefined" ? window.location.href : "";
-  const text = `${event.title} · ${dateLabel} · ${event.location.name}. ¡Organicemos para ir! Lo vi en seSALE: ${url}`;
+  const dateLabel = format(eventDate, "EEEE d 'de' MMMM", { locale: es });
+  const timeLabel = formatEventTime(toEventDateTimeISO(event.date, event.time));
+  const url = typeof window !== "undefined" ? `${window.location.origin}/eventos/${event.id}` : "";
+  const title = `${event.title} — seSALE`;
+  const text = `${event.title} · ${dateLabel} · ${timeLabel} hs · ${event.location.name}. ¡Organicemos para ir! Lo vi en seSALE: ${url}`;
 
   if (typeof navigator !== "undefined" && navigator.share) {
-    navigator.share({ title: event.title, text, url }).catch(() => {});
+    navigator.share({ title, text, url }).catch(() => {});
   } else if (typeof window !== "undefined") {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
@@ -57,10 +57,13 @@ function shareEvent(event: EventDetail) {
 
 export function EventDetailView({ event }: EventDetailViewProps) {
   const { data: currentUser } = useCurrentUser();
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  const style = CATEGORY_STYLES[event.category] ?? DEFAULT_CATEGORY_STYLE;
+  const style = CATEGORY_STYLES[event.categories[0]] ?? DEFAULT_CATEGORY_STYLE;
   const Icon = style.icon;
-  const categoryLabel = EVENT_CATEGORIES.find((c) => c.value === event.category)?.label ?? event.category;
+  const categoryLabels = event.categories.map(
+    (value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value,
+  );
   const eventDate = parseISO(event.date);
 
   const canEdit = Boolean(currentUser && (currentUser.id === event.organizer_id || currentUser.role === "admin"));
@@ -94,12 +97,17 @@ export function EventDetailView({ event }: EventDetailViewProps) {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div
-          className="flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white"
-          style={{ backgroundColor: style.color }}
-        >
-          <Icon className="h-3.5 w-3.5" aria-hidden />
-          {categoryLabel}
+        <div className="flex flex-wrap gap-1.5">
+          {categoryLabels.map((label, index) => (
+            <div
+              key={label}
+              className="flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white"
+              style={{ backgroundColor: CATEGORY_STYLES[event.categories[index]]?.color ?? style.color }}
+            >
+              {index === 0 && <Icon className="h-3.5 w-3.5" aria-hidden />}
+              {label}
+            </div>
+          ))}
         </div>
 
         <h1 className="text-xl font-black leading-tight tracking-tight text-foreground">{event.title}</h1>
@@ -117,8 +125,8 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Horario</p>
               <p className="text-sm font-bold text-foreground">
-                {event.time.slice(0, 5)}
-                {event.time_end ? ` a ${event.time_end.slice(0, 5)}` : ""} hs
+                {formatEventTime(toEventDateTimeISO(event.date, event.time))}
+                {event.time_end ? ` a ${formatEventTime(toEventDateTimeISO(event.date, event.time_end))}` : ""} hs
               </p>
             </div>
           </div>
@@ -129,15 +137,6 @@ export function EventDetailView({ event }: EventDetailViewProps) {
               <p className="text-sm font-bold text-foreground">{event.location.name}</p>
             </div>
           </div>
-          {event.moment && (
-            <div className="flex items-start gap-2 rounded-xl border border-border bg-card p-3">
-              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Momento</p>
-                <p className="text-sm font-bold text-foreground">{MOMENT_LABEL[event.moment]}</p>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex items-start gap-2 text-sm text-ink-2">
@@ -285,22 +284,22 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           {event.organizer.public_whatsapp && <p className="text-xs text-ink-4">{event.organizer.public_whatsapp}</p>}
         </div>
 
-        {/* Placeholder visual: reporte de eventos. No hay modelo/endpoint de reportes — ver a_revisar.md */}
         <div className="flex flex-col gap-2 rounded-xl bg-surface-5 p-3">
           <p className="text-xs text-ink-4">
             El contenido de seSALE es moderado. Si este evento no te parece cultural o apropiado, podés reportarlo.
           </p>
           <button
             type="button"
-            disabled
+            onClick={() => setReportModalOpen(true)}
             className="flex w-fit items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive"
-            title="Próximamente"
           >
             <Flag className="h-3 w-3" aria-hidden />
             Reportar evento
           </button>
         </div>
       </div>
+
+      {reportModalOpen && <ReportEventModal eventId={event.id} onClose={() => setReportModalOpen(false)} />}
     </div>
   );
 }

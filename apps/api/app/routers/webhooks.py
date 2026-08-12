@@ -48,7 +48,15 @@ async def post_mercadopago_webhook(request: Request, session: Session = Depends(
         logger.info("Webhook MP ignorado: topic=%s notification_id=%s", topic, notification_id)
         return {"status": "ignored"}
 
-    payment_data = fetch_payment_from_mp(notification_id)
+    try:
+        payment_data = fetch_payment_from_mp(notification_id)
+    except Exception:
+        # No pudimos reconfirmar el pago contra la API de MP (red, token, etc.):
+        # no procesamos nada, pero igual respondemos 200 — MP no debe reintentar
+        # indefinidamente por un problema nuestro; queda logueado para revisar.
+        logger.exception("No se pudo reconfirmar el pago %s contra la API de MP", notification_id)
+        return {"status": "error_confirming_payment"}
+
     payment_status = payment_data.get("status")
 
     if payment_status == "approved":

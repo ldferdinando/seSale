@@ -7,6 +7,7 @@ contra la API de MercadoPago (`sdk.payment().get(...)`) antes de activar nada.
 
 import hashlib
 import hmac
+import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -19,7 +20,10 @@ from app.models.plan import Plan, PlanPrice, PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 
+logger = logging.getLogger(__name__)
+
 SUBSCRIPTION_DURATION_DAYS = 30
+GENERIC_MP_ERROR = "No pudimos iniciar el pago con MercadoPago. Intentá de nuevo en unos minutos."
 
 
 def _get_mp_sdk() -> mercadopago.SDK:
@@ -82,10 +86,16 @@ def create_checkout_preference(session: Session, *, user: User, plan_id: UUID) -
     }
 
     sdk = _get_mp_sdk()
-    result = sdk.preference().create(preference_data)
+    try:
+        result = sdk.preference().create(preference_data)
+    except Exception:
+        logger.exception("Excepción llamando a la API de MercadoPago (preference.create)")
+        raise RuntimeError(GENERIC_MP_ERROR) from None
+
     response = result.get("response", {})
     if result.get("status", 200) >= 300 or "id" not in response or "init_point" not in response:
-        raise RuntimeError(f"MercadoPago rechazó la creación de la preferencia: {response}")
+        logger.error("MercadoPago rechazó la creación de la preferencia: %s", response)
+        raise RuntimeError(GENERIC_MP_ERROR)
 
     preference_id = str(response["id"])
     init_point = response["init_point"]

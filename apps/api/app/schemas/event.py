@@ -5,8 +5,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.event import EventMoment, EventStatus, TicketType
+from app.models.event import EventStatus, TicketType
 from app.models.plan import PlanType
+
+MIN_CATEGORIES = 1
+MAX_CATEGORIES = 3
 
 VALID_CATEGORIES = {
     "musica",
@@ -23,6 +26,15 @@ VALID_CATEGORIES = {
     "infantil",
     "deportes",
 }
+
+
+def _validate_categories(value: list[str]) -> list[str]:
+    if len(value) != len(set(value)):
+        raise ValueError("No se pueden repetir categorías")
+    invalid = [v for v in value if v not in VALID_CATEGORIES]
+    if invalid:
+        raise ValueError(f"Categoría inválida: {invalid[0]}")
+    return value
 
 
 class LocationRead(BaseModel):
@@ -46,8 +58,7 @@ class EventRead(BaseModel):
     date: date
     time: time
     time_end: time | None
-    moment: EventMoment | None
-    category: str
+    categories: list[str]
     status: EventStatus
     plan: PlanType
     is_featured: bool
@@ -82,7 +93,8 @@ class EventDetailRead(EventRead):
 
 class EventListParams(BaseModel):
     city_id: UUID | None = None
-    category: str | None = None
+    category: list[str] | None = None
+    moment: str | None = None
     date_from: date | None = None
     date_to: date | None = None
     search: str | None = None
@@ -111,8 +123,7 @@ class EventCreate(BaseModel):
     date: date
     time: time
     time_end: time | None = None
-    moment: EventMoment | None = None
-    category: str
+    categories: list[str] = Field(min_length=MIN_CATEGORIES, max_length=MAX_CATEGORIES)
 
     # Solo tiene efecto si quien crea el evento es admin (Etapa 5.6): permite
     # cargar el evento en nombre de otro organizador. Un "user" lo ignora
@@ -132,12 +143,10 @@ class EventCreate(BaseModel):
     contact_web: str | None = None
     contact_email: str | None = None
 
-    @field_validator("category")
+    @field_validator("categories")
     @classmethod
-    def validate_category(cls, value: str) -> str:
-        if value not in VALID_CATEGORIES:
-            raise ValueError(f"Categoría inválida: {value}")
-        return value
+    def validate_categories(cls, value: list[str]) -> list[str]:
+        return _validate_categories(value)
 
     @field_validator("date")
     @classmethod
@@ -153,8 +162,7 @@ class EventUpdate(BaseModel):
     date: _Date | None = None
     time: _Time | None = None
     time_end: _Time | None = None
-    moment: EventMoment | None = None
-    category: str | None = None
+    categories: list[str] | None = Field(default=None, min_length=MIN_CATEGORIES, max_length=MAX_CATEGORIES)
 
     location_name: str | None = Field(default=None, max_length=255, min_length=1)
     location_address: str | None = Field(default=None, max_length=500, min_length=1)
@@ -169,12 +177,12 @@ class EventUpdate(BaseModel):
     contact_web: str | None = None
     contact_email: str | None = None
 
-    @field_validator("category")
+    @field_validator("categories")
     @classmethod
-    def validate_category(cls, value: str | None) -> str | None:
-        if value is not None and value not in VALID_CATEGORIES:
-            raise ValueError(f"Categoría inválida: {value}")
-        return value
+    def validate_categories(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+        return _validate_categories(value)
 
     @field_validator("date")
     @classmethod

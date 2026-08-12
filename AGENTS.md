@@ -85,6 +85,7 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 | uvicorn | 0.29.x | Servidor ASGI |
 | httpx | 0.27.x | Cliente HTTP async (tests + llamadas a MercadoPago) |
 | mercadopago | 2.x | SDK oficial de MercadoPago (Etapa 6) |
+| resend | 2.x | Envío de emails — reporte de eventos (Etapa 6.5) |
 
 ### Base de datos y servicios
 | Servicio | Etapa | Uso |
@@ -155,22 +156,29 @@ root/
 │       │   ├── core/               # Config, seguridad, dependencias
 │       │   │   ├── config.py
 │       │   │   ├── security.py
-│       │   │   └── deps.py
+│       │   │   ├── deps.py
+│       │   │   ├── moment.py       # calculate_moments() — Etapa 6.5
+│       │   │   └── email.py        # send_report_email() (Resend) — Etapa 6.5
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py
 │       │   │   ├── user.py
 │       │   │   ├── event.py
+│       │   │   ├── category.py     # EventCategory (event_categories) — Etapa 6.5
+│       │   │   ├── moment.py       # EventMoment (event_moments) — Etapa 6.5
+│       │   │   ├── report.py       # Report — Etapa 6.5
 │       │   │   ├── location.py
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   └── ad_slot.py
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
 │       │   │   ├── plan.py         # Etapa 6
-│       │   │   └── subscription.py # Etapa 6
+│       │   │   ├── subscription.py # Etapa 6
+│       │   │   └── report.py       # Etapa 6.5
 │       │   ├── routers/            # Endpoints organizados por recurso
-│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5
 │       │   │   ├── auth.py
 │       │   │   ├── events.py
+│       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py
 │       │   │   ├── cities.py
 │       │   │   ├── locations.py
@@ -183,7 +191,8 @@ root/
 │       │       ├── event_service.py
 │       │       ├── user_service.py
 │       │       ├── city_service.py
-│       │       └── payment_service.py
+│       │       ├── payment_service.py
+│       │       └── report_service.py  # Etapa 6.5
 │       ├── tests/                  # Tests del backend
 │       │   ├── unit/
 │       │   └── integration/

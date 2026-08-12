@@ -6,7 +6,36 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
-import type { Event } from "@/features/events/types";
+import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
+
+const VISIBLE_CATEGORY_BADGES = 2;
+
+/** Badges de categoría del evento: las primeras 2, con "+N" si hay más. */
+export function CategoryBadges({ categories }: { categories: string[] }) {
+  const visible = categories.slice(0, VISIBLE_CATEGORY_BADGES);
+  const remaining = categories.length - visible.length;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {visible.map((category) => {
+        const style = CATEGORY_STYLES[category] ?? DEFAULT_CATEGORY_STYLE;
+        const label = EVENT_CATEGORIES.find((c) => c.value === category)?.label ?? category;
+        return (
+          <span
+            key={category}
+            className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
+            style={{ backgroundColor: style.color }}
+          >
+            {label}
+          </span>
+        );
+      })}
+      {remaining > 0 && (
+        <span className="rounded-full bg-surface-5 px-2 py-0.5 text-[9px] font-bold text-ink-4">+{remaining}</span>
+      )}
+    </div>
+  );
+}
 
 /**
  * Badge de plan, siguiendo el estilo de seSALE.html:
@@ -41,7 +70,7 @@ interface EventCardProps {
 
 export function EventCard({ event }: EventCardProps) {
   const eventDate = parseISO(event.date);
-  const style = CATEGORY_STYLES[event.category] ?? DEFAULT_CATEGORY_STYLE;
+  const style = CATEGORY_STYLES[event.categories[0]] ?? DEFAULT_CATEGORY_STYLE;
   const Icon = style.icon;
 
   return (
@@ -79,6 +108,9 @@ export function EventCard({ event }: EventCardProps) {
               <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
               {event.location.name}
             </p>
+            <div className="mt-1.5">
+              <CategoryBadges categories={event.categories} />
+            </div>
           </div>
         </CardContent>
       </Card>

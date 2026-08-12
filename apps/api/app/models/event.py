@@ -19,11 +19,6 @@ class TicketType(str, Enum):
     anticipo = "anticipo"
 
 
-class EventMoment(str, Enum):
-    diurno = "diurno"
-    nocturno = "nocturno"
-
-
 class Event(SQLModel, table=True):
     __tablename__ = "events"
 
@@ -38,8 +33,10 @@ class Event(SQLModel, table=True):
     date: date
     time: time
     time_end: time | None = Field(default=None)
-    moment: EventMoment | None = Field(default=None)
-    category: str = Field(max_length=50)
+    # category (str único) y moment (str único) se migraron a las tablas
+    # event_categories / event_moments en la Etapa 6.5 — ver category_links /
+    # moment_links más abajo. moment ahora se calcula siempre desde
+    # time/time_end con app.core.moment.calculate_moments().
 
     # Estado y visibilidad
     status: EventStatus = Field(default=EventStatus.pending)
@@ -69,3 +66,14 @@ class Event(SQLModel, table=True):
     city: "City" = Relationship(back_populates="events")
     organizer: "User" = Relationship(back_populates="organized_events")
     location: "Location" = Relationship(back_populates="events")
+    category_links: list["EventCategory"] = Relationship(
+        back_populates="event", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    moment_links: list["EventMoment"] = Relationship(
+        back_populates="event", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    @property
+    def categories(self) -> list[str]:
+        """Lista de categorías del evento — se serializa tal cual en EventRead."""
+        return [link.category for link in self.category_links]

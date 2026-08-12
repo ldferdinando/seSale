@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlmodel import Session
 
 from app.core.security import create_access_token, hash_password
-from app.models import City, Event, Location, User
+from app.models import City, Event, EventCategory, Location, User
 
 
 def _make_event(session: Session, *, organizer: User, location: Location, city: City) -> Event:
@@ -16,11 +16,12 @@ def _make_event(session: Session, *, organizer: User, location: Location, city: 
         title="Evento a eliminar",
         date=date.today() + timedelta(days=5),
         time=time(21, 0),
-        category="musica",
     )
     session.add(event)
     session.commit()
     session.refresh(event)
+    session.add(EventCategory(event_id=event.id, category="musica"))
+    session.commit()
     return event
 
 

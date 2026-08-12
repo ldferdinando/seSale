@@ -23,9 +23,8 @@ async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEven
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
 }
 
-async function selectCategory(user: ReturnType<typeof userEvent.setup>, label: string) {
-  await user.click(screen.getByLabelText("Categoría"));
-  await user.click(await screen.findByRole("option", { name: label }));
+async function toggleCategory(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(screen.getByLabelText(label));
 }
 
 describe("EventForm", () => {
@@ -39,8 +38,7 @@ describe("EventForm", () => {
 
     expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
-    expect(screen.getByLabelText("Categoría")).toBeInTheDocument();
-    expect(screen.getByText("Momento del evento")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Categorías" })).toBeInTheDocument();
     expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Hora inicio/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Hora fin/)).toBeInTheDocument();
@@ -77,7 +75,7 @@ describe("EventForm", () => {
     const onContinue = renderWithClient();
 
     await fillRequiredFieldsExceptCategory(user);
-    await selectCategory(user, "Música en vivo");
+    await toggleCategory(user, "Música en vivo");
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -89,8 +87,24 @@ describe("EventForm", () => {
       time: "21:00",
       location_name: "El Tinglado Bar",
       location_address: "Av. Roca 1240",
-      category: "musica",
+      categories: ["musica"],
     });
     expect(plan).toBe("dest");
+  });
+
+  it("limits category selection to 3 and disables the rest", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await toggleCategory(user, "Música en vivo");
+    await toggleCategory(user, "Fiesta / Baile");
+    await toggleCategory(user, "Teatro");
+
+    const feriaCheckbox = screen.getByLabelText("Feria") as HTMLInputElement;
+    expect(feriaCheckbox).toBeDisabled();
+
+    const musicaCheckbox = screen.getByLabelText("Música en vivo") as HTMLInputElement;
+    expect(musicaCheckbox).not.toBeDisabled();
+    expect(musicaCheckbox.checked).toBe(true);
   });
 });

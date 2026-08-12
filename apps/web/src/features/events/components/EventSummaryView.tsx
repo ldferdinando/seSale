@@ -12,9 +12,7 @@ import {
   Mail,
   MapPin,
   MapPinned,
-  Moon,
   Pencil,
-  Sun,
   Ticket,
   type LucideIcon,
 } from "lucide-react";
@@ -59,7 +57,9 @@ interface EventSummaryViewProps {
 export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSummaryViewProps) {
   const createEvent = useCreateEvent();
 
-  const categoryLabel = EVENT_CATEGORIES.find((c) => c.value === payload.category)?.label ?? payload.category;
+  const categoryLabels = payload.categories
+    .map((value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value)
+    .join(", ");
   const ticketTypeLabel = TICKET_TYPE_OPTIONS.find((t) => t.value === payload.ticket_type)?.label ?? payload.ticket_type;
   const planOption = PUBLISH_PLAN_OPTIONS.find((p) => p.value === plan);
   const eventDate = parseISO(payload.date);
@@ -85,12 +85,7 @@ export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSu
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <SummaryRow icon={LayoutGrid} label="Categoría" value={categoryLabel} />
-            <SummaryRow
-              icon={payload.moment === "diurno" ? Sun : Moon}
-              label="Momento"
-              value={payload.moment === "diurno" ? "Diurno" : "Nocturno"}
-            />
+            <SummaryRow icon={LayoutGrid} label="Categorías" value={categoryLabels} />
             <SummaryRow icon={Calendar} label="Fecha" value={format(eventDate, "d 'de' MMMM yyyy", { locale: es })} />
             <SummaryRow
               icon={Clock}

@@ -25,8 +25,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   fireEvent.change(screen.getByLabelText(/Hora inicio/), { target: { value: "21:00" } });
   await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
-  await user.click(screen.getByLabelText("Categoría"));
-  await user.click(await screen.findByRole("option", { name: "Música en vivo" }));
+  await user.click(screen.getByLabelText("Música en vivo"));
 }
 
 describe("PublishFlow", () => {

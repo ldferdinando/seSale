@@ -1,15 +1,34 @@
 from datetime import date, datetime, time, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, case, delete, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from app.core.moment import calculate_moments
+from app.models.category import EventCategory
 from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
+from app.models.moment import EventMoment
 from app.models.plan import PlanType
 from app.models.user import User
 from app.schemas.event import EventUpdate
+
+_EVENT_LOAD_OPTIONS = (selectinload(Event.location), selectinload(Event.category_links))
+
+
+def _sync_event_categories(session: Session, event: Event, categories: list[str]) -> None:
+    """Replace completo: borra las categorías existentes y crea las nuevas."""
+    session.exec(delete(EventCategory).where(EventCategory.event_id == event.id))
+    for category in categories:
+        session.add(EventCategory(event_id=event.id, category=category))
+
+
+def _sync_event_moments(session: Session, event: Event) -> None:
+    """Recalcula y reemplaza los momentos del evento desde time/time_end."""
+    session.exec(delete(EventMoment).where(EventMoment.event_id == event.id))
+    for moment in calculate_moments(event.time, event.time_end):
+        session.add(EventMoment(event_id=event.id, moment=moment))
 
 _ORDER_RANK = case(
     (and_(Event.plan == PlanType.pro, Event.is_featured == True), 0),  # noqa: E712
@@ -26,7 +45,8 @@ def list_public_events(
     session: Session,
     *,
     city_id: UUID | None = None,
-    category: str | None = None,
+    categories: list[str] | None = None,
+    moment: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     search: str | None = None,
@@ -42,6 +62,10 @@ def list_public_events(
     5. plan=gratis + is_featured=True
     6. plan=gratis + is_featured=False
     Dentro de cada nivel, created_at DESC.
+
+    `categories`: OR entre los valores dados (evento con AL MENOS UNA).
+    `moment`: eventos que tengan ese momento entre los suyos (un evento con
+    horario dual aparece en ambos filtros).
     """
     if today is None:
         today = datetime.now(timezone.utc).date()
@@ -51,13 +75,21 @@ def list_public_events(
         .where(Event.status == EventStatus.approved)
         .where(Event.is_active == True)  # noqa: E712
         .where(Event.date >= today)
-        .options(selectinload(Event.location))
+        .options(*_EVENT_LOAD_OPTIONS)
     )
 
     if city_id is not None:
         stmt = stmt.where(Event.city_id == city_id)
-    if category is not None:
-        stmt = stmt.where(Event.category == category)
+    if categories:
+        cat_subq = select(EventCategory.event_id).where(
+            EventCategory.event_id == Event.id, EventCategory.category.in_(categories)
+        )
+        stmt = stmt.where(cat_subq.exists())
+    if moment is not None:
+        moment_subq = select(EventMoment.event_id).where(
+            EventMoment.event_id == Event.id, EventMoment.moment == moment
+        )
+        stmt = stmt.where(moment_subq.exists())
     if date_from is not None:
         stmt = stmt.where(Event.date >= date_from)
     if date_to is not None:
@@ -108,11 +140,10 @@ def create_event(
     description: str | None,
     event_date: date,
     event_time: time,
-    category: str,
+    categories: list[str],
     location_name: str,
     location_address: str,
     time_end: time | None = None,
-    moment: str | None = None,
     ticket_type: TicketType = TicketType.gratis,
     price_at_door: int | None = None,
     price_advance: int | None = None,
@@ -155,8 +186,6 @@ def create_event(
         date=event_date,
         time=event_time,
         time_end=time_end,
-        moment=moment,
-        category=category,
         status=EventStatus.pending,
         ticket_type=ticket_type,
         price_at_door=price_at_door,
@@ -168,6 +197,11 @@ def create_event(
         contact_email=contact_email,
     )
     session.add(event)
+    session.flush()
+
+    _sync_event_categories(session, event, categories)
+    _sync_event_moments(session, event)
+
     session.commit()
     session.refresh(event)
     return event
@@ -177,7 +211,7 @@ def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatu
     stmt = (
         select(Event)
         .where(Event.organizer_id == user_id)
-        .options(selectinload(Event.location))
+        .options(*_EVENT_LOAD_OPTIONS)
         .order_by(Event.created_at.desc())
     )
     events = session.exec(stmt).all()
@@ -248,6 +282,7 @@ def get_event_detail(session: Session, event_id: UUID, current_user: User | None
         .where(Event.id == event_id)
         .options(
             selectinload(Event.location),
+            selectinload(Event.category_links),
             selectinload(Event.city),
             selectinload(Event.organizer).selectinload(User.city),
         )
@@ -277,6 +312,7 @@ def update_event(
         raise PermissionError("No tenés permiso para editar este evento")
 
     data = payload.model_dump(exclude_unset=True)
+    categories = data.pop("categories", None)
 
     if "location_name" in data or "location_address" in data:
         location = session.get(Location, event.location_id)
@@ -288,6 +324,12 @@ def update_event(
 
     for field, value in data.items():
         setattr(event, field, value)
+
+    if categories is not None:
+        _sync_event_categories(session, event, categories)
+
+    # time/time_end pueden haber cambiado — se recalcula siempre (es idempotente).
+    _sync_event_moments(session, event)
 
     if is_owner and not is_admin:
         event.status = EventStatus.pending
@@ -345,6 +387,7 @@ def list_admin_events(
     stmt = select(Event).options(
         selectinload(Event.location),
         selectinload(Event.organizer),
+        selectinload(Event.category_links),
     )
 
     if status is not None:
@@ -352,7 +395,10 @@ def list_admin_events(
     if city_id is not None:
         stmt = stmt.where(Event.city_id == city_id)
     if category is not None:
-        stmt = stmt.where(Event.category == category)
+        cat_subq = select(EventCategory.event_id).where(
+            EventCategory.event_id == Event.id, EventCategory.category == category
+        )
+        stmt = stmt.where(cat_subq.exists())
     if plan is not None:
         stmt = stmt.where(Event.plan == plan)
     if date_from is not None:
