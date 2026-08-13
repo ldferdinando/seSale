@@ -12,3 +12,5 @@ class CityRead(BaseModel):
     emoji: str
     is_active: bool
     sort_order: int
+    latitude: float | None
+    longitude: float | None

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.core.moment import calculate_moments
 from app.core.timezone import argentina_today, utc_time_to_argentina
 from app.models.category import EventCategory
+from app.models.city import City
 from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
 from app.models.moment import EventMoment
@@ -124,6 +125,23 @@ def get_public_stats(session: Session) -> dict[str, int]:
     }
 
 
+def _resolve_target_city(session: Session, city_id: UUID | None, fallback_city_id: UUID) -> UUID:
+    """Etapa 7a: `city_id` explícito (elegido por el organizador en el
+    formulario) sobrepasa el default. `None` conserva el comportamiento
+    previo — se deriva de `fallback_city_id` (la ciudad del organizador en
+    `create_event`, la ciudad actual del evento en `update_event`).
+    """
+    if city_id is None:
+        return fallback_city_id
+
+    city = session.get(City, city_id)
+    if city is None:
+        raise LookupError("Ciudad no encontrada")
+    if not city.is_active:
+        raise ValueError("La ciudad elegida no está activa")
+    return city_id
+
+
 def _find_or_create_location(session: Session, *, city_id: UUID, name: str, address: str) -> Location:
     stmt = select(Location).where(
         Location.city_id == city_id,
@@ -162,12 +180,15 @@ def create_event(
     contact_email: str | None = None,
     organizer_id: UUID | None = None,
     is_admin: bool = False,
+    city_id: UUID | None = None,
 ) -> Event:
     """Crea un evento en estado pending para el organizador dado.
 
-    city_id y location_id se derivan del organizador (Etapa 2 no tiene selector
-    de ciudad ni endpoint de locations todavía): la ubicación se busca o se crea
-    dentro de la ciudad del organizador.
+    `location_id` se deriva de la ciudad efectiva del evento: por default,
+    la ciudad del organizador — location y ciudad se buscan/crean juntas
+    dentro de esa ciudad. Desde la Etapa 7a, `city_id` permite al
+    organizador elegir explícitamente otra ciudad activa (ej. publica un
+    evento que ocurre en una ciudad distinta a la suya).
 
     `organizer_id` solo tiene efecto si `is_admin=True` (Etapa 5.6: admin
     cargando eventos en nombre de otro organizador). Para un usuario normal
@@ -181,12 +202,14 @@ def create_event(
     if organizer.city_id is None:
         raise ValueError("El organizador no tiene una ciudad asignada")
 
+    target_city_id = _resolve_target_city(session, city_id, organizer.city_id)
+
     location = _find_or_create_location(
-        session, city_id=organizer.city_id, name=location_name, address=location_address
+        session, city_id=target_city_id, name=location_name, address=location_address
     )
 
     event = Event(
-        city_id=organizer.city_id,
+        city_id=target_city_id,
         organizer_id=organizer.id,
         location_id=location.id,
         title=title,
@@ -325,14 +348,18 @@ def update_event(
 
     data = payload.model_dump(exclude_unset=True)
     categories = data.pop("categories", None)
+    new_city_id = data.pop("city_id", None)
+    target_city_id = _resolve_target_city(session, new_city_id, event.city_id)
 
-    if "location_name" in data or "location_address" in data:
+    if "location_name" in data or "location_address" in data or new_city_id is not None:
         location = session.get(Location, event.location_id)
         name = data.pop("location_name", location.name if location else None)
         address = data.pop("location_address", location.address if location else None)
         event.location_id = _find_or_create_location(
-            session, city_id=event.city_id, name=name, address=address
+            session, city_id=target_city_id, name=name, address=address
         ).id
+
+    event.city_id = target_city_id
 
     for field, value in data.items():
         setattr(event, field, value)

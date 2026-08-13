@@ -1,8 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -12,21 +11,17 @@ vi.mock("next/navigation", () => ({
 import { Navbar } from "@/components/layout/Navbar";
 import { makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
+import { renderWithActiveCity as renderWithClient } from "./test-utils";
 
 const API_URL = "http://localhost:8000";
 
-function renderWithClient() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <Navbar />
-    </QueryClientProvider>,
-  );
-}
-
 describe("Navbar", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("shows 'Ingresar' and 'Registrarse' when there is no active session", async () => {
-    renderWithClient();
+    renderWithClient(<Navbar />);
 
     const login = await screen.findByRole("link", { name: /Ingresar/ });
     expect(login).toHaveAttribute("href", "/login");
@@ -40,7 +35,7 @@ describe("Navbar", () => {
 
   it("shows public_name, 'Publicar evento' and 'Cerrar sesión' for a logged in user", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user" }))));
-    renderWithClient();
+    renderWithClient(<Navbar />);
 
     const accountLink = await screen.findByRole("link", { name: /El Tinglado Bar/ });
     expect(accountLink).toHaveAttribute("href", "/mi-cuenta");
@@ -58,7 +53,7 @@ describe("Navbar", () => {
     server.use(
       http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user", public_name: "" }))),
     );
-    renderWithClient();
+    renderWithClient(<Navbar />);
 
     const accountLink = await screen.findByRole("link", { name: /organizador@sesale\.com\.ar/ });
     expect(accountLink).toHaveAttribute("href", "/mi-cuenta");
@@ -66,7 +61,7 @@ describe("Navbar", () => {
 
   it("shows 'Panel admin' only for admins", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "admin" }))));
-    renderWithClient();
+    renderWithClient(<Navbar />);
 
     const adminLink = await screen.findByRole("link", { name: /Panel admin/ });
     expect(adminLink).toHaveAttribute("href", "/admin");
@@ -75,11 +70,59 @@ describe("Navbar", () => {
   it("logs out and redirects to home on 'Cerrar sesión'", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user" }))));
     const user = userEvent.setup();
-    renderWithClient();
+    renderWithClient(<Navbar />);
 
     const logoutButton = await screen.findByRole("button", { name: /Cerrar sesión/ });
     await user.click(logoutButton);
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/"));
+  });
+
+  it("shows a skeleton while detecting the active city, then the city name", async () => {
+    renderWithClient(<Navbar />);
+
+    expect(screen.getByTestId("city-selector-skeleton")).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Gral\. Roca/ })).toBeInTheDocument());
+    expect(screen.queryByTestId("city-selector-skeleton")).not.toBeInTheDocument();
+  });
+
+  it("opens the dropdown with active cities and marks the current one", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<Navbar />);
+
+    const cityButton = await screen.findByRole("button", { name: /Gral\. Roca/ });
+    await user.click(cityButton);
+
+    const menu = screen.getByRole("menu", { name: "Elegir ciudad" });
+    const rocaOption = within(menu).getByRole("menuitemradio", { name: /General Roca/ });
+    const cipoOption = within(menu).getByRole("menuitemradio", { name: /Cipolletti/ });
+    expect(rocaOption).toHaveAttribute("aria-checked", "true");
+    expect(cipoOption).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("changes the active city when an option is picked from the dropdown", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<Navbar />);
+
+    const cityButton = await screen.findByRole("button", { name: /Gral\. Roca/ });
+    await user.click(cityButton);
+    await user.click(screen.getByRole("menuitemradio", { name: /Cipolletti/ }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Cipolletti/ })).toBeInTheDocument());
+    expect(window.localStorage.getItem("sesale_selected_city_id")).toBe("cccccccc-cccc-4ccc-cccc-cccccccccccc");
+  });
+
+  it("'Detectar mi ubicación' clears the saved city and re-triggers detection", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("sesale_selected_city_id", "cccccccc-cccc-4ccc-cccc-cccccccccccc");
+    renderWithClient(<Navbar />);
+
+    const cityButton = await screen.findByRole("button", { name: /Cipolletti/ });
+    await user.click(cityButton);
+    await user.click(screen.getByRole("button", { name: /Detectar mi ubicación/ }));
+
+    // Sin GPS disponible en jsdom, vuelve a caer al default (General Roca).
+    await waitFor(() => expect(screen.getByRole("button", { name: /Gral\. Roca/ })).toBeInTheDocument());
   });
 });

@@ -46,4 +46,19 @@ describe("EventList", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
   });
+
+  it("does not fetch events while enabled=false (e.g. detecting the active city) and shows the skeleton", async () => {
+    let requested = false;
+    server.use(
+      http.get(`${API_URL}/api/events`, () => {
+        requested = true;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderWithClient(<EventList filters={{}} enabled={false} />);
+
+    expect(screen.getByTestId("event-list-loading")).toBeInTheDocument();
+    expect(requested).toBe(false);
+  });
 });

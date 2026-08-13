@@ -1,5 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,14 +8,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { PublishFlow } from "@/features/events/components/PublishFlow";
+import { renderWithActiveCity } from "./test-utils";
 
 function renderWithClient() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <PublishFlow />
-    </QueryClientProvider>,
-  );
+  return renderWithActiveCity(<PublishFlow />);
 }
 
 /** Elige el día 15 del mes siguiente al actual — siempre en el futuro, sin depender de la fecha del sistema. */

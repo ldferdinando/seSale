@@ -43,14 +43,61 @@ def seed() -> None:
     with Session(engine) as session:
         _wipe(session)
 
-        general_roca = City(name="General Roca", province="Río Negro", emoji="🌳", is_active=True, sort_order=1)
-        cipolletti = City(name="Cipolletti", province="Río Negro", emoji="🏙️", is_active=True, sort_order=2)
+        general_roca = City(
+            name="General Roca",
+            province="Río Negro",
+            emoji="🏙️",
+            latitude=-39.0333,
+            longitude=-67.5833,
+            is_active=True,
+            sort_order=1,
+        )
+        cipolletti = City(
+            name="Cipolletti",
+            province="Río Negro",
+            emoji="🌆",
+            latitude=-38.9333,
+            longitude=-68.0000,
+            is_active=True,
+            sort_order=2,
+        )
         proximamente = [
-            City(name="Neuquén", province="Neuquén", emoji="🏙️", is_active=False, sort_order=3),
-            City(name="Villa Regina", province="Río Negro", emoji="🍑", is_active=False, sort_order=4),
-            City(name="Allen", province="Río Negro", emoji="🍇", is_active=False, sort_order=5),
-            City(name="Cinco Saltos", province="Río Negro", emoji="🌊", is_active=False, sort_order=6),
-            City(name="Fernández Oro", province="Río Negro", emoji="🌾", is_active=False, sort_order=7),
+            City(
+                name="Neuquén",
+                province="Neuquén",
+                emoji="🏔️",
+                latitude=-38.9516,
+                longitude=-68.0591,
+                is_active=False,
+                sort_order=3,
+            ),
+            City(
+                name="Allen",
+                province="Río Negro",
+                emoji="🍎",
+                latitude=-38.9833,
+                longitude=-67.8333,
+                is_active=False,
+                sort_order=4,
+            ),
+            City(
+                name="Villa Regina",
+                province="Río Negro",
+                emoji="🌿",
+                latitude=-39.1000,
+                longitude=-67.0667,
+                is_active=False,
+                sort_order=5,
+            ),
+            City(
+                name="Cinco Saltos",
+                province="Río Negro",
+                emoji="💧",
+                latitude=-38.8167,
+                longitude=-68.0667,
+                is_active=False,
+                sort_order=6,
+            ),
         ]
         session.add(general_roca)
         session.add(cipolletti)
@@ -162,7 +209,7 @@ def seed() -> None:
             session.add(price)
 
         session.commit()
-        print("Seed completo: 7 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots, 4 planes.")
+        print("Seed completo: 6 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots, 4 planes.")
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")
 

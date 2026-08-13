@@ -79,6 +79,7 @@ export interface EventDetail extends Event {
 export type EventMoment = "diurno" | "nocturno";
 
 export interface EventFiltersState {
+  cityId?: string;
   category?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -93,6 +94,8 @@ export interface EventCreateInput {
   time: string;
   time_end?: string;
   categories: string[];
+  /** Ciudad del evento — Etapa 7a. Sin ella, el backend usa la ciudad del organizador. */
+  city_id?: string;
   location_name: string;
   location_address: string;
   ticket_type: TicketType;

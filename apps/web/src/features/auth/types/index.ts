@@ -35,6 +35,8 @@ export interface City {
   emoji: string;
   is_active: boolean;
   sort_order: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface RegisterInput {

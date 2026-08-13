@@ -1,10 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
+import { renderWithActiveCity } from "./test-utils";
 
 const initialValues: Partial<EventFormValues> = {
   title: "Show original",
@@ -25,11 +25,8 @@ const initialValues: Partial<EventFormValues> = {
 };
 
 function renderEditForm(onSuccess = vi.fn()) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <EventForm mode="edit" eventId="11111111-1111-1111-1111-111111111111" initialValues={initialValues} onSuccess={onSuccess} />
-    </QueryClientProvider>,
+  renderWithActiveCity(
+    <EventForm mode="edit" eventId="11111111-1111-1111-1111-111111111111" initialValues={initialValues} onSuccess={onSuccess} />,
   );
   return onSuccess;
 }

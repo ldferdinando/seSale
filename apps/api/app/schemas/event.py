@@ -138,6 +138,11 @@ class EventCreate(BaseModel):
     # aunque lo mande — el organizador siempre es el usuario autenticado.
     organizer_id: UUID | None = None
 
+    # Etapa 7a: ciudad del evento, elegida por el organizador en el
+    # formulario. None = default (ciudad del organizador). Debe ser una
+    # ciudad activa — se valida en el service.
+    city_id: UUID | None = None
+
     location_name: str = Field(max_length=255, min_length=1)
     location_address: str = Field(max_length=500, min_length=1)
 
@@ -171,6 +176,9 @@ class EventUpdate(BaseModel):
     time: _Time | None = None
     time_end: _Time | None = None
     categories: list[str] | None = Field(default=None, min_length=MIN_CATEGORIES, max_length=MAX_CATEGORIES)
+
+    # Etapa 7a: cambiar la ciudad del evento. None = no se toca.
+    city_id: UUID | None = None
 
     location_name: str | None = Field(default=None, max_length=255, min_length=1)
     location_address: str | None = Field(default=None, max_length=500, min_length=1)

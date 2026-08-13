@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   AlarmClockOff,
@@ -34,7 +34,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useCities } from "@/features/auth/hooks/useCities";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CategoryMultiSelect } from "@/features/events/components/CategoryMultiSelect";
 import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
@@ -43,6 +45,7 @@ import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
 import type { Event, EventCreateInput, TicketType } from "@/features/events/types";
+import { useActiveCity } from "@/hooks/useActiveCity";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -154,6 +157,8 @@ export function EventForm({
 }: EventFormProps) {
   const updateEvent = useUpdateEvent(eventId ?? "");
   const { data: currentUser } = useCurrentUser();
+  const { data: cities } = useCities();
+  const { activeCity } = useActiveCity();
 
   const [plan, setPlan] = useState<PublishPlan>(initialPlan ?? "dest");
   const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
@@ -181,6 +186,7 @@ export function EventForm({
       time: "",
       time_end: "",
       categories: [],
+      city_id: "",
       location_name: "",
       location_address: "",
       ticket_type: "gratis",
@@ -199,6 +205,17 @@ export function EventForm({
   const dateValue = watch("date");
   const timeValue = watch("time");
   const timeEndValue = watch("time_end");
+  const cityIdValue = watch("city_id");
+
+  // Preselecciona la ciudad activa del usuario apenas está disponible — solo
+  // si el formulario todavía no tiene una ciudad cargada (create sin
+  // initialValues, o volviendo del resumen sin haberla tocado).
+  useEffect(() => {
+    if (!cityIdValue && activeCity) {
+      setValue("city_id", activeCity.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCity]);
 
   async function onSubmit(values: EventFormValues) {
     const payload: EventCreateInput = {
@@ -208,6 +225,7 @@ export function EventForm({
       time: values.time,
       time_end: values.time_end || undefined,
       categories: values.categories,
+      city_id: values.city_id || undefined,
       location_name: values.location_name,
       location_address: values.location_address,
       ticket_type: values.ticket_type,
@@ -313,6 +331,24 @@ export function EventForm({
           value={timeEndValue ?? ""}
           onChange={(value) => setValue("time_end", value, { shouldValidate: true })}
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <FieldLabel icon={MapPin}>Ciudad del evento</FieldLabel>
+        <Select value={cityIdValue || undefined} onValueChange={(value) => setValue("city_id", value)}>
+          <SelectTrigger aria-label="Ciudad del evento">
+            <SelectValue placeholder="Elegí una ciudad" />
+          </SelectTrigger>
+          <SelectContent>
+            {(cities ?? [])
+              .filter((city) => city.is_active)
+              .map((city) => (
+                <SelectItem key={city.id} value={city.id}>
+                  {city.emoji} {city.name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1">

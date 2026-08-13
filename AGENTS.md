@@ -126,13 +126,15 @@ root/
 │   │   │   │   ├── events/
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/
-│   │   │   │   ├── cities/
+│   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a
 │   │   │   │   ├── ads/
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
+│   │   │   │   └── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
 │   │   │   ├── hooks/              # Custom hooks globales
+│   │   │   │   └── useActiveCity.ts   # Consume ActiveCityContext — Etapa 7a
 │   │   │   └── types/              # Tipos TypeScript globales
 │   │   ├── public/
 │   │   ├── tests/                  # Tests del frontend

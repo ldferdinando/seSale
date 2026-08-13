@@ -14,10 +14,14 @@ import { TodayBanner } from "@/features/events/components/TodayBanner";
 import { ViewTabs, type EventView } from "@/features/events/components/ViewTabs";
 import { getDateRangeForPreset } from "@/features/events/lib/dateRanges";
 import type { EventFiltersState } from "@/features/events/types";
+import { useActiveCity } from "@/hooks/useActiveCity";
 
 export default function HomePage() {
   const [filters, setFilters] = useState<EventFiltersState>({});
   const [view, setView] = useState<EventView>("lista");
+  const { activeCity, isDetecting } = useActiveCity();
+
+  const effectiveFilters: EventFiltersState = activeCity ? { ...filters, cityId: activeCity.id } : filters;
 
   return (
     <main className="flex flex-col">
@@ -56,7 +60,7 @@ export default function HomePage() {
           <>
             <div className="flex flex-col gap-4 px-4 pt-3.5">
               <EventFilters filters={filters} onChange={setFilters} />
-              <EventList filters={filters} />
+              <EventList filters={effectiveFilters} enabled={!isDetecting} />
             </div>
             <ShareBanner />
           </>

@@ -17,6 +17,7 @@ import { localTimeToUtc } from "@/lib/date-helpers";
 
 export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> {
   return apiGet<Event[]>("/api/events", {
+    city_id: filters.cityId,
     category: filters.category,
     moment: filters.moment,
     date_from: filters.dateFrom,

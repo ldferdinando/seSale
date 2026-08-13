@@ -1,11 +1,91 @@
 "use client";
 
-import { ChevronRight, LogOut, MapPin, Shield, User } from "lucide-react";
+import { Check, ChevronRight, LogOut, MapPin, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
+import { useCities } from "@/features/auth/hooks/useCities";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useLogout } from "@/features/auth/hooks/useLogout";
+import type { City } from "@/features/auth/types";
+import { useActiveCity } from "@/hooks/useActiveCity";
+
+function CitySelector() {
+  const { activeCity, isDetecting, setActiveCity, resetToDetected } = useActiveCity();
+  const { data: cities } = useCities();
+  const [open, setOpen] = useState(false);
+
+  if (isDetecting || !activeCity) {
+    return (
+      <div
+        data-testid="city-selector-skeleton"
+        className="h-[27px] w-[92px] animate-pulse rounded-full border border-border bg-card"
+        aria-hidden
+      />
+    );
+  }
+
+  function handleSelect(city: City) {
+    setActiveCity(city);
+    setOpen(false);
+  }
+
+  function handleDetect() {
+    resetToDetected();
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-ink-2"
+      >
+        <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden />
+        {activeCity.emoji} {activeCity.name.replace("General", "Gral.")}
+        <ChevronRight className={`h-2.5 w-2.5 rotate-90 transition-transform ${open ? "-scale-y-100" : ""}`} aria-hidden />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Elegir ciudad"
+          className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[180px] rounded-xl border border-border bg-card p-1.5 shadow-lg"
+        >
+          {(cities ?? []).map((city) => (
+            <button
+              key={city.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={city.id === activeCity.id}
+              onClick={() => handleSelect(city)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground hover:bg-surface-5"
+            >
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden>{city.emoji}</span>
+                {city.name}
+              </span>
+              {city.id === activeCity.id && <Check className="h-3.5 w-3.5 text-primary" aria-hidden />}
+            </button>
+          ))}
+
+          <div className="my-1 h-px bg-border" />
+
+          <button
+            type="button"
+            onClick={handleDetect}
+            className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-semibold text-primary hover:bg-surface-5"
+          >
+            📍 Detectar mi ubicación
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Navbar() {
   const { data: currentUser } = useCurrentUser();
@@ -33,15 +113,7 @@ export function Navbar() {
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Sin ciudades cargadas desde el backend todavía: ver a_revisar.md */}
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-ink-2"
-            >
-              <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden />
-              Gral. Roca
-              <ChevronRight className="h-2.5 w-2.5 rotate-90" aria-hidden />
-            </button>
+            <CitySelector />
 
             {!currentUser && (
               <>

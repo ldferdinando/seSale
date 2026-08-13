@@ -7,12 +7,14 @@ import type { EventFiltersState } from "@/features/events/types";
 
 interface EventListProps {
   filters: EventFiltersState;
+  /** false pausa el fetch (ej. mientras se detecta la ciudad activa) y muestra el skeleton. Default: true. */
+  enabled?: boolean;
 }
 
-export function EventList({ filters }: EventListProps) {
-  const { data, isLoading, isError } = useEvents(filters);
+export function EventList({ filters, enabled = true }: EventListProps) {
+  const { data, isLoading, isError } = useEvents(filters, { enabled });
 
-  if (isLoading) {
+  if (isLoading || !enabled) {
     return (
       <div data-testid="event-list-loading" className="flex flex-col gap-3">
         <Skeleton className="h-24 w-full" />

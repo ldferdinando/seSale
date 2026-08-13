@@ -236,7 +236,26 @@ export const handlers = [
   }),
   http.get(`${API_URL}/api/cities`, () => {
     return HttpResponse.json([
-      { id: "22222222-2222-2222-2222-222222222222", name: "General Roca", province: "Río Negro", emoji: "🏙️", is_active: true, sort_order: 0 },
+      {
+        id: "22222222-2222-2222-2222-222222222222",
+        name: "General Roca",
+        province: "Río Negro",
+        emoji: "🏙️",
+        is_active: true,
+        sort_order: 0,
+        latitude: -39.0333,
+        longitude: -67.5833,
+      },
+      {
+        id: "cccccccc-cccc-4ccc-cccc-cccccccccccc",
+        name: "Cipolletti",
+        province: "Río Negro",
+        emoji: "🌆",
+        is_active: true,
+        sort_order: 1,
+        latitude: -38.9333,
+        longitude: -68.0,
+      },
     ]);
   }),
   http.get(`${API_URL}/api/plans`, () => {

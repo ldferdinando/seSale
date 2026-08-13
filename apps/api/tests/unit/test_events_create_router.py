@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlmodel import Session
 
 from app.core.security import create_access_token, hash_password
-from app.models import User
+from app.models import City, User
 
 
 def _valid_payload() -> dict:
@@ -192,3 +192,50 @@ async def test_create_event_organizer_without_city_returns_422(client: AsyncClie
     response = await client.post("/api/events", json=_valid_payload(), headers=headers)
 
     assert response.status_code == 422
+
+
+async def test_create_event_with_explicit_city_id_overrides_organizer_city(
+    client: AsyncClient, session: Session, city: City, organizer: User, user_token_headers: dict[str, str]
+):
+    """Etapa 7a: el organizador puede publicar un evento en otra ciudad activa."""
+    other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(other_city)
+    session.commit()
+    session.refresh(other_city)
+
+    payload = _valid_payload()
+    payload["city_id"] = str(other_city.id)
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["city_id"] == str(other_city.id)
+    assert body["city_id"] != str(city.id)
+
+
+async def test_create_event_with_inactive_city_id_returns_422(
+    client: AsyncClient, session: Session, organizer: User, user_token_headers: dict[str, str]
+):
+    inactive_city = City(name="Neuquén", province="Neuquén", is_active=False)
+    session.add(inactive_city)
+    session.commit()
+    session.refresh(inactive_city)
+
+    payload = _valid_payload()
+    payload["city_id"] = str(inactive_city.id)
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_with_nonexistent_city_id_returns_404(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload()
+    payload["city_id"] = "00000000-0000-0000-0000-000000000000"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 404

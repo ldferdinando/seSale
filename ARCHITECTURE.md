@@ -223,6 +223,8 @@ class City(SQLModel, table=True):
     emoji: str = Field(default="🏙️", max_length=10)
     is_active: bool = Field(default=False)         # admin habilita la ciudad
     sort_order: int = Field(default=99)            # orden en el selector
+    latitude: float | None = Field(default=None)   # Etapa 7a — geolocalización
+    longitude: float | None = Field(default=None)  # Etapa 7a — geolocalización
 
     # Relaciones
     events: list["Event"] = Relationship(back_populates="city")
@@ -884,10 +886,18 @@ POST   /api/events                     Crear evento (user autenticado → pendin
                                        (solo tiene efecto si quien publica es
                                        admin: crea el evento en nombre de ese
                                        organizador; para "user" se ignora)
+                                       body admite city_id opcional             ✓ Etapa 7a
+                                       (ciudad del evento, elegida por el
+                                       organizador; default = ciudad del
+                                       organizador). 404 si no existe, 422 si
+                                       no está is_active
 PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
                                        (admin). Si edita el organizador, status
                                        vuelve a pending; si edita el admin, no
-                                       cambia. 403 para cualquier otro usuario
+                                       cambia. 403 para cualquier otro usuario.
+                                       city_id opcional (Etapa 7a) — cambia la
+                                       ciudad del evento (misma validación que
+                                       POST); ausente = no se toca
 DELETE /api/events/{id}                Soft delete (is_active=False). Permitido    ✓ Etapa 5.6
                                        para el organizador dueño o un admin
 PATCH  /api/events/{id}/status         Aprobar / rechazar (admin)
@@ -945,6 +955,10 @@ POST   /api/admin/users                Crea una cuenta en nombre de un cliente  
 ### Ciudades (`/api/cities`)
 ```
 GET    /api/cities                     Listar ciudades activas (público)          ✓ Etapa 3
+                                       CityRead incluye latitude/longitude      ✓ Etapa 7a
+                                       (para calcular la ciudad más cercana al
+                                       usuario en el frontend, ver lib/city-
+                                       detection.ts)
 GET    /api/cities/{id}                Detalle de ciudad (público)                planificado
 POST   /api/cities                     Crear ciudad (admin)                       planificado
 PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)    planificado
@@ -1084,7 +1098,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **6b-1** | Flujo de pago manual con aviso de transferencia y confirmación admin — alternativa independiente al checkout de MercadoPago (bug de credenciales pendiente). | ✓ Completa: `SubscriptionStatus.pending_approval`, `payment_method`/`transfer_note`/`reviewed_at` en `Subscription` (migración `0009`, reusa `approved_by`/`notes` como reviewer/admin_notes), `POST /api/subscriptions/transfer`, `PATCH /api/admin/subscriptions/{id}/review`, pantallas `/planes/transferencia` y `/planes/transferencia/enviado`, panel admin actualizado (pending_approval primero, badge de método de pago, aprobar/rechazar). Sin subida de comprobante todavía — ver `a_revisar.md` |
 | **6b-1 (fixes post-QA)** | Correcciones encontradas probando la 6b-1: admin sin acceso a eventos `pending`/`rejected`, caché del frontend mostrando datos viejos, y visibilidad del estado de pago en el contexto del evento (no solo en la pestaña Suscripciones). | ✓ Completa: `get_event_detail` permite admin en eventos no-públicos (antes 404 salvo el dueño); `staleTime: 0` en `useMySubscriptions`/`useAdminSubscriptions` (bug de caché real: TanStack Query servía respuestas de hasta 60s de antigüedad); link "Ver detalle" en panel admin de eventos; `organizer_subscription` agregado a `EventDetailRead`/`AdminEventRead` |
 | **6b-2** | Corrección de arquitectura (a pedido del usuario, detectada probando la 6b-1): el pago de un plan es **por evento**, no por cuenta del organizador. | ✓ Completa: `Subscription.event_id` (FK a `events`, migración `0010`), `_apply_plan_to_event()` reemplaza a `_apply_plan_to_organizer_events()` para dest/pro (se mantiene solo para el plan Banner, que no es un upgrade de un evento puntual); `POST /api/subscriptions/checkout` y `POST /api/subscriptions/transfer` requieren `event_id`; `/planes` requiere `?event_id=` (si falta, pide elegir un evento desde `/mis-eventos`); `expire_subscriptions` revierte solo el evento vinculado; `organizer_subscription` pasó a buscarse por `event_id` (antes por `organizer_id`, lo que mezclaba el pago de un evento con cualquier otro evento no relacionado del mismo organizador — el bug real que disparó esta corrección) |
-| **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
+| **7a** | Multi-ciudad: selector de ciudad en navbar con geolocalización automática, filtrado del home por ciudad activa, ciudad del organizador en formulario de evento. | ✓ Completa: `City.latitude`/`longitude` (migración `0011`), `CityRead` los expone; `EventCreate`/`EventUpdate.city_id` opcional (default: ciudad del organizador, valida `is_active`); `lib/city-detection.ts` (Haversine, detección por GPS con localStorage), `ActiveCityProvider`/`useActiveCity()` (Context, no Zustand), selector real en `Navbar.tsx`, `GET /api/events?city_id=` conectado al home, selector de ciudad en `EventForm.tsx`. Admin habilitar/deshabilitar ciudades queda para una etapa futura (hoy se gestiona por seed/DB directa) |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
 

@@ -4,6 +4,7 @@ import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
+import { ActiveCityProvider } from "@/features/cities/context/ActiveCityContext";
 import { QueryProvider } from "@/lib/query-client";
 
 const inter = Inter({
@@ -23,9 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-screen flex-col pb-[70px]">
         <QueryProvider>
           <AuthProvider>
-            <Navbar />
-            <div className="flex-1">{children}</div>
-            <BottomNav />
+            <ActiveCityProvider>
+              <Navbar />
+              <div className="flex-1">{children}</div>
+              <BottomNav />
+            </ActiveCityProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

@@ -97,3 +97,68 @@ async def test_update_event_without_auth_returns_401(
     response = await client.put(f"/api/events/{event.id}", json={"title": "Sin auth"})
 
     assert response.status_code == 401
+
+
+async def test_update_event_city_id_moves_event_to_another_active_city(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """Etapa 7a: cambiar la ciudad del evento crea/reusa una location en la
+    ciudad nueva y actualiza Event.city_id."""
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(other_city)
+    session.commit()
+    session.refresh(other_city)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"city_id": str(other_city.id)}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["city_id"] == str(other_city.id)
+    assert body["location"]["city_id"] == str(other_city.id)
+
+
+async def test_update_event_with_inactive_city_id_returns_422(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    inactive_city = City(name="Neuquén", province="Neuquén", is_active=False)
+    session.add(inactive_city)
+    session.commit()
+    session.refresh(inactive_city)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"city_id": str(inactive_city.id)}, headers=user_token_headers
+    )
+
+    assert response.status_code == 422
+
+
+async def test_update_event_without_city_id_keeps_current_city(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"title": "Sin tocar ciudad"}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["city_id"] == str(city.id)

@@ -70,6 +70,7 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     time: utcTimeToLocal(event.date, event.time.slice(0, 5)),
     time_end: event.time_end ? utcTimeToLocal(event.date, event.time_end.slice(0, 5)) : "",
     categories: event.categories,
+    city_id: event.city_id,
     location_name: event.location.name,
     location_address: event.location.address,
     ticket_type: event.ticket_type,

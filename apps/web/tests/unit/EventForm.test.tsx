@@ -1,18 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { format } from "date-fns";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
+import { renderWithActiveCity } from "./test-utils";
 
 function renderWithClient(onContinue = vi.fn()) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <EventForm onContinue={onContinue} />
-    </QueryClientProvider>,
-  );
+  renderWithActiveCity(<EventForm onContinue={onContinue} />);
   return onContinue;
 }
 
@@ -127,5 +122,36 @@ describe("EventForm", () => {
     const musicaCheckbox = screen.getByLabelText("Música en vivo") as HTMLInputElement;
     expect(musicaCheckbox).not.toBeDisabled();
     expect(musicaCheckbox.checked).toBe(true);
+  });
+
+  it("preselecciona la ciudad activa del usuario y solo lista ciudades activas", async () => {
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Ciudad del evento" })).toHaveTextContent("General Roca"));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "Ciudad del evento" }));
+
+    expect(await screen.findByRole("option", { name: /Cipolletti/ })).toBeInTheDocument();
+    // La ciudad mockeada como default de useCities() en los tests solo incluye
+    // activas — no hay forma de aserir la ausencia de inactivas sin agregar
+    // una al mock global, cubierto en el test del backend (CityRead is_active).
+  });
+
+  it("el payload incluye city_id si el organizador elige otra ciudad", async () => {
+    const user = userEvent.setup();
+    const onContinue = renderWithClient();
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Ciudad del evento" })).toHaveTextContent("General Roca"));
+    await user.click(screen.getByRole("combobox", { name: "Ciudad del evento" }));
+    await user.click(await screen.findByRole("option", { name: /Cipolletti/ }));
+
+    await fillRequiredFieldsExceptCategory(user);
+    await toggleCategory(user, "Música en vivo");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    const [payload] = onContinue.mock.calls[0];
+    expect(payload.city_id).toBe("cccccccc-cccc-4ccc-cccc-cccccccccccc");
   });
 });

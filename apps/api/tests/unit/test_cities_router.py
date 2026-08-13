@@ -21,3 +21,28 @@ async def test_list_cities_requires_no_auth(client: AsyncClient, city: City):
     response = await client.get("/api/cities")
 
     assert response.status_code == 200
+
+
+async def test_list_cities_includes_latitude_and_longitude(
+    client: AsyncClient, session: Session, city: City
+):
+    city.latitude = -39.0333
+    city.longitude = -67.5833
+    session.add(city)
+    session.commit()
+
+    response = await client.get("/api/cities")
+
+    assert response.status_code == 200
+    body = next(c for c in response.json() if c["id"] == str(city.id))
+    assert body["latitude"] == -39.0333
+    assert body["longitude"] == -67.5833
+
+
+async def test_list_cities_allows_null_coordinates(client: AsyncClient, city: City):
+    response = await client.get("/api/cities")
+
+    assert response.status_code == 200
+    body = next(c for c in response.json() if c["id"] == str(city.id))
+    assert body["latitude"] is None
+    assert body["longitude"] is None

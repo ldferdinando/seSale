@@ -23,6 +23,7 @@ export const eventFormSchema = z
       .array(z.enum(CATEGORY_VALUES))
       .min(MIN_EVENT_CATEGORIES, "Elegí al menos una categoría")
       .max(MAX_EVENT_CATEGORIES, "Máximo 3 categorías"),
+    city_id: z.string().optional().or(z.literal("")),
     location_name: z.string().min(1, "El lugar es obligatorio").max(255),
     location_address: z.string().min(1, "La dirección es obligatoria").max(500),
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),

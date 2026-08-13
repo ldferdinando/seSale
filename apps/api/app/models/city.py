@@ -12,6 +12,8 @@ class City(SQLModel, table=True):
     emoji: str = Field(default="🏙️", max_length=10)
     is_active: bool = Field(default=False)
     sort_order: int = Field(default=99)
+    latitude: float | None = Field(default=None)
+    longitude: float | None = Field(default=None)
 
     events: list["Event"] = Relationship(back_populates="city")
     locations: list["Location"] = Relationship(back_populates="city")

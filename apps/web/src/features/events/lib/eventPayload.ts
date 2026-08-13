@@ -14,6 +14,7 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     time: payload.time,
     time_end: payload.time_end ?? "",
     categories: payload.categories,
+    city_id: payload.city_id ?? "",
     location_name: payload.location_name,
     location_address: payload.location_address,
     ticket_type: payload.ticket_type,
