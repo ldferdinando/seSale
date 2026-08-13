@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.deps import get_current_user, get_session, require_admin
+from app.core.email import send_subscription_approved_email, send_subscription_rejected_email
 from app.core.limiter import limiter
 from app.models.event import Event, EventStatus
 from app.models.plan import PlanType
@@ -13,14 +14,63 @@ from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 from app.schemas.event import AdminEventRead, EventRead
 from app.schemas.report import AdminReportRead, ReportStatusUpdate
-from app.schemas.subscription import AdminSubscriptionRead, SubscriptionActivateRequest
+from app.schemas.subscription import (
+    AdminSubscriptionRead,
+    OrganizerSubscriptionRead,
+    SubscriptionActivateRequest,
+    SubscriptionReviewRequest,
+)
 from app.schemas.user import AdminUserCreate, UserRead
 from app.services.event_service import list_admin_events
-from app.services.payment_service import activate_subscription_manually, expire_subscriptions
+from app.services.payment_service import (
+    activate_subscription_manually,
+    expire_subscriptions,
+    get_latest_subscriptions_by_event,
+    review_subscription,
+)
 from app.services.report_service import list_admin_reports, update_report_status
 from app.services.user_service import create_user_by_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+
+
+def _to_admin_subscription_read(sub: Subscription) -> AdminSubscriptionRead:
+    return AdminSubscriptionRead(
+        id=sub.id,
+        plan_id=sub.plan_id,
+        plan_name=sub.plan.name,
+        plan_type=sub.plan.plan_type,
+        status=sub.status,
+        payment_method=sub.payment_method,
+        starts_at=sub.starts_at,
+        expires_at=sub.expires_at,
+        amount_paid=sub.amount_paid,
+        currency=sub.currency,
+        promo_label=sub.plan_price.promo_label if sub.plan_price else None,
+        mp_payment_id=sub.mp_payment_id,
+        transfer_note=sub.transfer_note,
+        reviewed_at=sub.reviewed_at,
+        created_at=sub.created_at,
+        event_id=sub.event_id,
+        event_title=sub.event.title if sub.event else None,
+        user_id=sub.user_id,
+        user_email=sub.user.email,
+        user_public_name=sub.user.public_name,
+    )
+
+
+def _to_organizer_subscription_read(subscription: Subscription | None) -> OrganizerSubscriptionRead | None:
+    if subscription is None:
+        return None
+    return OrganizerSubscriptionRead(
+        status=subscription.status,
+        payment_method=subscription.payment_method,
+        plan_name=subscription.plan.name,
+        plan_type=subscription.plan.plan_type,
+        transfer_note=subscription.transfer_note,
+        created_at=subscription.created_at,
+        reviewed_at=subscription.reviewed_at,
+    )
 
 
 @router.get("/events", response_model=list[AdminEventRead])
@@ -50,11 +100,13 @@ async def get_admin_events(
         limit=limit,
         offset=offset,
     )
+    latest_subscriptions = get_latest_subscriptions_by_event(session, [event.id for event in events])
     return [
         AdminEventRead(
             **EventRead.model_validate(event).model_dump(),
             organizer_public_name=event.organizer.public_name,
             is_active=event.is_active,
+            organizer_subscription=_to_organizer_subscription_read(latest_subscriptions.get(event.id)),
         )
         for event in events
     ]
@@ -99,6 +151,7 @@ async def get_admin_subscriptions(
         selectinload(Subscription.plan),
         selectinload(Subscription.plan_price),
         selectinload(Subscription.user),
+        selectinload(Subscription.event),
     )
     if status_filter is not None:
         stmt = stmt.where(Subscription.status == status_filter)
@@ -113,26 +166,11 @@ async def get_admin_subscriptions(
     stmt = stmt.order_by(Subscription.created_at.desc())
 
     subscriptions = session.exec(stmt).all()
-    return [
-        AdminSubscriptionRead(
-            id=sub.id,
-            plan_id=sub.plan_id,
-            plan_name=sub.plan.name,
-            plan_type=sub.plan.plan_type,
-            status=sub.status,
-            starts_at=sub.starts_at,
-            expires_at=sub.expires_at,
-            amount_paid=sub.amount_paid,
-            currency=sub.currency,
-            promo_label=sub.plan_price.promo_label if sub.plan_price else None,
-            mp_payment_id=sub.mp_payment_id,
-            created_at=sub.created_at,
-            user_id=sub.user_id,
-            user_email=sub.user.email,
-            user_public_name=sub.user.public_name,
-        )
-        for sub in subscriptions
-    ]
+    # pending_approval primero (avisos de transferencia esperando revisión), luego el resto
+    subscriptions = sorted(
+        subscriptions, key=lambda sub: sub.status != SubscriptionStatus.pending_approval
+    )
+    return [_to_admin_subscription_read(sub) for sub in subscriptions]
 
 
 @router.patch("/subscriptions/{subscription_id}/activate", response_model=AdminSubscriptionRead)
@@ -152,23 +190,45 @@ async def patch_admin_subscription_activate(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return AdminSubscriptionRead(
-        id=subscription.id,
-        plan_id=subscription.plan_id,
-        plan_name=subscription.plan.name,
-        plan_type=subscription.plan.plan_type,
-        status=subscription.status,
-        starts_at=subscription.starts_at,
-        expires_at=subscription.expires_at,
-        amount_paid=subscription.amount_paid,
-        currency=subscription.currency,
-        promo_label=subscription.plan_price.promo_label if subscription.plan_price else None,
-        mp_payment_id=subscription.mp_payment_id,
-        created_at=subscription.created_at,
-        user_id=subscription.user_id,
-        user_email=subscription.user.email,
-        user_public_name=subscription.user.public_name,
-    )
+    return _to_admin_subscription_read(subscription)
+
+
+@router.patch("/subscriptions/{subscription_id}/review", response_model=AdminSubscriptionRead)
+async def patch_admin_subscription_review(
+    subscription_id: UUID,
+    payload: SubscriptionReviewRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AdminSubscriptionRead:
+    try:
+        subscription = review_subscription(
+            session,
+            subscription_id=subscription_id,
+            admin_id=current_user.id,
+            action=payload.action,
+            admin_notes=payload.admin_notes,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    if payload.action == "approve":
+        await send_subscription_approved_email(
+            user_email=subscription.user.email,
+            user_public_name=subscription.user.public_name,
+            plan_name=subscription.plan.name,
+            expires_at=subscription.expires_at,
+        )
+    else:
+        await send_subscription_rejected_email(
+            user_email=subscription.user.email,
+            user_public_name=subscription.user.public_name,
+            plan_name=subscription.plan.name,
+            admin_notes=payload.admin_notes,
+        )
+
+    return _to_admin_subscription_read(subscription)
 
 
 @router.post("/subscriptions/expire")

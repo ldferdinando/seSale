@@ -1,6 +1,7 @@
 "use client";
 
 import { Crown, MessageCircle, Star, Ticket, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,11 +23,13 @@ function formatPrice(amount: number): string {
 
 interface PlanCardProps {
   plan: Plan;
+  /** Evento al que se le va a aplicar el plan — el pago es por evento, no por cuenta (Etapa 6b-2). */
+  eventId: string;
   onContratar: (planId: string) => void;
   isSubmitting: boolean;
 }
 
-export function PlanCard({ plan, onContratar, isSubmitting }: PlanCardProps) {
+export function PlanCard({ plan, eventId, onContratar, isSubmitting }: PlanCardProps) {
   const Icon = PLAN_ICONS[plan.plan_type];
 
   return (
@@ -53,14 +56,21 @@ export function PlanCard({ plan, onContratar, isSubmitting }: PlanCardProps) {
         )}
 
         {(plan.plan_type === "dest" || plan.plan_type === "pro") && (
-          <Button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => onContratar(plan.id)}
-            className="h-11 w-full rounded-xl"
-          >
-            {isSubmitting ? "Redirigiendo..." : "Contratar"}
-          </Button>
+          <>
+            <Button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onContratar(plan.id)}
+              className="h-11 w-full rounded-xl"
+            >
+              {isSubmitting ? "Redirigiendo..." : "Contratar con MercadoPago"}
+            </Button>
+            <Button asChild variant="ghost" className="h-10 w-full rounded-xl text-sm">
+              <Link href={`/planes/transferencia?plan_id=${plan.id}&event_id=${eventId}`}>
+                Ya realicé una transferencia bancaria
+              </Link>
+            </Button>
+          </>
         )}
 
         {plan.plan_type === "banner" && (

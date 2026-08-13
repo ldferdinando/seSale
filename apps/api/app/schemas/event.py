@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.timezone import argentina_today
 from app.models.event import EventStatus, TicketType
 from app.models.plan import PlanType
+from app.schemas.subscription import OrganizerSubscriptionRead
 
 MIN_CATEGORIES = 1
 MAX_CATEGORIES = 3
@@ -90,6 +91,9 @@ class EventDetailRead(EventRead):
     organizer_id: UUID
     city_name: str
     organizer: OrganizerPublicRead
+    # Solo el propio organizador o un admin lo ven (nunca en vista pública) —
+    # el router lo completa condicionalmente. Etapa 6b-1.
+    organizer_subscription: OrganizerSubscriptionRead | None = None
 
 
 class EventListParams(BaseModel):
@@ -116,6 +120,9 @@ class AdminEventListParams(BaseModel):
 class AdminEventRead(EventRead):
     organizer_public_name: str
     is_active: bool
+    # Estado de pago más reciente del organizador — Etapa 6b-1, para decidir
+    # si aprobar el evento sabiendo si ya avisó/confirmó el pago del plan.
+    organizer_subscription: OrganizerSubscriptionRead | None = None
 
 
 class EventCreate(BaseModel):

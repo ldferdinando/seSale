@@ -2,6 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { Clock } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ const STATUS_LABEL: Record<Subscription["status"], string> = {
   expired: "Vencida",
   cancelled: "Cancelada",
   pending_payment: "Pago pendiente",
+  pending_approval: "En revisión",
 };
 
 function SubscriptionRow({ subscription }: { subscription: Subscription }) {
@@ -28,6 +30,7 @@ function SubscriptionRow({ subscription }: { subscription: Subscription }) {
             {STATUS_LABEL[subscription.status]}
           </Badge>
         </div>
+        {subscription.event_title && <p className="text-xs text-ink-4">Evento: {subscription.event_title}</p>}
         {subscription.status === "active" && (
           <p className="text-xs text-ink-4">
             Vence el {format(parseISO(subscription.expires_at), "d 'de' MMMM yyyy", { locale: es })}
@@ -62,24 +65,42 @@ export function MySubscriptionsSection({ enabled }: { enabled: boolean }) {
     );
   }
 
+  // Etapa 6b-2: el pago es por evento — un organizador puede tener a la vez
+  // un evento con plan activo y otro con un aviso de transferencia pendiente,
+  // ambos se muestran (no son excluyentes como cuando era "un plan por cuenta").
   const activeSubscriptions = (subscriptions ?? []).filter((s) => s.status === "active");
-
-  if (activeSubscriptions.length === 0) {
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">No tenés un plan activo todavía.</p>
-        <Button asChild variant="outline" className="w-fit">
-          <Link href="/planes">Ver planes disponibles</Link>
-        </Button>
-      </div>
-    );
-  }
+  const pendingApprovals = (subscriptions ?? []).filter((s) => s.status === "pending_approval");
 
   return (
     <div className="flex flex-col gap-3">
+      {pendingApprovals.map((subscription) => (
+        <div
+          key={subscription.id}
+          role="status"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
+        >
+          <Clock className="h-5 w-5 shrink-0 text-ink-4" aria-hidden />
+          <p className="text-sm text-ink-3">
+            {subscription.event_title
+              ? `Tu comprobante de pago para "${subscription.event_title}" está siendo revisado.`
+              : "Tu comprobante de pago está siendo revisado."}{" "}
+            Te avisamos por email cuando el plan esté activo.
+          </p>
+        </div>
+      ))}
+
       {activeSubscriptions.map((subscription) => (
         <SubscriptionRow key={subscription.id} subscription={subscription} />
       ))}
+
+      {activeSubscriptions.length === 0 && pendingApprovals.length === 0 && (
+        <>
+          <p className="text-sm text-muted-foreground">No tenés un plan activo todavía.</p>
+          <Button asChild variant="outline" className="w-fit">
+            <Link href="/mis-eventos">Elegir un evento para destacar</Link>
+          </Button>
+        </>
+      )}
     </div>
   );
 }

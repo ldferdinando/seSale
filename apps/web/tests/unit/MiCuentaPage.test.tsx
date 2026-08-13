@@ -50,13 +50,16 @@ describe("MiCuentaPage", () => {
     expect(screen.getByText(/Identidad verificada por seSALE/i)).toBeInTheDocument();
   });
 
-  it("sin plan activo, ofrece ver los planes disponibles", async () => {
+  it("sin plan activo, ofrece elegir un evento para destacar", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
 
     renderWithClient();
 
     expect(await screen.findByText(/No tenés un plan activo todavía/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Ver planes disponibles/i })).toHaveAttribute("href", "/planes");
+    expect(screen.getByRole("link", { name: /Elegir un evento para destacar/i })).toHaveAttribute(
+      "href",
+      "/mis-eventos",
+    );
   });
 
   it("muestra las suscripciones activas del usuario", async () => {

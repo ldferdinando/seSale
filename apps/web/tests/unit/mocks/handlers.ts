@@ -55,6 +55,7 @@ export function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDeta
       public_whatsapp: "+5492984567890",
       city: "General Roca",
     },
+    organizer_subscription: null,
     ...overrides,
   };
 }
@@ -95,6 +96,7 @@ export function makeAdminEvent(overrides: Partial<AdminEvent> = {}): AdminEvent 
     ...makeEvent(),
     organizer_public_name: "El Tinglado Bar",
     is_active: true,
+    organizer_subscription: null,
     ...overrides,
   };
 }
@@ -119,13 +121,18 @@ export function makeSubscription(overrides: Partial<Subscription> = {}): Subscri
     plan_name: "Destacado",
     plan_type: "dest",
     status: "active",
+    payment_method: "mercadopago",
     starts_at: "2099-01-01T00:00:00Z",
     expires_at: "2099-01-31T00:00:00Z",
     amount_paid: 3500,
     currency: "ARS",
     promo_label: null,
     mp_payment_id: "123456789",
+    transfer_note: null,
+    reviewed_at: null,
     created_at: "2099-01-01T00:00:00Z",
+    event_id: "11111111-1111-1111-1111-111111111111",
+    event_title: "Noche de Rock Nacional",
     ...overrides,
   };
 }
@@ -252,6 +259,27 @@ export const handlers = [
   http.patch(`${API_URL}/api/admin/subscriptions/:id/activate`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(makeAdminSubscription({ status: "active", expires_at: body.expires_at as string }));
+  }),
+  http.post(`${API_URL}/api/subscriptions/transfer`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      makeSubscription({
+        status: "pending_approval",
+        payment_method: "transfer",
+        transfer_note: (body.note as string | null) ?? null,
+      }),
+      { status: 201 },
+    );
+  }),
+  http.patch(`${API_URL}/api/admin/subscriptions/:id/review`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const action = body.action as "approve" | "reject";
+    return HttpResponse.json(
+      makeAdminSubscription({
+        status: action === "approve" ? "active" : "cancelled",
+        payment_method: "transfer",
+      }),
+    );
   }),
   http.post(`${API_URL}/api/events/:id/report`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;

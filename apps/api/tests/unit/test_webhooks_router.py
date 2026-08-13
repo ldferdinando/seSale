@@ -23,10 +23,30 @@ def _signature(notification_id: str, request_id: str, ts: str = "1700000000") ->
     return f"ts={ts},v1={v1}"
 
 
+def _make_event(session: Session, *, city: City, organizer: User, location: Location, **kwargs) -> Event:
+    defaults = dict(
+        title="Show en vivo",
+        date=date.today() + timedelta(days=5),
+        time=time(21, 0),
+        status=EventStatus.approved,
+        is_active=True,
+    )
+    defaults.update(kwargs)
+    event = Event(city_id=city.id, organizer_id=organizer.id, location_id=location.id, **defaults)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
 async def _create_pending_checkout(
-    client: AsyncClient, plan_dest: Plan, headers: dict[str, str], fake_mp_sdk: FakeMPSDK
+    client: AsyncClient, plan_dest: Plan, event: Event, headers: dict[str, str], fake_mp_sdk: FakeMPSDK
 ) -> str:
-    response = await client.post("/api/subscriptions/checkout", json={"plan_id": str(plan_dest.id)}, headers=headers)
+    response = await client.post(
+        "/api/subscriptions/checkout",
+        json={"plan_id": str(plan_dest.id), "event_id": str(event.id)},
+        headers=headers,
+    )
     assert response.status_code == 200
     return fake_mp_sdk.last_preference_data["external_reference"]
 
@@ -64,21 +84,8 @@ async def test_webhook_approved_activates_subscription_and_updates_events(
 ):
     monkeypatch.setattr(settings, "mercadopago_webhook_secret", WEBHOOK_SECRET)
 
-    external_reference = await _create_pending_checkout(client, plan_dest, user_token_headers, fake_mp_sdk)
-
-    event = Event(
-        city_id=city.id,
-        organizer_id=organizer.id,
-        location_id=location.id,
-        title="Show en vivo",
-        date=date.today() + timedelta(days=5),
-        time=time(21, 0),
-        status=EventStatus.approved,
-        is_active=True,
-    )
-    session.add(event)
-    session.commit()
-    session.refresh(event)
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    external_reference = await _create_pending_checkout(client, plan_dest, event, user_token_headers, fake_mp_sdk)
 
     fake_mp_sdk.payment_response = {
         "id": 555,
@@ -100,6 +107,7 @@ async def test_webhook_approved_activates_subscription_and_updates_events(
     ).first()
     assert subscription is not None
     assert subscription.status == SubscriptionStatus.active
+    assert subscription.event_id == event.id
 
     session.refresh(event)
     assert event.plan.value == "dest"
@@ -111,13 +119,16 @@ async def test_webhook_approved_is_idempotent(
     client: AsyncClient,
     session: Session,
     organizer: User,
+    location: Location,
+    city: City,
     plan_dest: Plan,
     plan_price_dest,
     user_token_headers: dict[str, str],
     fake_mp_sdk: FakeMPSDK,
 ):
     monkeypatch.setattr(settings, "mercadopago_webhook_secret", WEBHOOK_SECRET)
-    external_reference = await _create_pending_checkout(client, plan_dest, user_token_headers, fake_mp_sdk)
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    external_reference = await _create_pending_checkout(client, plan_dest, event, user_token_headers, fake_mp_sdk)
 
     fake_mp_sdk.payment_response = {
         "id": 777,
@@ -150,13 +161,17 @@ async def test_webhook_rejected_cancels_subscription(
     monkeypatch,
     client: AsyncClient,
     session: Session,
+    organizer: User,
+    location: Location,
+    city: City,
     plan_dest: Plan,
     plan_price_dest,
     user_token_headers: dict[str, str],
     fake_mp_sdk: FakeMPSDK,
 ):
     monkeypatch.setattr(settings, "mercadopago_webhook_secret", WEBHOOK_SECRET)
-    external_reference = await _create_pending_checkout(client, plan_dest, user_token_headers, fake_mp_sdk)
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    external_reference = await _create_pending_checkout(client, plan_dest, event, user_token_headers, fake_mp_sdk)
 
     fake_mp_sdk.payment_response = {
         "id": 888,

@@ -138,4 +138,68 @@ describe("EventDetailView", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText("Editar evento")).not.toBeInTheDocument();
   });
+
+  it("shows the organizer's payment status when the event is pending and the plan is dest/pro (owner/admin only)", async () => {
+    const event = makeEventDetail({
+      status: "pending",
+      organizer_subscription: {
+        status: "pending_approval",
+        payment_method: "transfer",
+        plan_name: "Destacado",
+        plan_type: "dest",
+        transfer_note: "Ya transferí, mando el comprobante por WhatsApp",
+        created_at: "2099-01-01T00:00:00Z",
+        reviewed_at: null,
+      },
+    });
+
+    renderWithClient(event);
+
+    expect(screen.getByText(/pendiente de revisión/)).toBeInTheDocument();
+    expect(screen.getByText(/Ya transferí, mando el comprobante por WhatsApp/)).toBeInTheDocument();
+  });
+
+  it("does not show any payment status block when organizer_subscription is null", () => {
+    renderWithClient(makeEventDetail({ status: "pending", organizer_subscription: null }));
+
+    expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
+  });
+
+  it("does not show the payment status block once the event is already approved", () => {
+    const event = makeEventDetail({
+      status: "approved",
+      organizer_subscription: {
+        status: "pending_approval",
+        payment_method: "transfer",
+        plan_name: "Destacado",
+        plan_type: "dest",
+        transfer_note: "Ya transferí",
+        created_at: "2099-01-01T00:00:00Z",
+        reviewed_at: null,
+      },
+    });
+
+    renderWithClient(event);
+
+    expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
+  });
+
+  it("does not show the payment status block for the gratis plan", () => {
+    const event = makeEventDetail({
+      status: "pending",
+      organizer_subscription: {
+        status: "active",
+        payment_method: "mercadopago",
+        plan_name: "Gratuito",
+        plan_type: "gratis",
+        transfer_note: null,
+        created_at: "2099-01-01T00:00:00Z",
+        reviewed_at: null,
+      },
+    });
+
+    renderWithClient(event);
+
+    expect(screen.queryByText("Gratuito")).not.toBeInTheDocument();
+  });
 });

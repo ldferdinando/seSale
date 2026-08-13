@@ -62,6 +62,98 @@ describe("AdminEventsPanel", () => {
     });
   });
 
+  it("muestra el estado de pago del organizador cuando el evento lo tiene", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([
+          makeAdminEvent({
+            id: "a",
+            title: "Evento con transferencia",
+            status: "pending",
+            organizer_subscription: {
+              status: "pending_approval",
+              payment_method: "transfer",
+              plan_name: "Destacado",
+              plan_type: "dest",
+              transfer_note: "Ya transferí",
+              created_at: "2099-01-01T00:00:00Z",
+              reviewed_at: null,
+            },
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    const row = await screen.findByTestId("admin-event-row");
+    expect(within(row).getByText(/pendiente de revisión/)).toBeInTheDocument();
+    expect(within(row).getByText(/Ya transferí/)).toBeInTheDocument();
+  });
+
+  it("no muestra el estado de pago una vez que el evento ya está aprobado", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([
+          makeAdminEvent({
+            id: "a",
+            status: "approved",
+            organizer_subscription: {
+              status: "pending_approval",
+              payment_method: "transfer",
+              plan_name: "Destacado",
+              plan_type: "dest",
+              transfer_note: "Ya transferí",
+              created_at: "2099-01-01T00:00:00Z",
+              reviewed_at: null,
+            },
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    await screen.findByTestId("admin-event-row");
+    expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
+  });
+
+  it("no muestra el estado de pago para el plan gratis", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([
+          makeAdminEvent({
+            id: "a",
+            status: "pending",
+            organizer_subscription: {
+              status: "active",
+              payment_method: "mercadopago",
+              plan_name: "Gratuito",
+              plan_type: "gratis",
+              transfer_note: null,
+              created_at: "2099-01-01T00:00:00Z",
+              reviewed_at: null,
+            },
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    await screen.findByTestId("admin-event-row");
+    expect(screen.queryByText("Gratuito")).not.toBeInTheDocument();
+  });
+
+  it("no muestra nada de pago cuando el organizador no tiene suscripción", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([makeAdminEvent({ id: "a", organizer_subscription: null })]),
+      ),
+    );
+    renderWithClient();
+
+    await screen.findByTestId("admin-event-row");
+    expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
+  });
+
   it("deleting an event requires a confirmation click", async () => {
     server.use(
       http.get(`${API_URL}/api/admin/events`, () => HttpResponse.json([makeAdminEvent({ id: "a" })])),

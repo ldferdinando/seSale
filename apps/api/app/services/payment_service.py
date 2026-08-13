@@ -12,11 +12,12 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import mercadopago
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.models.event import Event, EventStatus
-from app.models.plan import Plan, PlanPrice, PlanType
+from app.models.plan import Plan, PlanPrice, PlanType, PricingType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 
@@ -50,8 +51,26 @@ def list_active_plans(session: Session) -> list[tuple[Plan, PlanPrice | None]]:
     return [(plan, get_current_plan_price(session, plan.id)) for plan in plans]
 
 
-def create_checkout_preference(session: Session, *, user: User, plan_id: UUID) -> tuple[Subscription, str]:
-    """Crea la preferencia de pago en MercadoPago y una Subscription pending_payment.
+def _get_event_for_plan_purchase(session: Session, *, event_id: UUID, user: User) -> Event:
+    """Valida el evento al que se le va a aplicar un plan pago (dest/pro).
+
+    Etapa 6b-2: el plan se compra PARA un evento puntual, elegido por el
+    organizador al momento de pagar — no para toda su cuenta. Solo el dueño
+    del evento o un admin pueden comprarle un plan.
+    """
+    event = session.get(Event, event_id)
+    if event is None or not event.is_active:
+        raise LookupError("Evento no encontrado")
+    if event.organizer_id != user.id and user.role != "admin":
+        raise LookupError("Evento no encontrado")
+    return event
+
+
+def create_checkout_preference(
+    session: Session, *, user: User, plan_id: UUID, event_id: UUID
+) -> tuple[Subscription, str]:
+    """Crea la preferencia de pago en MercadoPago y una Subscription pending_payment
+    para destacar `event_id`.
 
     Devuelve (subscription, init_point).
     """
@@ -61,11 +80,13 @@ def create_checkout_preference(session: Session, *, user: User, plan_id: UUID) -
     if plan.plan_type in (PlanType.gratis, PlanType.banner):
         raise ValueError("Este plan no se paga a través de MercadoPago")
 
+    event = _get_event_for_plan_purchase(session, event_id=event_id, user=user)
+
     price = get_current_plan_price(session, plan_id)
     if price is None:
         raise LookupError("El plan no tiene un precio vigente")
 
-    external_reference = f"{user.id}:{plan.id}:{price.id}"
+    external_reference = f"{user.id}:{plan.id}:{price.id}:{event.id}"
     preference_data = {
         "items": [
             {
@@ -105,6 +126,7 @@ def create_checkout_preference(session: Session, *, user: User, plan_id: UUID) -
         user_id=user.id,
         plan_id=plan.id,
         plan_price_id=price.id,
+        event_id=event.id,
         status=SubscriptionStatus.pending_payment,
         starts_at=now,
         expires_at=now,
@@ -154,13 +176,20 @@ def fetch_payment_from_mp(payment_id: str) -> dict:
     return result["response"]
 
 
-def _parse_external_reference(external_reference: str) -> tuple[UUID, UUID, UUID]:
-    user_id_str, plan_id_str, plan_price_id_str = external_reference.split(":")
-    return UUID(user_id_str), UUID(plan_id_str), UUID(plan_price_id_str)
+def _parse_external_reference(external_reference: str) -> tuple[UUID, UUID, UUID, UUID | None]:
+    parts = external_reference.split(":")
+    user_id_str, plan_id_str, plan_price_id_str = parts[0], parts[1], parts[2]
+    event_id_str = parts[3] if len(parts) > 3 else None
+    return (
+        UUID(user_id_str),
+        UUID(plan_id_str),
+        UUID(plan_price_id_str),
+        UUID(event_id_str) if event_id_str else None,
+    )
 
 
 def _find_pending_subscription(
-    session: Session, *, user_id: UUID, plan_id: UUID, plan_price_id: UUID
+    session: Session, *, user_id: UUID, plan_id: UUID, plan_price_id: UUID, event_id: UUID | None
 ) -> Subscription | None:
     stmt = (
         select(Subscription)
@@ -170,10 +199,16 @@ def _find_pending_subscription(
         .where(Subscription.status == SubscriptionStatus.pending_payment)
         .order_by(Subscription.created_at.desc())
     )
+    if event_id is not None:
+        stmt = stmt.where(Subscription.event_id == event_id)
     return session.exec(stmt).first()
 
 
 def _apply_plan_to_organizer_events(session: Session, *, user_id: UUID, plan_type: PlanType, featured_until: datetime) -> None:
+    """Flujo del plan Banner únicamente (sin event_id, no es un upgrade de un
+    evento puntual) — se mantiene sin cambios. Los planes dest/pro usan
+    `_apply_plan_to_event` desde la Etapa 6b-2.
+    """
     stmt = (
         select(Event)
         .where(Event.organizer_id == user_id)
@@ -186,6 +221,23 @@ def _apply_plan_to_organizer_events(session: Session, *, user_id: UUID, plan_typ
         session.add(event)
 
 
+def _apply_plan_to_event(session: Session, *, event_id: UUID | None, plan_type: PlanType, featured_until: datetime) -> None:
+    """Etapa 6b-2: aplica el plan pagado a UN evento puntual (no a todos los
+    del organizador). No exige `status == approved` — si el evento todavía
+    está pendiente de moderación, igual queda con el plan asignado, listo
+    para cuando se apruebe (el listado público de todos modos solo muestra
+    eventos approved).
+    """
+    if event_id is None:
+        return
+    event = session.get(Event, event_id)
+    if event is None or not event.is_active:
+        return
+    event.plan = plan_type
+    event.featured_until = featured_until
+    session.add(event)
+
+
 def handle_approved_payment(session: Session, payment_data: dict) -> Subscription:
     """Activa (idempotente) la Subscription correspondiente a un pago approved."""
     payment_id = str(payment_data["id"])
@@ -196,9 +248,9 @@ def handle_approved_payment(session: Session, payment_data: dict) -> Subscriptio
     if existing is not None and existing.status == SubscriptionStatus.active:
         return existing
 
-    user_id, plan_id, plan_price_id = _parse_external_reference(payment_data["external_reference"])
+    user_id, plan_id, plan_price_id, event_id = _parse_external_reference(payment_data["external_reference"])
     subscription = existing or _find_pending_subscription(
-        session, user_id=user_id, plan_id=plan_id, plan_price_id=plan_price_id
+        session, user_id=user_id, plan_id=plan_id, plan_price_id=plan_price_id, event_id=event_id
     )
 
     now = datetime.now(timezone.utc)
@@ -208,6 +260,7 @@ def handle_approved_payment(session: Session, payment_data: dict) -> Subscriptio
             user_id=user_id,
             plan_id=plan_id,
             plan_price_id=plan_price_id,
+            event_id=event_id,
             status=SubscriptionStatus.pending_payment,
             starts_at=now,
             expires_at=now,
@@ -228,8 +281,8 @@ def handle_approved_payment(session: Session, payment_data: dict) -> Subscriptio
 
     plan = session.get(Plan, subscription.plan_id)
     if plan is not None:
-        _apply_plan_to_organizer_events(
-            session, user_id=subscription.user_id, plan_type=plan.plan_type, featured_until=subscription.expires_at
+        _apply_plan_to_event(
+            session, event_id=subscription.event_id, plan_type=plan.plan_type, featured_until=subscription.expires_at
         )
         session.commit()
 
@@ -241,8 +294,10 @@ def handle_rejected_payment(session: Session, payment_data: dict) -> Subscriptio
     if not external_reference:
         return None
 
-    user_id, plan_id, plan_price_id = _parse_external_reference(external_reference)
-    subscription = _find_pending_subscription(session, user_id=user_id, plan_id=plan_id, plan_price_id=plan_price_id)
+    user_id, plan_id, plan_price_id, event_id = _parse_external_reference(external_reference)
+    subscription = _find_pending_subscription(
+        session, user_id=user_id, plan_id=plan_id, plan_price_id=plan_price_id, event_id=event_id
+    )
     if subscription is None:
         return None
 
@@ -252,6 +307,116 @@ def handle_rejected_payment(session: Session, payment_data: dict) -> Subscriptio
         subscription.mp_payment_id = str(payment_id)
     session.add(subscription)
     session.commit()
+    session.refresh(subscription)
+    return subscription
+
+
+def get_latest_subscriptions_by_event(session: Session, event_ids: list[UUID]) -> dict[UUID, Subscription]:
+    """Última Subscription (por created_at) de cada event_id — Etapa 6b-2.
+
+    Usado para mostrar, en el contexto de un evento (detalle o listado admin),
+    el estado de pago del plan comprado PARA ESE evento puntual (avisó
+    transferencia, aprobado, pago de MP pendiente, etc.) sin tener que ir a
+    la sección Suscripciones. Antes de la 6b-2 esto se buscaba por
+    organizer_id (la última Subscription del organizador en general), lo que
+    mezclaba el estado de un evento con el de cualquier otro evento no
+    relacionado del mismo organizador — ver a_revisar.md. Una sola query para
+    todos los event_id pedidos, evita N+1 en el listado admin de eventos.
+    """
+    if not event_ids:
+        return {}
+
+    stmt = (
+        select(Subscription)
+        .where(Subscription.event_id.in_(event_ids))
+        .options(selectinload(Subscription.plan))
+        .order_by(Subscription.created_at.desc())
+    )
+    latest: dict[UUID, Subscription] = {}
+    for subscription in session.exec(stmt).all():
+        if subscription.event_id is not None:
+            latest.setdefault(subscription.event_id, subscription)
+    return latest
+
+
+def create_transfer_subscription(
+    session: Session, *, user: User, plan_id: UUID, event_id: UUID, note: str | None
+) -> Subscription:
+    """Etapa 6b-1/6b-2: el usuario avisa que ya transfirió para destacar
+    `event_id` — crea una Subscription pending_approval, sin cobrar nada acá.
+    El admin la revisa y aprueba/rechaza desde el panel (`review_subscription`).
+    El comprobante en sí se manda por fuera del sistema (WhatsApp/mail) — ver
+    a_revisar.md, Etapa 6b-1.
+    """
+    plan = session.get(Plan, plan_id)
+    if plan is None or not plan.is_active:
+        raise LookupError("Plan no encontrado")
+    # Mismo criterio que create_checkout_preference: el plan gratis no se paga
+    # (nada que transferir) y el plan Banner es a convenir con el admin
+    # (pricing_type=custom, no pasa por este flujo tampoco).
+    if plan.plan_type in (PlanType.gratis, PlanType.banner) or plan.pricing_type != PricingType.fixed:
+        raise ValueError("Este plan no admite pago por transferencia")
+
+    event = _get_event_for_plan_purchase(session, event_id=event_id, user=user)
+
+    price = get_current_plan_price(session, plan_id)
+    if price is None:
+        raise LookupError("El plan no tiene un precio vigente")
+
+    now = datetime.now(timezone.utc)
+    subscription = Subscription(
+        user_id=user.id,
+        plan_id=plan.id,
+        plan_price_id=price.id,
+        event_id=event.id,
+        status=SubscriptionStatus.pending_approval,
+        payment_method="transfer",
+        transfer_note=note,
+        starts_at=now,  # placeholder hasta que el admin apruebe, igual que create_checkout_preference
+        expires_at=now,
+        amount_paid=price.amount,
+        currency=price.currency,
+    )
+    session.add(subscription)
+    session.commit()
+    session.refresh(subscription)
+    return subscription
+
+
+def review_subscription(
+    session: Session, *, subscription_id: UUID, admin_id: UUID, action: str, admin_notes: str | None
+) -> Subscription:
+    """Etapa 6b-1: el admin aprueba o rechaza un aviso de transferencia."""
+    subscription = session.get(Subscription, subscription_id)
+    if subscription is None:
+        raise LookupError("Suscripción no encontrada")
+    if subscription.status != SubscriptionStatus.pending_approval:
+        raise ValueError("La suscripción ya fue revisada")
+
+    now = datetime.now(timezone.utc)
+    subscription.approved_by = admin_id
+    subscription.reviewed_at = now
+    subscription.notes = admin_notes
+
+    if action == "approve":
+        subscription.status = SubscriptionStatus.active
+        subscription.starts_at = now
+        subscription.expires_at = now + timedelta(days=SUBSCRIPTION_DURATION_DAYS)
+        session.add(subscription)
+        session.commit()
+        session.refresh(subscription)
+
+        plan = session.get(Plan, subscription.plan_id)
+        if plan is not None:
+            _apply_plan_to_event(
+                session, event_id=subscription.event_id, plan_type=plan.plan_type, featured_until=subscription.expires_at
+            )
+            session.commit()
+    else:
+        subscription.status = SubscriptionStatus.cancelled
+        session.add(subscription)
+        session.commit()
+
     session.refresh(subscription)
     return subscription
 
@@ -301,6 +466,18 @@ def expire_subscriptions(session: Session) -> list[Subscription]:
         if plan is None:
             continue
 
+        if subscription.event_id is not None:
+            # Etapa 6b-2: el plan es de este evento puntual, revertir solo este.
+            event = session.get(Event, subscription.event_id)
+            if event is not None and event.plan == plan.plan_type:
+                event.plan = PlanType.gratis
+                event.featured_until = None
+                event.is_featured = False
+                session.add(event)
+            continue
+
+        # Sin event_id: Subscription vieja (previa a 6b-2) o del plan Banner
+        # (cuenta completa, no un evento puntual) — mismo criterio de antes.
         events_stmt = (
             select(Event)
             .where(Event.organizer_id == subscription.user_id)

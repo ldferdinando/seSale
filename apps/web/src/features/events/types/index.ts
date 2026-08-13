@@ -53,10 +53,26 @@ export interface EventOrganizerPublic {
   city: string | null;
 }
 
+/**
+ * Estado de pago más reciente del organizador — Etapa 6b-1. Solo viene
+ * completo (no null) cuando quien pide el evento es el propio organizador o
+ * un admin; nunca en la vista pública.
+ */
+export interface OrganizerSubscriptionStatus {
+  status: "active" | "expired" | "cancelled" | "pending_payment" | "pending_approval";
+  payment_method: "mercadopago" | "transfer" | "manual";
+  plan_name: string;
+  plan_type: EventPlan | "banner";
+  transfer_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 export interface EventDetail extends Event {
   organizer_id: string;
   city_name: string;
   organizer: EventOrganizerPublic;
+  organizer_subscription: OrganizerSubscriptionStatus | null;
 }
 
 /** "diurno" 07:00–19:59 hs · "nocturno" 20:00–06:59 hs — filtro resuelto en el backend. */
@@ -107,6 +123,7 @@ export interface EventsByStatus {
 export interface AdminEvent extends Event {
   organizer_public_name: string;
   is_active: boolean;
+  organizer_subscription: OrganizerSubscriptionStatus | null;
 }
 
 export interface AdminEventFilters {

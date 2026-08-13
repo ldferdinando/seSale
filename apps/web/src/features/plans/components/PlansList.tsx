@@ -5,22 +5,30 @@ import { PlanCard } from "@/features/plans/components/PlanCard";
 import { useCheckout } from "@/features/plans/hooks/useCheckout";
 import { usePlans } from "@/features/plans/hooks/usePlans";
 
-export function PlansList() {
+interface PlansListProps {
+  /** Evento al que se le va a aplicar el plan — el pago es por evento (Etapa 6b-2). */
+  eventId: string;
+}
+
+export function PlansList({ eventId }: PlansListProps) {
   const { data: plans, isLoading, isError } = usePlans();
   const checkout = useCheckout();
 
   function handleContratar(planId: string) {
-    checkout.mutate(planId, {
-      onSuccess: (response) => {
-        window.location.href = response.init_point;
+    checkout.mutate(
+      { planId, eventId },
+      {
+        onSuccess: (response) => {
+          window.location.href = response.init_point;
+        },
+        onError: (error) => {
+          // El detalle técnico queda solo en consola/logs — a la UI nunca le
+          // mostramos el texto crudo del backend (que puede exponer detalle
+          // interno de la API de MercadoPago).
+          console.error("Error iniciando el checkout de MercadoPago:", error);
+        },
       },
-      onError: (error) => {
-        // El detalle técnico queda solo en consola/logs — a la UI nunca le
-        // mostramos el texto crudo del backend (que puede exponer detalle
-        // interno de la API de MercadoPago).
-        console.error("Error iniciando el checkout de MercadoPago:", error);
-      },
-    });
+    );
   }
 
   if (isLoading) {
@@ -53,8 +61,9 @@ export function PlansList() {
           <PlanCard
             key={plan.id}
             plan={plan}
+            eventId={eventId}
             onContratar={handleContratar}
-            isSubmitting={checkout.isPending && checkout.variables === plan.id}
+            isSubmitting={checkout.isPending && checkout.variables?.planId === plan.id}
           />
         ))}
       </div>

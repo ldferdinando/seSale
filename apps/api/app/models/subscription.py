@@ -10,6 +10,7 @@ class SubscriptionStatus(str, Enum):
     expired = "expired"
     cancelled = "cancelled"
     pending_payment = "pending_payment"
+    pending_approval = "pending_approval"  # aviso de transferencia, esperando revisión del admin — Etapa 6b-1
 
 
 class Subscription(SQLModel, table=True):
@@ -27,8 +28,20 @@ class Subscription(SQLModel, table=True):
     amount_paid: int  # lo que efectivamente pagó, copia del price al momento
     currency: str = Field(default="ARS", max_length=10)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    approved_by: UUID | None = Field(default=None, foreign_key="users.id")  # admin que aprobó (custom/banner)
-    notes: str | None = Field(default=None)
+    approved_by: UUID | None = Field(default=None, foreign_key="users.id")  # admin que aprobó/rechazó (custom/banner/transfer)
+    notes: str | None = Field(default=None)  # notas del admin al aprobar o rechazar
+
+    # Etapa 6b-1 — pago manual con aviso de transferencia
+    payment_method: str = Field(default="mercadopago")  # "mercadopago" | "transfer" | "manual"
+    transfer_note: str | None = Field(default=None)  # nota del usuario al avisar la transferencia
+    reviewed_at: datetime | None = Field(default=None)  # cuándo approved_by revisó (aprobó/rechazó)
+
+    # Etapa 6b-2: el pago es POR EVENTO, no por cuenta del organizador — un
+    # plan dest/pro se compra para destacar un evento puntual (elegido al
+    # momento de pagar), y solo ese evento se actualiza al aprobarse.
+    # None únicamente para el plan Banner (pricing_type=custom, no es un
+    # upgrade de un evento sino un espacio publicitario del sitio).
+    event_id: UUID | None = Field(default=None, foreign_key="events.id")
 
     user: "User" = Relationship(
         back_populates="subscriptions",
@@ -36,3 +49,6 @@ class Subscription(SQLModel, table=True):
     )
     plan: "Plan" = Relationship(back_populates="subscriptions")
     plan_price: "PlanPrice" = Relationship(back_populates="subscriptions")
+    event: "Event" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Subscription.event_id]"}
+    )

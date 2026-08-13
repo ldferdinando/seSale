@@ -282,7 +282,10 @@ def get_event_detail(session: Session, event_id: UUID, current_user: User | None
     """Detalle completo de un evento, con reglas de visibilidad por status.
 
     - approved + is_active: visible para cualquiera.
-    - pending/rejected: visible solo para el organizador dueño del evento.
+    - pending/rejected: visible para el organizador dueño del evento o un admin
+      (Etapa 6b-1: el panel admin necesita poder ver/editar eventos pending
+      desde el listado — antes solo el dueño podía, y GET devolvía 404 al
+      admin incluso con el link "Editar" del panel).
     - cualquier otro caso: LookupError (404 en el router).
     """
     stmt = (
@@ -301,7 +304,8 @@ def get_event_detail(session: Session, event_id: UUID, current_user: User | None
 
     is_public = event.status == EventStatus.approved and event.is_active
     is_owner = current_user is not None and event.organizer_id == current_user.id
-    if not is_public and not is_owner:
+    is_admin = current_user is not None and current_user.role == "admin"
+    if not is_public and not is_owner and not is_admin:
         raise LookupError("Evento no encontrado")
 
     return event

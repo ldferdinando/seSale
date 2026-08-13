@@ -25,6 +25,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
+import {
+  isRelevantOrganizerSubscription,
+  OrganizerSubscriptionBadge,
+} from "@/features/events/components/OrganizerSubscriptionBadge";
 import { ReportEventModal } from "@/features/events/components/ReportEventModal";
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
@@ -253,12 +257,20 @@ export function EventDetailView({ event }: EventDetailViewProps) {
 
         {isOwner && event.plan === "gratis" && (
           <Link
-            href="/planes"
+            href={`/planes?event_id=${event.id}`}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-primary p-3 text-sm font-bold text-primary-foreground"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             Elegir plan
           </Link>
+        )}
+
+        {/* organizer_subscription solo llega no-null cuando el viewer es el
+            organizador o un admin (nunca en la vista pública); además solo
+            interesa mientras el evento no esté aprobado y sea un plan pago
+            (dest/pro) — Etapa 6b-1 */}
+        {isRelevantOrganizerSubscription(event.status, event.organizer_subscription) && (
+          <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
         )}
 
         {/* Placeholder visual: horario del lugar y descripción del venue.

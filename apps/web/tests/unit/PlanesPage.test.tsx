@@ -1,11 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { useSearchParams } from "next/navigation";
+import { describe, expect, it, vi } from "vitest";
 
 import PlanesPage from "@/app/planes/page";
 
+const EVENT_ID = "11111111-1111-1111-1111-111111111111";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
+}));
+
 function renderWithClient() {
+  vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams({ event_id: EVENT_ID }) as never);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -15,13 +23,26 @@ function renderWithClient() {
 }
 
 describe("PlanesPage", () => {
-  it("muestra los planes con precios desde la API", async () => {
+  it("muestra el evento a destacar y los planes con precios desde la API", async () => {
     renderWithClient();
 
+    expect(await screen.findByText("Noche de Rock Nacional")).toBeInTheDocument();
     expect(await screen.findByText("Gratuito")).toBeInTheDocument();
     expect(screen.getByText("Destacado")).toBeInTheDocument();
     expect(screen.getByText("Destacado Plus")).toBeInTheDocument();
     expect(screen.getByText("$3.500")).toBeInTheDocument();
+  });
+
+  it("sin event_id en la URL pide elegir un evento desde Mis eventos", async () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PlanesPage />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: /Mis eventos/i })).toHaveAttribute("href", "/mis-eventos");
   });
 
   it("el plan gratis muestra 'Tu plan actual' deshabilitado", async () => {

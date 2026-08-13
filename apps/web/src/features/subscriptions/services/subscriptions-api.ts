@@ -1,4 +1,4 @@
-import { apiGet, apiPatch } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import type { AdminSubscription, Subscription } from "@/features/subscriptions/types";
 
 export async function fetchMySubscriptions(): Promise<Subscription[]> {
@@ -19,4 +19,27 @@ export async function fetchAdminSubscriptions(filters: AdminSubscriptionFilters 
 
 export async function activateSubscription(subscriptionId: string, expiresAt: string): Promise<AdminSubscription> {
   return apiPatch<AdminSubscription>(`/api/admin/subscriptions/${subscriptionId}/activate`, { expires_at: expiresAt });
+}
+
+export async function transferSubscription(
+  planId: string,
+  eventId: string,
+  note: string | undefined,
+): Promise<Subscription> {
+  return apiPost<Subscription>("/api/subscriptions/transfer", {
+    plan_id: planId,
+    event_id: eventId,
+    note: note || null,
+  });
+}
+
+export async function reviewSubscription(
+  subscriptionId: string,
+  action: "approve" | "reject",
+  adminNotes: string | undefined,
+): Promise<AdminSubscription> {
+  return apiPatch<AdminSubscription>(`/api/admin/subscriptions/${subscriptionId}/review`, {
+    action,
+    admin_notes: adminNotes || null,
+  });
 }

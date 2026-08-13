@@ -505,14 +505,40 @@ class Subscription(SQLModel, table=True):
     amount_paid: int                                # lo que efectivamente pagó, copia del price al momento
     currency: str = Field(default="ARS", max_length=10)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    approved_by: UUID | None = Field(default=None, foreign_key="users.id")  # admin que aprobó (custom/banner)
-    notes: str | None = Field(default=None)
+    approved_by: UUID | None = Field(default=None, foreign_key="users.id")  # admin que aprobó/rechazó (custom/banner/transfer)
+    notes: str | None = Field(default=None)  # notas del admin al aprobar o rechazar
+
+    # Etapa 6b-1 — pago manual con aviso de transferencia
+    payment_method: str = Field(default="mercadopago")  # "mercadopago" | "transfer" | "manual"
+    transfer_note: str | None = Field(default=None)     # nota del usuario al avisar la transferencia
+    reviewed_at: datetime | None = Field(default=None)   # cuándo approved_by revisó (aprobó/rechazó)
+
+    # Etapa 6b-2 — el pago es POR EVENTO, no por cuenta del organizador
+    event_id: UUID | None = Field(default=None, foreign_key="events.id")
 
     # Relaciones
     user: "User" = Relationship(back_populates="subscriptions")
     plan: "Plan" = Relationship(back_populates="subscriptions")
     plan_price: "PlanPrice" = Relationship(back_populates="subscriptions")
+    event: "Event" = Relationship()
 ```
+
+> `status` incluye además `pending_approval` (Etapa 6b-1): un aviso de
+> transferencia esperando revisión del admin. `approved_by`/`notes` ya
+> existían desde la Etapa 6 (pensados para el plan Banner) — Etapa 6b-1 los
+> reusa como reviewer/admin_notes también para el flujo de transferencia, en
+> vez de duplicarlos con campos nuevos.
+>
+> **`event_id` (Etapa 6b-2 — corrección de arquitectura):** un plan dest/pro
+> se compra PARA UN EVENTO PUNTUAL, elegido por el organizador al momento de
+> pagar — no para "todos los eventos aprobados del organizador" como hacía
+> el código hasta esta corrección (`_apply_plan_to_organizer_events`, que
+> aplicaba el plan pagado a cada evento aprobado del organizador sin
+> distinción). `event_id` es `None` únicamente para el plan Banner
+> (`pricing_type=custom`, es un espacio publicitario del sitio, no el
+> upgrade de un evento) y para las `Subscription` creadas antes de esta
+> migración (no se puede inferir retroactivamente a qué evento
+> correspondían). Ver `a_revisar.md`.
 
 #### `ad_slots`
 ```python
@@ -660,25 +686,39 @@ Usuario completa formulario de publicación
   Admin rechaza → status = "rejected"  →  usuario es notificado
 ```
 
-### Flujo de pago de plan (MercadoPago) — Etapa 6 ✓ implementado
+### Flujo de pago de plan (MercadoPago) — Etapa 6 ✓ implementado, corregido en 6b-2
+
+> **El pago es por evento, no por cuenta.** Hasta la Etapa 6b-2, pagar un
+> plan aplicaba `Event.plan`/`featured_until` a **todos** los eventos
+> aprobados del organizador (`_apply_plan_to_organizer_events`). Se corrigió
+> a pedido del usuario: ahora el organizador elige QUÉ evento destacar al
+> momento de pagar, y solo ese evento se actualiza (`_apply_plan_to_event`).
+> `_apply_plan_to_organizer_events` se mantiene únicamente para el plan
+> Banner (`activate_subscription_manually`), que no es un upgrade de un
+> evento puntual.
 
 ```
-Usuario ve /planes (desde "Elegir plan" en el evento ya publicado,
-o desde "Mi cuenta" → Mi plan)
+Usuario ve /eventos/{id} (dueño, plan="gratis") → botón "Elegir plan"
+        │
+        ▼
+  /planes?event_id={id} — requiere event_id en la URL; sin él, pide elegir
+  un evento desde /mis-eventos (un plan no se compra "para la cuenta")
         │
         ▼
   Plan gratis → botón deshabilitado "Tu plan actual"
   Plan banner → botón "Consultar" → abre WhatsApp (SESALE_WHATSAPP), sin pasar por MP
-  Plan dest/pro → botón "Contratar"
+  Plan dest/pro → botón "Contratar con MercadoPago" o "Ya realicé una
+  transferencia bancaria" (Etapa 6b-1, flujo alternativo)
         │
         ▼
-  POST /api/subscriptions/checkout { plan_id }
+  POST /api/subscriptions/checkout { plan_id, event_id }
         │
         ▼
-  Backend valida que el plan sea fixed (no gratis/banner), obtiene el
-  PlanPrice vigente, crea la preferencia en MercadoPago API (SDK oficial,
-  ACCESS_TOKEN solo en el backend) y guarda una Subscription
-  status="pending_payment" con mp_payment_id=preference_id
+  Backend valida que el plan sea fixed (no gratis/banner), que el evento
+  exista y pertenezca al usuario (o sea admin), obtiene el PlanPrice
+  vigente, crea la preferencia en MercadoPago API (SDK oficial, ACCESS_TOKEN
+  solo en el backend) y guarda una Subscription status="pending_payment"
+  con mp_payment_id=preference_id y event_id=el evento elegido
   → devuelve { init_point }
         │
         ▼
@@ -703,8 +743,8 @@ o desde "Mi cuenta" → Mi plan)
         ├── approved → activa/crea la Subscription (idempotente por
         │              mp_payment_id real), status="active",
         │              starts_at=ahora, expires_at=ahora+30 días, y
-        │              actualiza Event.plan/Event.featured_until de todos
-        │              los eventos approved+activos del organizador
+        │              actualiza Event.plan/Event.featured_until de
+        │              ÚNICAMENTE el evento de subscription.event_id
         │
         └── rejected/cancelled → Subscription.status="cancelled"
         │
@@ -713,12 +753,69 @@ o desde "Mi cuenta" → Mi plan)
 
 Vencimiento: POST /api/admin/subscriptions/expire (admin o llamada
 interna, sin scheduler todavía) marca status="expired" las Subscription
-vencidas y revierte los eventos del organizador a plan="gratis".
+vencidas y revierte a plan="gratis" el evento de subscription.event_id
+(o, si no tiene event_id —Subscription previa a 6b-2 o del plan Banner—,
+todos los eventos del organizador con ese plan, criterio anterior).
 
-Plan Banner (pricing_type=custom): no pasa por MP. El admin carga la
-Subscription y la activa manualmente con
+Plan Banner (pricing_type=custom): no pasa por MP, no tiene event_id (no es
+el upgrade de un evento sino un espacio publicitario del sitio). El admin
+carga la Subscription y la activa manualmente con
 PATCH /api/admin/subscriptions/{id}/activate, mismo efecto que el
-webhook aprobado.
+webhook aprobado (sigue aplicando a todos los eventos aprobados del
+organizador — `_apply_plan_to_organizer_events`, sin cambios).
+```
+
+### Flujo de pago manual con aviso de transferencia (Etapa 6b-1)
+
+Alternativa independiente al checkout de MercadoPago (que tiene un bug de
+credenciales pendiente de resolver en la Etapa 6b-2) — conviven en la
+pantalla `/planes`, sin tocarse entre sí. **No hay subida de comprobante
+todavía**: el usuario avisa que transfirió y manda el comprobante por fuera
+del sistema (WhatsApp); ver `a_revisar.md` para el porqué y qué falta si se
+agrega upload real en el futuro.
+
+```
+Usuario ve /planes?event_id={id} → plan dest/pro → además de "Contratar con
+MercadoPago", ve "Ya realicé una transferencia bancaria"
+        │
+        ▼
+  /planes/transferencia?plan_id={id}&event_id={id}: datos bancarios
+  (NEXT_PUBLIC_BANK_INFO, con botón copiar), botón WhatsApp con mensaje
+  prellenado, nota opcional, botón "Ya envié el comprobante"
+        │
+        ▼
+  POST /api/subscriptions/transfer { plan_id, event_id, note? }
+        │
+        ▼
+  Backend valida el plan (fixed, no gratis/banner) y que el evento exista y
+  pertenezca al usuario (o sea admin), toma el PlanPrice vigente, crea
+  Subscription status="pending_approval" payment_method="transfer"
+  event_id=el evento elegido (sin cobrar nada) y notifica al admin por
+  email (Resend, best-effort)
+        │
+        ▼
+  Frontend navega a /planes/transferencia/enviado ("Ver mis eventos",
+  "Contactar por WhatsApp"). Mientras tanto, en /mi-cuenta el usuario ve un
+  banner "Tu comprobante de pago está siendo revisado" (por evento — puede
+  haber varios simultáneos, uno por cada evento con un aviso pendiente) y
+  en el propio evento (`GET /api/events/{id}` → organizer_subscription) ve
+  el mismo estado, visible solo para él o un admin
+        │
+        ▼
+  Admin revisa el comprobante fuera del sistema (WhatsApp/mail) — lo ve
+  tanto en el panel Suscripciones como en el listado de Eventos pendientes
+  de aprobar (organizer_subscription por evento, no por cuenta) y hace
+  "Aprobar" o "Rechazar"
+        │
+        ▼
+  PATCH /api/admin/subscriptions/{id}/review { action, admin_notes? }
+        │
+        ├── approve → status="active", starts_at=ahora, expires_at=+30 días,
+        │   aplica el plan ÚNICAMENTE al evento de subscription.event_id
+        │   (misma función que usa el webhook de MP), email de confirmación
+        │
+        └── reject → status="cancelled", evento sin tocar, email de
+            rechazo (con el motivo, si el admin lo cargó)
 ```
 
 ### Flujo de compartir por WhatsApp (Etapa 6.5)
@@ -879,14 +976,32 @@ GET    /api/plans                      Público. Planes activos con su PlanPrice
 
 ### Suscripciones y pagos (`/api/subscriptions`) ✓ Etapa 6
 ```
-POST   /api/subscriptions/checkout     User o admin autenticado. Body: { plan_id }.
-                                       400 si el plan es gratis o banner (no pasan
-                                       por MP) o si no tiene precio vigente. Crea
-                                       la preferencia en MercadoPago y una
-                                       Subscription pending_payment. Devuelve
-                                       { init_point }
+POST   /api/subscriptions/checkout     User o admin autenticado. Body:
+                                       { plan_id, event_id }. Etapa 6b-2: event_id
+                                       obligatorio — el evento a destacar, elegido
+                                       por el organizador al momento de pagar. 404
+                                       si el evento no existe o no le pertenece (ni
+                                       es admin), 400 si el plan es gratis o banner
+                                       (no pasan por MP) o si no tiene precio
+                                       vigente. Crea la preferencia en MercadoPago y
+                                       una Subscription pending_payment con ese
+                                       event_id. Devuelve { init_point }
 GET    /api/subscriptions/me           Autenticado. Lista las Subscription propias
-                                       (plan, status, fechas, monto pagado, promo)
+                                       (plan, status, fechas, monto pagado, promo,
+                                       event_id/event_title del evento destacado)
+POST   /api/subscriptions/transfer     ✓ Etapa 6b-1, event_id obligatorio desde
+                                       6b-2. User o admin autenticado. Body:
+                                       { plan_id, event_id, note? }. 404 si el plan
+                                       o el evento no existen o el evento no le
+                                       pertenece (ni es admin), 400 si el plan es
+                                       gratis o custom (banner, no admite
+                                       transferencia). Crea una Subscription
+                                       status="pending_approval",
+                                       payment_method="transfer", event_id=el
+                                       evento elegido, sin cobrar nada — el
+                                       comprobante se manda por fuera del sistema
+                                       (WhatsApp/mail, ver flujo abajo). Notifica al
+                                       admin por email (Resend, best-effort)
 ```
 
 ### Webhooks (`/api/webhooks`) ✓ Etapa 6
@@ -916,6 +1031,20 @@ POST   /api/admin/subscriptions/expire         Admin (o llamada interna). Marca
                                               revierte los eventos del organizador
                                               a plan=gratis. Sin scheduler todavía
                                               — se invoca periódicamente a mano
+PATCH  /api/admin/subscriptions/{id}/review    ✓ Etapa 6b-1. Admin. Body:
+                                              { action: "approve"|"reject",
+                                              admin_notes? }. 404 si no existe,
+                                              409 si status != pending_approval.
+                                              approve: status="active",
+                                              starts_at=ahora, expires_at=+30 días,
+                                              approved_by/reviewed_at/notes
+                                              completados, aplica el plan
+                                              ÚNICAMENTE al evento de
+                                              subscription.event_id (misma lógica
+                                              que el webhook de MP, Etapa 6b-2) y
+                                              envía email de confirmación. reject: status=
+                                              "cancelled", no toca eventos, envía
+                                              email de rechazo con el motivo
 ```
 
 ### Reportes — administración (`/api/admin`) ✓ Etapa 6.5
@@ -952,6 +1081,9 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **5.6** | Bugs de auth y navbar, perfil en Mi cuenta, panel admin completo de eventos, admin crea usuarios y eventos para otros | `created_by` en `users`, `GET /api/admin/events`, `POST /api/admin/users` |
 | **6** | MercadoPago: pago de planes, webhooks, activación automática del plan. | ✓ Completa: pantalla `/planes`, checkout con SDK oficial, webhook con verificación de firma + reconfirmación contra la API de MP, activación automática de eventos, vencimiento (`/api/admin/subscriptions/expire`), gestión admin de suscripciones y activación manual del plan Banner |
 | **6.5** | Mejoras de modelo y features pendientes: hora en formato 24hs (Argentina), categorías múltiples por evento, momento dual (diurno y nocturno calculado), compartir por WhatsApp (home y detalle), reporte de eventos sin login. | ✓ Completa: `event_categories` y `event_moments` reemplazan los campos únicos `category`/`moment` de `events` (migración `0007`), tabla `reports` (migración `0008`), `POST /api/events/{id}/report` con rate limit y email vía Resend, panel admin de reportes |
+| **6b-1** | Flujo de pago manual con aviso de transferencia y confirmación admin — alternativa independiente al checkout de MercadoPago (bug de credenciales pendiente). | ✓ Completa: `SubscriptionStatus.pending_approval`, `payment_method`/`transfer_note`/`reviewed_at` en `Subscription` (migración `0009`, reusa `approved_by`/`notes` como reviewer/admin_notes), `POST /api/subscriptions/transfer`, `PATCH /api/admin/subscriptions/{id}/review`, pantallas `/planes/transferencia` y `/planes/transferencia/enviado`, panel admin actualizado (pending_approval primero, badge de método de pago, aprobar/rechazar). Sin subida de comprobante todavía — ver `a_revisar.md` |
+| **6b-1 (fixes post-QA)** | Correcciones encontradas probando la 6b-1: admin sin acceso a eventos `pending`/`rejected`, caché del frontend mostrando datos viejos, y visibilidad del estado de pago en el contexto del evento (no solo en la pestaña Suscripciones). | ✓ Completa: `get_event_detail` permite admin en eventos no-públicos (antes 404 salvo el dueño); `staleTime: 0` en `useMySubscriptions`/`useAdminSubscriptions` (bug de caché real: TanStack Query servía respuestas de hasta 60s de antigüedad); link "Ver detalle" en panel admin de eventos; `organizer_subscription` agregado a `EventDetailRead`/`AdminEventRead` |
+| **6b-2** | Corrección de arquitectura (a pedido del usuario, detectada probando la 6b-1): el pago de un plan es **por evento**, no por cuenta del organizador. | ✓ Completa: `Subscription.event_id` (FK a `events`, migración `0010`), `_apply_plan_to_event()` reemplaza a `_apply_plan_to_organizer_events()` para dest/pro (se mantiene solo para el plan Banner, que no es un upgrade de un evento puntual); `POST /api/subscriptions/checkout` y `POST /api/subscriptions/transfer` requieren `event_id`; `/planes` requiere `?event_id=` (si falta, pide elegir un evento desde `/mis-eventos`); `expire_subscriptions` revierte solo el evento vinculado; `organizer_subscription` pasó a buscarse por `event_id` (antes por `organizer_id`, lo que mezclaba el pago de un evento con cualquier otro evento no relacionado del mismo organizador — el bug real que disparó esta corrección) |
 | **7** | Multi-ciudad: selector de ciudad, filtrado por ciudad, admin habilita/deshabilita ciudades. | Ya modelado desde Etapa 1 |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
@@ -992,6 +1124,9 @@ ALLOWED_ORIGINS=http://localhost:3000,https://sesale.com.ar
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp   # no se usa en Etapa 6 (checkout es redirect, no Bricks)
 NEXT_PUBLIC_SESALE_WHATSAPP=549XXXXXXXXXX       # mismo número que SESALE_WHATSAPP, expuesto al cliente
+NEXT_PUBLIC_BANK_INFO=                          # Etapa 6b-1 — datos bancarios para /planes/transferencia
+                                                 # formato "Label:valor|Label:valor", ej:
+                                                 # "Alias:sesale.pagos|CBU:000...|Titular:seSALE SRL|Banco:..."
 ```
 
 ### Entornos

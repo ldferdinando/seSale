@@ -2,7 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -13,6 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { PlanBadge } from "@/features/events/components/EventCard";
+import {
+  isRelevantOrganizerSubscription,
+  OrganizerSubscriptionBadge,
+} from "@/features/events/components/OrganizerSubscriptionBadge";
 import { useAdminEvents } from "@/features/events/hooks/useAdminEvents";
 import { useDeleteEvent } from "@/features/events/hooks/useDeleteEvent";
 import { useUpdateEventStatus } from "@/features/events/hooks/useUpdateEventStatus";
@@ -59,7 +63,7 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
   return (
     <div
       data-testid="admin-event-row"
-      className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-start sm:justify-between"
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -72,6 +76,11 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
           {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
         </p>
         <p className="mt-1 text-xs text-ink-5">{format(parseISO(event.date), "d MMM yyyy", { locale: es })}</p>
+        {isRelevantOrganizerSubscription(event.status, event.organizer_subscription) && (
+          <div className="mt-2">
+            <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
@@ -100,6 +109,14 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
             </Button>
           </>
         )}
+
+        <Link
+          href={`/eventos/${event.id}`}
+          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
+        >
+          <Eye className="h-3.5 w-3.5" aria-hidden />
+          Ver detalle
+        </Link>
 
         <Link
           href={`/eventos/${event.id}/editar`}

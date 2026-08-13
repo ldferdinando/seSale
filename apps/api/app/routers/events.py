@@ -19,6 +19,7 @@ from app.schemas.event import (
     EventUpdate,
     OrganizerPublicRead,
 )
+from app.schemas.subscription import OrganizerSubscriptionRead
 from app.services.event_service import (
     create_event,
     delete_event,
@@ -30,6 +31,7 @@ from app.services.event_service import (
     update_event_plan,
     update_event_status,
 )
+from app.services.payment_service import get_latest_subscriptions_by_event
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
@@ -122,6 +124,26 @@ async def get_event(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    # El estado de pago del organizador (avisó transferencia, MP pendiente,
+    # etc.) nunca se expone en la vista pública — solo al dueño o a un admin.
+    organizer_subscription = None
+    is_owner_or_admin = current_user is not None and (
+        current_user.id == event.organizer_id or current_user.role == "admin"
+    )
+    if is_owner_or_admin:
+        latest = get_latest_subscriptions_by_event(session, [event.id])
+        subscription = latest.get(event.id)
+        if subscription is not None:
+            organizer_subscription = OrganizerSubscriptionRead(
+                status=subscription.status,
+                payment_method=subscription.payment_method,
+                plan_name=subscription.plan.name,
+                plan_type=subscription.plan.plan_type,
+                transfer_note=subscription.transfer_note,
+                created_at=subscription.created_at,
+                reviewed_at=subscription.reviewed_at,
+            )
+
     return EventDetailRead(
         **EventRead.model_validate(event).model_dump(),
         city_name=event.city.name,
@@ -130,6 +152,7 @@ async def get_event(
             public_whatsapp=event.organizer.public_whatsapp,
             city=event.organizer.city.name if event.organizer.city else None,
         ),
+        organizer_subscription=organizer_subscription,
     )
 
 

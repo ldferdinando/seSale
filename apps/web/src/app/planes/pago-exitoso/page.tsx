@@ -27,6 +27,9 @@ export default function PagoExitosoPage() {
       {activeSubscription && (
         <div className="flex w-full flex-col gap-1 rounded-xl border border-border bg-card p-4 text-left">
           <p className="text-sm font-bold text-foreground">{activeSubscription.plan_name}</p>
+          {activeSubscription.event_title && (
+            <p className="text-xs text-ink-4">Evento: {activeSubscription.event_title}</p>
+          )}
           <p className="text-xs text-ink-4">
             Vence el {format(parseISO(activeSubscription.expires_at), "d 'de' MMMM yyyy", { locale: es })}
           </p>

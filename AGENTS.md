@@ -128,8 +128,8 @@ root/
 │   │   │   │   ├── users/
 │   │   │   │   ├── cities/
 │   │   │   │   ├── ads/
-│   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6
-│   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6
+│   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
+│   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   ├── hooks/              # Custom hooks globales
