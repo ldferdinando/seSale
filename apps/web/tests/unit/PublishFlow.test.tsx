@@ -33,7 +33,8 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
   await pickFutureDate(user);
   await selectTime(user, "Hora inicio", "21", "00");
-  await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
+  await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
+  await user.type(screen.getByLabelText("Nombre del lugar"), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
   await user.click(screen.getByLabelText("Música en vivo"));
 }

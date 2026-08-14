@@ -71,8 +71,12 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     time_end: event.time_end ? utcTimeToLocal(event.date, event.time_end.slice(0, 5)) : "",
     categories: event.categories,
     city_id: event.city_id,
-    location_name: event.location.name,
-    location_address: event.location.address,
+    // Etapa 7b: precarga en modo "preset" con la ubicación actual del
+    // evento — EventLocationField la trae por id (funciona con lugares
+    // públicos o privados). Si el organizador no toca la Tab de lugar,
+    // no se crea ningún Location nuevo al guardar.
+    location_mode: "preset",
+    location_id: event.location.id,
     ticket_type: event.ticket_type,
     price_at_door: event.price_at_door != null ? String(event.price_at_door) : "",
     price_advance: event.price_advance != null ? String(event.price_advance) : "",

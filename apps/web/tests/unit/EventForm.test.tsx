@@ -30,7 +30,8 @@ async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEven
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
   await pickFutureDate(user);
   await selectTime(user, "Hora inicio", "21", "00");
-  await user.type(screen.getByLabelText(/Nombre del lugar/), "El Tinglado Bar");
+  await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
+  await user.type(screen.getByLabelText("Nombre del lugar"), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
 }
 
@@ -53,10 +54,14 @@ describe("EventForm", () => {
     expect(screen.getByRole("button", { name: "Elegir fecha" })).toBeInTheDocument();
     expect(screen.getByLabelText("Hora inicio — hora")).toBeInTheDocument();
     expect(screen.getByLabelText("Hora fin — hora")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nombre del lugar/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Dirección/)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Elegir lugar" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Indicar en el mapa" })).toBeInTheDocument();
     expect(screen.getByText("Tipo de entrada")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
+    expect(screen.getByLabelText("Nombre del lugar")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Dirección/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Pago" }));
 
@@ -78,7 +83,7 @@ describe("EventForm", () => {
 
     expect(await screen.findByText("El título es obligatorio")).toBeInTheDocument();
     expect(screen.getByText("La fecha es obligatoria")).toBeInTheDocument();
-    expect(screen.getByText("La dirección es obligatoria")).toBeInTheDocument();
+    expect(screen.getByText("Elegí un lugar de la lista")).toBeInTheDocument();
   });
 
   it("does not call the API — Continuar pasa los datos cargados y el plan elegido a onContinue", async () => {
@@ -101,8 +106,10 @@ describe("EventForm", () => {
       title: "Mi evento de prueba",
       date: expectedDate,
       time: "21:00",
-      location_name: "El Tinglado Bar",
-      location_address: "Av. Roca 1240",
+      location_data: expect.objectContaining({
+        name: "El Tinglado Bar",
+        address: "Av. Roca 1240",
+      }),
       categories: ["musica"],
     });
     expect(plan).toBe("dest");

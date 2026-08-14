@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -33,6 +34,8 @@ import { ReportEventModal } from "@/features/events/components/ReportEventModal"
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
+
+const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
 
 interface EventDetailViewProps {
   event: EventDetail;
@@ -147,6 +150,31 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
           <span>{event.location.address}</span>
         </div>
+
+        {/* Etapa 7b: mapa solo si el lugar tiene coordenadas — sin ellas no
+            tiene sentido mostrar un mapa. Description/hours ya vienen en
+            event.location (Etapa 7b, LocationRead anidado en EventRead),
+            no hace falta un fetch aparte. */}
+        {event.location.latitude != null && event.location.longitude != null && (
+          <MapPicker
+            latitude={event.location.latitude}
+            longitude={event.location.longitude}
+            onLocationSelect={() => {}}
+            readonly
+            heightClassName="h-[220px]"
+          />
+        )}
+        {(event.location.description || event.location.hours) && (
+          <div className="flex flex-col gap-1 text-sm text-ink-2">
+            {event.location.description && <p>{event.location.description}</p>}
+            {event.location.hours && (
+              <p className="flex items-start gap-1.5 text-xs text-ink-4">
+                <Clock className="mt-0.5 h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
+                {event.location.hours}
+              </p>
+            )}
+          </div>
+        )}
 
         {event.description && (
           <p className="text-sm leading-relaxed text-ink-2">{event.description}</p>

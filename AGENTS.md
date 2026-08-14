@@ -61,6 +61,8 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 | date-fns | 3.x | Manejo de fechas |
 | date-fns-tz | 3.x | Conversión de zonas horarias en cliente |
 | @mercadopago/sdk-react | latest | MercadoPago Bricks (Etapa 6) |
+| leaflet | ^1.9.4 | Mapa (vanilla, sin react-leaflet) — Etapa 7b |
+| @types/leaflet | ^1.9.22 | Tipos de Leaflet — Etapa 7b |
 
 ### App Mobile
 | Tecnología | Versión | Uso |
@@ -122,17 +124,20 @@ root/
 │   │   ├── src/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
 │   │   │   ├── components/         # Componentes reutilizables globales
+│   │   │   │   └── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/
 │   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a
+│   │   │   │   ├── locations/      # Lugares precargados: selector, ABM admin — Etapa 7b
 │   │   │   │   ├── ads/
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
-│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6)
+│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
-│   │   │   │   └── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
+│   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
+│   │   │   │   └── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   │   └── useActiveCity.ts   # Consume ActiveCityContext — Etapa 7a
 │   │   │   └── types/              # Tipos TypeScript globales
@@ -169,22 +174,23 @@ root/
 │       │   │   ├── category.py     # EventCategory (event_categories) — Etapa 6.5
 │       │   │   ├── moment.py       # EventMoment (event_moments) — Etapa 6.5
 │       │   │   ├── report.py       # Report — Etapa 6.5
-│       │   │   ├── location.py
+│       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   └── ad_slot.py
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
+│       │   │   ├── location.py     # Etapa 7b
 │       │   │   ├── plan.py         # Etapa 6
 │       │   │   ├── subscription.py # Etapa 6
 │       │   │   └── report.py       # Etapa 6.5
 │       │   ├── routers/            # Endpoints organizados por recurso
-│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5, ABM lugares — Etapa 7b
 │       │   │   ├── auth.py
 │       │   │   ├── events.py
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py
 │       │   │   ├── cities.py
-│       │   │   ├── locations.py
+│       │   │   ├── locations.py    # GET /api/locations (+ filtros), GET /api/locations/{id} — Etapa 7b
 │       │   │   ├── plans.py        # Etapa 6
 │       │   │   ├── subscriptions.py
 │       │   │   ├── ads.py
@@ -192,6 +198,7 @@ root/
 │       │   │   └── webhooks.py
 │       │   └── services/           # Lógica de negocio desacoplada
 │       │       ├── event_service.py
+│       │       ├── location_service.py  # Etapa 7b
 │       │       ├── user_service.py
 │       │       ├── city_service.py
 │       │       ├── payment_service.py

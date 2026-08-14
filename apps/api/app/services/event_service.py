@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, case, delete, func
+from sqlalchemy import and_, case, delete
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -15,6 +15,8 @@ from app.models.moment import EventMoment
 from app.models.plan import PlanType
 from app.models.user import User
 from app.schemas.event import EventUpdate
+from app.schemas.location import LocationCreate
+from app.services.location_service import create_location_from_event_data, get_location_or_404
 
 _EVENT_LOAD_OPTIONS = (selectinload(Event.location), selectinload(Event.category_links))
 
@@ -142,20 +144,25 @@ def _resolve_target_city(session: Session, city_id: UUID | None, fallback_city_i
     return city_id
 
 
-def _find_or_create_location(session: Session, *, city_id: UUID, name: str, address: str) -> Location:
-    stmt = select(Location).where(
-        Location.city_id == city_id,
-        func.lower(Location.name) == name.strip().lower(),
-        func.lower(Location.address) == address.strip().lower(),
-    )
-    existing = session.exec(stmt).first()
-    if existing is not None:
-        return existing
+def _resolve_event_location(
+    session: Session,
+    *,
+    location_id: UUID | None,
+    location_data: LocationCreate | None,
+) -> Location:
+    """Resuelve la ubicación de un evento nuevo — Etapa 7b.
 
-    location = Location(name=name.strip(), address=address.strip(), city_id=city_id)
-    session.add(location)
-    session.flush()
-    return location
+    location_id: lugar ya existente (precargado por el admin o cargado
+    antes por otro organizador) — se usa tal cual. location_data: crea un
+    Location nuevo con is_public=False a partir de dirección libre +
+    coordenadas del mapa. Si vienen los dos, se prioriza location_id. Si no
+    viene ninguno, es un error de validación (uno de los dos es requerido).
+    """
+    if location_id is not None:
+        return get_location_or_404(session, location_id)
+    if location_data is not None:
+        return create_location_from_event_data(session, location_data)
+    raise ValueError("Se requiere location_id o location_data")
 
 
 def create_event(
@@ -167,8 +174,8 @@ def create_event(
     event_date: date,
     event_time: time,
     categories: list[str],
-    location_name: str,
-    location_address: str,
+    location_id: UUID | None = None,
+    location_data: LocationCreate | None = None,
     time_end: time | None = None,
     ticket_type: TicketType = TicketType.gratis,
     price_at_door: int | None = None,
@@ -184,11 +191,11 @@ def create_event(
 ) -> Event:
     """Crea un evento en estado pending para el organizador dado.
 
-    `location_id` se deriva de la ciudad efectiva del evento: por default,
-    la ciudad del organizador — location y ciudad se buscan/crean juntas
-    dentro de esa ciudad. Desde la Etapa 7a, `city_id` permite al
-    organizador elegir explícitamente otra ciudad activa (ej. publica un
-    evento que ocurre en una ciudad distinta a la suya).
+    `city_id`: ciudad efectiva del evento — por default, la ciudad del
+    organizador; desde la Etapa 7a el organizador puede elegir otra ciudad
+    activa explícitamente (ej. publica un evento que ocurre en una ciudad
+    distinta a la suya). La ubicación (`location_id`/`location_data`, Etapa
+    7b) es independiente de este cálculo — ver `_resolve_event_location`.
 
     `organizer_id` solo tiene efecto si `is_admin=True` (Etapa 5.6: admin
     cargando eventos en nombre de otro organizador). Para un usuario normal
@@ -204,9 +211,7 @@ def create_event(
 
     target_city_id = _resolve_target_city(session, city_id, organizer.city_id)
 
-    location = _find_or_create_location(
-        session, city_id=target_city_id, name=location_name, address=location_address
-    )
+    location = _resolve_event_location(session, location_id=location_id, location_data=location_data)
 
     event = Event(
         city_id=target_city_id,
@@ -351,13 +356,18 @@ def update_event(
     new_city_id = data.pop("city_id", None)
     target_city_id = _resolve_target_city(session, new_city_id, event.city_id)
 
-    if "location_name" in data or "location_address" in data or new_city_id is not None:
-        location = session.get(Location, event.location_id)
-        name = data.pop("location_name", location.name if location else None)
-        address = data.pop("location_address", location.address if location else None)
-        event.location_id = _find_or_create_location(
-            session, city_id=target_city_id, name=name, address=address
-        ).id
+    new_location_id = data.pop("location_id", None)
+    new_location_data = data.pop("location_data", None)
+    if new_location_id is not None:
+        event.location_id = get_location_or_404(session, new_location_id).id
+    elif new_location_data is not None:
+        location_data = (
+            new_location_data
+            if isinstance(new_location_data, LocationCreate)
+            else LocationCreate.model_validate(new_location_data)
+        )
+        event.location_id = create_location_from_event_data(session, location_data).id
+    # Si vienen ambos None (no se mandaron), no se toca la ubicación actual.
 
     event.city_id = target_city_id
 

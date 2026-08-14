@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
+import type { AdminLocation, Location } from "@/features/locations/types";
 import type { Plan } from "@/features/plans/types";
 import type { AdminReport } from "@/features/reports/types";
 import type { AdminSubscription, Subscription } from "@/features/subscriptions/types";
@@ -40,6 +41,11 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
       city_id: "22222222-2222-2222-2222-222222222222",
       latitude: null,
       longitude: null,
+      description: null,
+      hours: null,
+      place_type: null,
+      is_verified: false,
+      is_public: false,
     },
     ...overrides,
   };
@@ -147,6 +153,32 @@ export function makeAdminSubscription(overrides: Partial<AdminSubscription> = {}
   };
 }
 
+export function makeLocation(overrides: Partial<Location> = {}): Location {
+  return {
+    id: "33333333-3333-3333-3333-333333333333",
+    name: "El Tinglado Bar",
+    address: "Av. Roca 1240",
+    description: "Espacio cultural con shows en vivo",
+    hours: "Jueves a sábados 21:00 a 03:00",
+    place_type: "bar",
+    city_id: "22222222-2222-2222-2222-222222222222",
+    city_name: "General Roca",
+    latitude: -39.032,
+    longitude: -67.581,
+    is_verified: true,
+    is_public: true,
+    ...overrides,
+  };
+}
+
+export function makeAdminLocation(overrides: Partial<AdminLocation> = {}): AdminLocation {
+  return {
+    ...makeLocation(),
+    event_count: 0,
+    ...overrides,
+  };
+}
+
 export function makeAdminReport(overrides: Partial<AdminReport> = {}): AdminReport {
   return {
     id: "99999999-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
@@ -233,6 +265,33 @@ export const handlers = [
   }),
   http.get(`${API_URL}/api/stats`, () => {
     return HttpResponse.json(makeStats());
+  }),
+  http.get(`${API_URL}/api/locations`, () => {
+    return HttpResponse.json([makeLocation()]);
+  }),
+  http.get(`${API_URL}/api/locations/:id`, ({ params }) => {
+    return HttpResponse.json(makeLocation({ id: params.id as string }));
+  }),
+  http.get(`${API_URL}/api/admin/locations`, () => {
+    return HttpResponse.json([makeAdminLocation()]);
+  }),
+  http.post(`${API_URL}/api/admin/locations`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      makeAdminLocation({ name: body.name as string, address: body.address as string, is_public: true }),
+      { status: 201 },
+    );
+  }),
+  http.put(`${API_URL}/api/admin/locations/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminLocation({ id: params.id as string, ...body }));
+  }),
+  http.patch(`${API_URL}/api/admin/locations/:id/verify`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminLocation({ id: params.id as string, is_verified: body.is_verified as boolean }));
+  }),
+  http.delete(`${API_URL}/api/admin/locations/:id`, () => {
+    return HttpResponse.json({ detail: "Lugar eliminado" });
   }),
   http.get(`${API_URL}/api/cities`, () => {
     return HttpResponse.json([

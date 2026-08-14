@@ -13,6 +13,7 @@ const initialValues: Partial<EventFormValues> = {
   time: "21:00",
   time_end: "23:30",
   categories: ["musica"],
+  location_mode: "map",
   location_name: "El Tinglado Bar",
   location_address: "Av. Roca 1240",
   ticket_type: "gratis",
@@ -42,7 +43,7 @@ describe("EventForm — modo edición", () => {
     expect(screen.getByLabelText("Hora inicio — minutos")).toHaveTextContent("00");
     expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("23");
     expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("30");
-    expect(screen.getByLabelText(/Nombre del lugar/)).toHaveValue("El Tinglado Bar");
+    expect(screen.getByLabelText("Nombre del lugar")).toHaveValue("El Tinglado Bar");
     expect(screen.getByLabelText(/Dirección/)).toHaveValue("Av. Roca 1240");
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeInTheDocument();
   });

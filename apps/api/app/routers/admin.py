@@ -13,6 +13,12 @@ from app.models.plan import PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 from app.schemas.event import AdminEventRead, EventRead
+from app.schemas.location import (
+    LocationAdminCreate,
+    LocationAdminRead,
+    LocationAdminUpdate,
+    LocationVerifyUpdate,
+)
 from app.schemas.report import AdminReportRead, ReportStatusUpdate
 from app.schemas.subscription import (
     AdminSubscriptionRead,
@@ -22,6 +28,13 @@ from app.schemas.subscription import (
 )
 from app.schemas.user import AdminUserCreate, UserRead
 from app.services.event_service import list_admin_events
+from app.services.location_service import (
+    create_admin_location,
+    delete_admin_location,
+    list_admin_locations,
+    update_admin_location,
+    verify_location,
+)
 from app.services.payment_service import (
     activate_subscription_manually,
     expire_subscriptions,
@@ -268,3 +281,77 @@ async def patch_admin_report_status(
 
     event = session.get(Event, report.event_id)
     return AdminReportRead(**report.model_dump(), event_title=event.title if event else "")
+
+
+@router.get("/locations", response_model=list[LocationAdminRead])
+@limiter.limit("60/minute")
+async def get_admin_locations(
+    request: Request,
+    city_id: UUID | None = Query(default=None),
+    is_public: bool | None = Query(default=None),
+    is_verified: bool | None = Query(default=None),
+    place_type: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+) -> list[LocationAdminRead]:
+    return list_admin_locations(
+        session,
+        city_id=city_id,
+        is_public=is_public,
+        is_verified=is_verified,
+        place_type=place_type,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/locations", response_model=LocationAdminRead, status_code=status.HTTP_201_CREATED)
+async def post_admin_location(
+    payload: LocationAdminCreate,
+    session: Session = Depends(get_session),
+) -> LocationAdminRead:
+    try:
+        return create_admin_location(session, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.put("/locations/{location_id}", response_model=LocationAdminRead)
+async def put_admin_location(
+    location_id: UUID,
+    payload: LocationAdminUpdate,
+    session: Session = Depends(get_session),
+) -> LocationAdminRead:
+    try:
+        return update_admin_location(session, location_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/locations/{location_id}/verify", response_model=LocationAdminRead)
+async def patch_admin_location_verify(
+    location_id: UUID,
+    payload: LocationVerifyUpdate,
+    session: Session = Depends(get_session),
+) -> LocationAdminRead:
+    try:
+        return verify_location(session, location_id, payload.is_verified)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/locations/{location_id}")
+async def delete_admin_location_endpoint(
+    location_id: UUID,
+    session: Session = Depends(get_session),
+) -> dict[str, str]:
+    try:
+        delete_admin_location(session, location_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return {"detail": "Lugar eliminado"}

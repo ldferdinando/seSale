@@ -5,10 +5,10 @@ from httpx import AsyncClient
 from sqlmodel import Session
 
 from app.core.security import create_access_token, hash_password
-from app.models import City, User
+from app.models import City, Location, User
 
 
-def _valid_payload() -> dict:
+def _valid_payload(location_id: str) -> dict:
     return {
         "title": "Show en el bar",
         "description": "Un show de prueba",
@@ -16,14 +16,15 @@ def _valid_payload() -> dict:
         "time": "21:00:00",
         "time_end": "23:30:00",
         "categories": ["musica"],
-        "location_name": "El Tinglado Bar",
-        "location_address": "Av. Roca 1240",
+        "location_id": location_id,
         "ticket_type": "gratis",
     }
 
 
-async def test_create_event_success(client: AsyncClient, organizer: User, user_token_headers: dict[str, str]):
-    response = await client.post("/api/events", json=_valid_payload(), headers=user_token_headers)
+async def test_create_event_success(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=user_token_headers)
 
     assert response.status_code == 201
     body = response.json()
@@ -32,14 +33,14 @@ async def test_create_event_success(client: AsyncClient, organizer: User, user_t
     assert body["location"]["name"] == "El Tinglado Bar"
 
 
-async def test_create_event_without_token_returns_401(client: AsyncClient, organizer: User):
-    response = await client.post("/api/events", json=_valid_payload())
+async def test_create_event_without_token_returns_401(client: AsyncClient, organizer: User, location: Location):
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)))
 
     assert response.status_code == 401
 
 
 async def test_create_event_uses_argentina_date_not_server_clock(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
     """Reproduce el bug real: un evento para 'hoy en Argentina' no debe
     rechazarse aunque el reloj del servidor (UTC) ya esté un día adelante
@@ -50,8 +51,7 @@ async def test_create_event_uses_argentina_date_not_server_clock(
         "date": fake_argentina_today.isoformat(),
         "time": "23:30:00",
         "categories": ["musica"],
-        "location_name": "El Tinglado Bar",
-        "location_address": "Av. Roca 1240",
+        "location_id": str(location.id),
         "ticket_type": "gratis",
     }
 
@@ -62,10 +62,10 @@ async def test_create_event_uses_argentina_date_not_server_clock(
 
 
 async def test_create_event_still_rejects_dates_before_argentina_today(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
     fake_argentina_today = date(2026, 8, 11)
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["date"] = (fake_argentina_today - timedelta(days=1)).isoformat()
 
     with patch("app.schemas.event.argentina_today", return_value=fake_argentina_today):
@@ -75,9 +75,9 @@ async def test_create_event_still_rejects_dates_before_argentina_today(
 
 
 async def test_create_event_invalid_category_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["categories"] = ["no-existe"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -86,9 +86,9 @@ async def test_create_event_invalid_category_returns_422(
 
 
 async def test_create_event_with_multiple_categories_success(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["categories"] = ["musica", "recital", "arte"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -99,9 +99,9 @@ async def test_create_event_with_multiple_categories_success(
 
 
 async def test_create_event_zero_categories_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["categories"] = []
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -110,9 +110,9 @@ async def test_create_event_zero_categories_returns_422(
 
 
 async def test_create_event_four_categories_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["categories"] = ["musica", "recital", "arte", "teatro"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -121,9 +121,9 @@ async def test_create_event_four_categories_returns_422(
 
 
 async def test_create_event_duplicate_categories_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["categories"] = ["musica", "musica"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -132,9 +132,9 @@ async def test_create_event_duplicate_categories_returns_422(
 
 
 async def test_create_event_missing_title_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     del payload["title"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -143,9 +143,9 @@ async def test_create_event_missing_title_returns_422(
 
 
 async def test_create_event_past_date_returns_422(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["date"] = (date.today() - timedelta(days=1)).isoformat()
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -153,10 +153,60 @@ async def test_create_event_past_date_returns_422(
     assert response.status_code == 422
 
 
-async def test_create_event_with_organizer_id_by_admin_uses_that_organizer(
-    client: AsyncClient, session: Session, city, organizer: User, admin_token_headers: dict[str, str]
+async def test_create_event_missing_location_returns_422(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    """Etapa 7b: uno de los dos (location_id o location_data) es requerido."""
+    payload = _valid_payload("")
+    del payload["location_id"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_with_location_data_creates_private_location(
+    client: AsyncClient, session: Session, city: City, organizer: User, user_token_headers: dict[str, str]
+):
+    """Etapa 7b: Tab B del formulario — dirección libre crea un Location con is_public=False."""
+    payload = _valid_payload("")
+    del payload["location_id"]
+    payload["location_data"] = {
+        "name": "Nuevo lugar cargado a mano",
+        "address": "Calle Falsa 123",
+        "city_id": str(city.id),
+        "latitude": -39.03,
+        "longitude": -67.58,
+    }
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["location"]["name"] == "Nuevo lugar cargado a mano"
+    assert body["location"]["is_public"] is False
+
+
+async def test_create_event_location_id_takes_precedence_over_location_data(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["location_data"] = {
+        "name": "Debería ignorarse",
+        "address": "Otra dirección",
+        "city_id": str(location.city_id),
+    }
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["location"]["id"] == str(location.id)
+
+
+async def test_create_event_with_organizer_id_by_admin_uses_that_organizer(
+    client: AsyncClient, session: Session, city, organizer: User, location: Location, admin_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
     payload["organizer_id"] = str(organizer.id)
 
     response = await client.post("/api/events", json=payload, headers=admin_token_headers)
@@ -166,9 +216,14 @@ async def test_create_event_with_organizer_id_by_admin_uses_that_organizer(
 
 
 async def test_create_event_with_organizer_id_by_user_is_ignored(
-    client: AsyncClient, session: Session, organizer: User, admin: User, user_token_headers: dict[str, str]
+    client: AsyncClient,
+    session: Session,
+    organizer: User,
+    admin: User,
+    location: Location,
+    user_token_headers: dict[str, str],
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["organizer_id"] = str(admin.id)
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -177,7 +232,9 @@ async def test_create_event_with_organizer_id_by_user_is_ignored(
     assert response.json()["organizer_id"] == str(organizer.id)
 
 
-async def test_create_event_organizer_without_city_returns_422(client: AsyncClient, session: Session):
+async def test_create_event_organizer_without_city_returns_422(
+    client: AsyncClient, session: Session, location: Location
+):
     organizer_sin_ciudad = User(
         email="sin-ciudad@sesale.com.ar",
         hashed_password=hash_password("Password123!"),
@@ -189,13 +246,13 @@ async def test_create_event_organizer_without_city_returns_422(client: AsyncClie
     session.refresh(organizer_sin_ciudad)
     headers = {"Authorization": f"Bearer {create_access_token(organizer_sin_ciudad.id, organizer_sin_ciudad.role)}"}
 
-    response = await client.post("/api/events", json=_valid_payload(), headers=headers)
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=headers)
 
     assert response.status_code == 422
 
 
 async def test_create_event_with_explicit_city_id_overrides_organizer_city(
-    client: AsyncClient, session: Session, city: City, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
     """Etapa 7a: el organizador puede publicar un evento en otra ciudad activa."""
     other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
@@ -203,7 +260,7 @@ async def test_create_event_with_explicit_city_id_overrides_organizer_city(
     session.commit()
     session.refresh(other_city)
 
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["city_id"] = str(other_city.id)
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -215,14 +272,14 @@ async def test_create_event_with_explicit_city_id_overrides_organizer_city(
 
 
 async def test_create_event_with_inactive_city_id_returns_422(
-    client: AsyncClient, session: Session, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, session: Session, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
     inactive_city = City(name="Neuquén", province="Neuquén", is_active=False)
     session.add(inactive_city)
     session.commit()
     session.refresh(inactive_city)
 
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["city_id"] = str(inactive_city.id)
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
@@ -231,9 +288,9 @@ async def test_create_event_with_inactive_city_id_returns_422(
 
 
 async def test_create_event_with_nonexistent_city_id_returns_404(
-    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
-    payload = _valid_payload()
+    payload = _valid_payload(str(location.id))
     payload["city_id"] = "00000000-0000-0000-0000-000000000000"
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)

@@ -99,7 +99,7 @@ async def test_update_event_without_auth_returns_401(
     assert response.status_code == 401
 
 
-async def test_update_event_city_id_moves_event_to_another_active_city(
+async def test_update_event_city_id_alone_does_not_touch_location(
     client: AsyncClient,
     session: Session,
     city: City,
@@ -107,8 +107,10 @@ async def test_update_event_city_id_moves_event_to_another_active_city(
     location: Location,
     user_token_headers: dict[str, str],
 ):
-    """Etapa 7a: cambiar la ciudad del evento crea/reusa una location en la
-    ciudad nueva y actualiza Event.city_id."""
+    """Etapa 7a actualiza Event.city_id. Etapa 7b: la ubicación es
+    independiente (location_id propio) — cambiar solo la ciudad del evento
+    ya no mueve/recrea el Location, a diferencia del comportamiento viejo
+    de find-or-create por nombre+dirección."""
     event = _make_event(session, city=city, organizer=organizer, location=location)
     other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
     session.add(other_city)
@@ -122,7 +124,31 @@ async def test_update_event_city_id_moves_event_to_another_active_city(
     assert response.status_code == 200
     body = response.json()
     assert body["city_id"] == str(other_city.id)
-    assert body["location"]["city_id"] == str(other_city.id)
+    assert body["location"]["id"] == str(location.id)
+    assert body["location"]["city_id"] == str(city.id)
+
+
+async def test_update_event_location_id_changes_location(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """Etapa 7b: mandar un location_id nuevo cambia la ubicación del evento."""
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    other_location = Location(name="Centro Cultural Roca", address="Alsina 750", city_id=city.id)
+    session.add(other_location)
+    session.commit()
+    session.refresh(other_location)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"location_id": str(other_location.id)}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["location"]["id"] == str(other_location.id)
 
 
 async def test_update_event_with_inactive_city_id_returns_422(

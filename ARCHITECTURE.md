@@ -410,6 +410,12 @@ UTC-3, sin horario de verano). Convención:
   `event_moments` arriba) — se convierte desde UTC antes de clasificar.
 
 #### `locations`
+
+Desde la Etapa 7b, un `Location` puede ser un lugar precargado (bar, teatro,
+plaza, etc. cargado por el admin, con mapa) o una ubicación automática
+(creada cuando un organizador tipeó dirección libre en el formulario de
+evento). `is_public` distingue ambos casos.
+
 ```python
 class Location(SQLModel, table=True):
     __tablename__ = "locations"
@@ -420,6 +426,16 @@ class Location(SQLModel, table=True):
     city_id: UUID = Field(foreign_key="cities.id")
     latitude: float | None = Field(default=None)
     longitude: float | None = Field(default=None)
+
+    # Etapa 7b
+    description: str | None = Field(default=None, max_length=1000)
+    hours: str | None = Field(default=None, max_length=500)      # texto libre
+    place_type: str | None = Field(default=None, max_length=50)  # texto libre, sugerido en el frontend (bar/teatro/plaza/club/restaurant/cultural/deportivo/otro)
+    is_verified: bool = Field(default=False)  # el admin lo marcó como lugar oficial
+    # True = lugar precargado por el admin (visible en el selector del
+    # formulario de evento). False = ubicación automática creada por un
+    # organizador con dirección libre — no aparece en el selector.
+    is_public: bool = Field(default=False)
 
     # Relaciones
     city: "City" = Relationship(back_populates="locations")
@@ -848,6 +864,26 @@ Detalle del evento ("Compartir", EventDetailView) → comparte ESE evento
   Si no → window.open("https://wa.me/?text=...")
 ```
 
+### Vista de Mapa (Etapa 7b)
+
+- **Leaflet** (vanilla, sin `react-leaflet`) renderiza el mapa —
+  `components/MapPicker.tsx`, siempre importado con `dynamic(..., {ssr:
+  false})` porque Leaflet usa `window`. Tiles de **OpenStreetMap**
+  (`{s}.tile.openstreetmap.org`, gratis, sin API key).
+- **Nominatim** (OpenStreetMap) resuelve geocoding (`searchAddress`) y
+  reverse geocoding (`reverseGeocode`) — `lib/nominatim.ts`. Gratis, sin
+  API key, con rate limit de 1 request/segundo respetado con un debounce
+  de 1000ms en el input de búsqueda del mapa (y 300ms en el buscador de
+  lugares precargados, que pega contra `/api/locations`, no Nominatim).
+  Siempre manda `countrycodes=ar`.
+- `MapPicker` se reusa en tres lugares: formulario de evento (Tab
+  "Indicar en el mapa", interactivo), `EventDetailView.tsx` (readonly, si
+  el lugar tiene coordenadas) y el ABM de lugares del panel admin
+  (interactivo).
+- El tab "Mapa" del **Home** (mapa de todos los eventos) sigue como
+  placeholder — es una feature distinta (mapa agregado, no de un lugar
+  puntual) que queda para una etapa futura, ver `a_revisar.md`.
+
 ---
 
 ## 5. API — Endpoints planificados
@@ -891,13 +927,27 @@ POST   /api/events                     Crear evento (user autenticado → pendin
                                        organizador; default = ciudad del
                                        organizador). 404 si no existe, 422 si
                                        no está is_active
+                                       body: location_id | location_data        ✓ Etapa 7b
+                                       (uno de los dos, nunca ninguno).
+                                       location_id: usa un Location existente
+                                       (lugar precargado del admin, o creado
+                                       antes). location_data: { name?, address,
+                                       city_id, latitude?, longitude? } — crea
+                                       un Location nuevo con is_public=False
+                                       (dirección libre + mapa, Tab "Indicar en
+                                       el mapa" del formulario). Si vienen los
+                                       dos, se usa location_id. Si no viene
+                                       ninguno, 422
 PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
                                        (admin). Si edita el organizador, status
                                        vuelve a pending; si edita el admin, no
                                        cambia. 403 para cualquier otro usuario.
                                        city_id opcional (Etapa 7a) — cambia la
                                        ciudad del evento (misma validación que
-                                       POST); ausente = no se toca
+                                       POST); ausente = no se toca.
+                                       location_id | location_data opcionales   ✓ Etapa 7b
+                                       (mismo formato que POST); ambos ausentes
+                                       = no se toca la ubicación actual
 DELETE /api/events/{id}                Soft delete (is_active=False). Permitido    ✓ Etapa 5.6
                                        para el organizador dueño o un admin
 PATCH  /api/events/{id}/status         Aprobar / rechazar (admin)
@@ -964,12 +1014,44 @@ POST   /api/cities                     Crear ciudad (admin)                     
 PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)    planificado
 ```
 
-### Ubicaciones (`/api/locations`)
+### Ubicaciones (`/api/locations`) ✓ Etapa 7b
 ```
-GET    /api/locations                  Listar ubicaciones (público, filtrable por city_id)
-GET    /api/locations/{id}             Detalle (público)
-POST   /api/locations                  Crear ubicación (user autenticado)
-PUT    /api/locations/{id}             Editar (admin)
+GET    /api/locations                  Público. Requiere city_id. Filtros:
+                                       search (name/address), place_type.
+                                       Solo is_public=True. Orden:
+                                       is_verified=True primero, luego name ASC
+GET    /api/locations/{id}             Público. Cualquier Location (público o
+                                       no) — para mostrar la ubicación de un
+                                       evento aunque no sea un lugar precargado.
+                                       404 si no existe
+```
+
+### Ubicaciones — administración (`/api/admin`) ✓ Etapa 7b
+
+Todas requieren rol `admin` (401 sin auth, 403 para `user`).
+
+```
+GET    /api/admin/locations            Todos los locations (públicos y
+                                       privados). Filtros: city_id, is_public,
+                                       is_verified, place_type, search.
+                                       Paginación: limit (default 50) / offset.
+                                       Orden: is_public primero, luego
+                                       is_verified, luego name ASC. Incluye
+                                       event_count (cantidad de eventos
+                                       asociados)
+POST   /api/admin/locations            Crea un lugar precargado. is_public se
+                                       fuerza a True en el backend. Body:
+                                       { name, address, city_id, description?,
+                                       hours?, place_type?, latitude?,
+                                       longitude?, is_verified? }
+PUT    /api/admin/locations/{id}       Edita cualquier campo, incluido
+                                       is_public — permite "promover" una
+                                       ubicación automática a lugar oficial
+PATCH  /api/admin/locations/{id}/verify  Alterna is_verified. Body:
+                                       { is_verified: bool }
+DELETE /api/admin/locations/{id}       409 si tiene eventos asociados (mensaje
+                                       con la cantidad); si no, elimina
+                                       físicamente
 ```
 
 ### Estadísticas (`/api/stats`)
@@ -1099,6 +1181,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **6b-1 (fixes post-QA)** | Correcciones encontradas probando la 6b-1: admin sin acceso a eventos `pending`/`rejected`, caché del frontend mostrando datos viejos, y visibilidad del estado de pago en el contexto del evento (no solo en la pestaña Suscripciones). | ✓ Completa: `get_event_detail` permite admin en eventos no-públicos (antes 404 salvo el dueño); `staleTime: 0` en `useMySubscriptions`/`useAdminSubscriptions` (bug de caché real: TanStack Query servía respuestas de hasta 60s de antigüedad); link "Ver detalle" en panel admin de eventos; `organizer_subscription` agregado a `EventDetailRead`/`AdminEventRead` |
 | **6b-2** | Corrección de arquitectura (a pedido del usuario, detectada probando la 6b-1): el pago de un plan es **por evento**, no por cuenta del organizador. | ✓ Completa: `Subscription.event_id` (FK a `events`, migración `0010`), `_apply_plan_to_event()` reemplaza a `_apply_plan_to_organizer_events()` para dest/pro (se mantiene solo para el plan Banner, que no es un upgrade de un evento puntual); `POST /api/subscriptions/checkout` y `POST /api/subscriptions/transfer` requieren `event_id`; `/planes` requiere `?event_id=` (si falta, pide elegir un evento desde `/mis-eventos`); `expire_subscriptions` revierte solo el evento vinculado; `organizer_subscription` pasó a buscarse por `event_id` (antes por `organizer_id`, lo que mezclaba el pago de un evento con cualquier otro evento no relacionado del mismo organizador — el bug real que disparó esta corrección) |
 | **7a** | Multi-ciudad: selector de ciudad en navbar con geolocalización automática, filtrado del home por ciudad activa, ciudad del organizador en formulario de evento. | ✓ Completa: `City.latitude`/`longitude` (migración `0011`), `CityRead` los expone; `EventCreate`/`EventUpdate.city_id` opcional (default: ciudad del organizador, valida `is_active`); `lib/city-detection.ts` (Haversine, detección por GPS con localStorage), `ActiveCityProvider`/`useActiveCity()` (Context, no Zustand), selector real en `Navbar.tsx`, `GET /api/events?city_id=` conectado al home, selector de ciudad en `EventForm.tsx`. Admin habilitar/deshabilitar ciudades queda para una etapa futura (hoy se gestiona por seed/DB directa) |
+| **7b** | Lugares precargados con mapa: `Location.description`/`hours`/`place_type`/`is_verified`/`is_public`, mapa (Leaflet + OSM + Nominatim) en formulario de evento y vista detalle, ABM de lugares para admin. | ✓ Completa: migración `0012`; `GET /api/locations` (público, solo `is_public=True`) y `GET /api/locations/{id}` (cualquiera); ABM completo bajo `/api/admin/locations`; `EventCreate`/`EventUpdate` reemplazan `location_name`/`location_address` por `location_id \| location_data` (uno de los dos); `components/MapPicker.tsx` (Leaflet vanilla, dynamic import ssr:false), `lib/nominatim.ts`, `features/locations/` (selector Tab A), `EventLocationField.tsx` (dos tabs en `EventForm.tsx`), mapa readonly + description/hours en `EventDetailView.tsx`, `AdminLocationsPanel.tsx` (listado, ABM, verificar, "hacer público"), lugares precargados en `seed.py`. Ver `a_revisar.md` por el refactor de `location_name`/`location_address` a `location_id`/`location_data` (no estaba en el modelo original de esta etapa) |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
 

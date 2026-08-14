@@ -118,6 +118,91 @@ def seed() -> None:
         for loc in locations:
             session.refresh(loc)
 
+        # Etapa 7b — lugares precargados de prueba (is_public=True). Los
+        # `locations` de arriba son ubicaciones "automáticas" (creadas por un
+        # organizador con dirección libre en etapas anteriores) y quedan
+        # is_public=False sin tocarse.
+        preloaded_locations = [
+            Location(
+                name="El Tinglado Bar",
+                address="Av. Julio A. Roca 1240, General Roca",
+                city_id=general_roca.id,
+                place_type="bar",
+                description="Espacio cultural con shows en vivo",
+                latitude=-39.0320,
+                longitude=-67.5810,
+                is_public=True,
+                is_verified=True,
+            ),
+            Location(
+                name="Teatro Municipal",
+                address="Isidro Lobo 750, General Roca",
+                city_id=general_roca.id,
+                place_type="teatro",
+                description="Teatro municipal con capacidad para 400 personas",
+                latitude=-39.0340,
+                longitude=-67.5850,
+                is_public=True,
+                is_verified=True,
+            ),
+            Location(
+                name="Plaza San Martín",
+                address="Plaza San Martín, General Roca",
+                city_id=general_roca.id,
+                place_type="plaza",
+                description="Plaza principal de la ciudad",
+                latitude=-39.0333,
+                longitude=-67.5833,
+                is_public=True,
+                is_verified=True,
+            ),
+            Location(
+                name="Club Atlético Roca",
+                address="Tucumán 1150, General Roca",
+                city_id=general_roca.id,
+                place_type="deportivo",
+                latitude=-39.0310,
+                longitude=-67.5870,
+                is_public=True,
+                is_verified=False,
+            ),
+            Location(
+                name="Centro Cultural Cipolletti",
+                address="Sarmiento 550, Cipolletti",
+                city_id=cipolletti.id,
+                place_type="cultural",
+                description="Centro cultural municipal",
+                latitude=-38.9350,
+                longitude=-67.9950,
+                is_public=True,
+                is_verified=True,
+            ),
+            Location(
+                name="Plaza Belgrano",
+                address="Plaza Belgrano, Cipolletti",
+                city_id=cipolletti.id,
+                place_type="plaza",
+                latitude=-38.9333,
+                longitude=-68.0000,
+                is_public=True,
+                is_verified=True,
+            ),
+            Location(
+                name="Bar del Puente",
+                address="Ruta Nacional 22 km 1188, Cipolletti",
+                city_id=cipolletti.id,
+                place_type="bar",
+                description="Bar con música en vivo los fines de semana",
+                latitude=-38.9300,
+                longitude=-67.9900,
+                is_public=True,
+                is_verified=False,
+            ),
+        ]
+        for loc in preloaded_locations:
+            session.add(loc)
+        session.commit()
+
         organizer = User(
             email="organizador@sesale.com.ar",
             hashed_password=hash_password(SEED_PASSWORD),
@@ -209,7 +294,10 @@ def seed() -> None:
             session.add(price)
 
         session.commit()
-        print("Seed completo: 6 ciudades, 3 ubicaciones, 8 eventos, 2 usuarios, 3 ad slots, 4 planes.")
+        print(
+            "Seed completo: 6 ciudades, 10 ubicaciones (3 automáticas + 7 lugares precargados), "
+            "8 eventos, 2 usuarios, 3 ad slots, 4 planes."
+        )
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")
 

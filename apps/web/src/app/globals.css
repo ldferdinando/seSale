@@ -1,3 +1,10 @@
+/* Etapa 7b — Leaflet (vanilla, sin react-leaflet). Tiene que ir antes que
+   cualquier otra regla (incluidos los @tailwind) — un @import solo puede
+   estar precedido por @charset/@layer, si no PostCSS lo rechaza. Se importa
+   acá porque MapPicker.tsx se carga con dynamic import ssr:false y el CSS
+   de Leaflet necesita estar disponible antes de que el mapa se monte. */
+@import "leaflet/dist/leaflet.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

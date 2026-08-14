@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -201,5 +201,51 @@ describe("EventDetailView", () => {
     renderWithClient(event);
 
     expect(screen.queryByText("Gratuito")).not.toBeInTheDocument();
+  });
+
+  it("shows the map and description/hours when the location has coordinates", async () => {
+    const event = makeEventDetail({
+      location: {
+        id: "33333333-3333-3333-3333-333333333333",
+        name: "El Tinglado Bar",
+        address: "Av. Roca 1240",
+        city_id: "22222222-2222-2222-2222-222222222222",
+        latitude: -39.032,
+        longitude: -67.581,
+        description: "Espacio cultural con shows en vivo",
+        hours: "Jueves a sábados 21:00 a 03:00",
+        place_type: "bar",
+        is_verified: true,
+        is_public: true,
+      },
+    });
+
+    const { container } = renderWithClient(event);
+
+    await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
+    expect(screen.getByText("Espacio cultural con shows en vivo")).toBeInTheDocument();
+    expect(screen.getByText("Jueves a sábados 21:00 a 03:00")).toBeInTheDocument();
+  });
+
+  it("does not show the map when the location has no coordinates", () => {
+    const event = makeEventDetail({
+      location: {
+        id: "33333333-3333-3333-3333-333333333333",
+        name: "El Tinglado Bar",
+        address: "Av. Roca 1240",
+        city_id: "22222222-2222-2222-2222-222222222222",
+        latitude: null,
+        longitude: null,
+        description: null,
+        hours: null,
+        place_type: null,
+        is_verified: false,
+        is_public: false,
+      },
+    });
+
+    const { container } = renderWithClient(event);
+
+    expect(container.querySelector(".leaflet-container")).toBeNull();
   });
 });

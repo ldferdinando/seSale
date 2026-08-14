@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.core.security import hash_password
 from app.models import City, Event, EventCategory, EventMoment, EventStatus, Location, PlanType, User
 from app.schemas.event import EventUpdate
+from app.schemas.location import LocationCreate
 from app.services.event_service import (
     create_event,
     delete_event,
@@ -234,37 +235,49 @@ def test_returns_empty_list_when_no_matches(session, city, organizer, location):
     assert result == []
 
 
-def _create_event_kwargs(**overrides) -> dict:
+def _create_event_kwargs(*, city: City | None, **overrides) -> dict:
     defaults = dict(
         title="Show en el bar",
         description="Un show",
         event_date=date.today() + timedelta(days=10),
         event_time=time(21, 0),
         categories=["musica"],
-        location_name="El Tinglado Bar",
-        location_address="Av. Roca 1240",
     )
+    if city is not None:
+        defaults["location_data"] = LocationCreate(
+            name="El Tinglado Bar", address="Av. Roca 1240", city_id=city.id
+        )
     defaults.update(overrides)
     return defaults
 
 
 def test_create_event_sets_status_pending_and_derives_city(session, city, organizer):
-    event = create_event(session, user_id=organizer.id, **_create_event_kwargs())
+    event = create_event(session, user_id=organizer.id, **_create_event_kwargs(city=city))
 
     assert event.status == EventStatus.pending
     assert event.organizer_id == organizer.id
     assert event.city_id == city.id
     assert event.location.name == "El Tinglado Bar"
+    assert event.location.is_public is False
 
 
-def test_create_event_reuses_existing_location(session, city, organizer, location):
+def test_create_event_with_existing_location_id(session, city, organizer, location):
     event = create_event(
         session,
         user_id=organizer.id,
-        **_create_event_kwargs(location_name=location.name, location_address=location.address),
+        **_create_event_kwargs(city=city, location_data=None, location_id=location.id),
     )
 
     assert event.location_id == location.id
+
+
+def test_create_event_raises_when_no_location_given(session, organizer):
+    with pytest.raises(ValueError):
+        create_event(
+            session,
+            user_id=organizer.id,
+            **_create_event_kwargs(city=None, location_data=None, location_id=None),
+        )
 
 
 def test_create_event_computes_moment_from_argentina_time_not_utc(session, city, organizer):
@@ -274,7 +287,7 @@ def test_create_event_computes_moment_from_argentina_time_not_utc(session, city,
     event = create_event(
         session,
         user_id=organizer.id,
-        **_create_event_kwargs(event_time=time(23, 0)),
+        **_create_event_kwargs(city=city, event_time=time(23, 0)),
     )
 
     moments = session.exec(select(EventMoment).where(EventMoment.event_id == event.id)).all()
@@ -283,7 +296,7 @@ def test_create_event_computes_moment_from_argentina_time_not_utc(session, city,
 
 def test_create_event_raises_for_unknown_organizer(session):
     with pytest.raises(LookupError):
-        create_event(session, user_id=uuid4(), **_create_event_kwargs())
+        create_event(session, user_id=uuid4(), **_create_event_kwargs(city=None))
 
 
 def test_create_event_raises_when_organizer_has_no_city(session):
@@ -298,7 +311,7 @@ def test_create_event_raises_when_organizer_has_no_city(session):
     session.refresh(organizer)
 
     with pytest.raises(ValueError):
-        create_event(session, user_id=organizer.id, **_create_event_kwargs())
+        create_event(session, user_id=organizer.id, **_create_event_kwargs(city=None))
 
 
 def test_get_events_for_organizer_groups_by_status(session, city, organizer, location):
@@ -453,8 +466,7 @@ def test_create_event_with_organizer_id_by_admin_uses_that_organizer(session, ci
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
         categories=["musica"],
-        location_name="Nuevo lugar",
-        location_address="Calle Falsa 123",
+        location_data=LocationCreate(name="Nuevo lugar", address="Calle Falsa 123", city_id=city.id),
         organizer_id=organizer.id,
         is_admin=True,
     )
@@ -471,8 +483,7 @@ def test_create_event_ignores_organizer_id_for_non_admin(session, city, organize
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
         categories=["musica"],
-        location_name="Nuevo lugar",
-        location_address="Calle Falsa 123",
+        location_data=LocationCreate(name="Nuevo lugar", address="Calle Falsa 123", city_id=city.id),
         organizer_id=admin.id,
         is_admin=False,
     )

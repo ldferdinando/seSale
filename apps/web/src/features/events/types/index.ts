@@ -18,6 +18,22 @@ export interface EventLocation {
   city_id: string;
   latitude: number | null;
   longitude: number | null;
+  // Etapa 7b
+  description: string | null;
+  hours: string | null;
+  place_type: string | null;
+  is_verified: boolean;
+  is_public: boolean;
+}
+
+/** Datos de ubicación con dirección libre — Tab "Indicar en el mapa" del
+ * formulario de evento. Crea un Location nuevo con is_public=False. */
+export interface LocationDataInput {
+  name?: string;
+  address: string;
+  city_id: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Event {
@@ -96,8 +112,10 @@ export interface EventCreateInput {
   categories: string[];
   /** Ciudad del evento — Etapa 7a. Sin ella, el backend usa la ciudad del organizador. */
   city_id?: string;
-  location_name: string;
-  location_address: string;
+  // Etapa 7b — uno de los dos, nunca ambos vacíos: location_id (lugar
+  // precargado, Tab A) o location_data (dirección libre + mapa, Tab B).
+  location_id?: string;
+  location_data?: LocationDataInput;
   ticket_type: TicketType;
   price_at_door?: number;
   price_advance?: number;

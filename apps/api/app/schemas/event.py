@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.timezone import argentina_today
 from app.models.event import EventStatus, TicketType
 from app.models.plan import PlanType
+from app.schemas.location import LocationCreate
 from app.schemas.subscription import OrganizerSubscriptionRead
 
 MIN_CATEGORIES = 1
@@ -46,6 +47,12 @@ class LocationRead(BaseModel):
     city_id: UUID
     latitude: float | None
     longitude: float | None
+    # Etapa 7b
+    description: str | None = None
+    hours: str | None = None
+    place_type: str | None = None
+    is_verified: bool = False
+    is_public: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -143,8 +150,15 @@ class EventCreate(BaseModel):
     # ciudad activa — se valida en el service.
     city_id: UUID | None = None
 
-    location_name: str = Field(max_length=255, min_length=1)
-    location_address: str = Field(max_length=500, min_length=1)
+    # Etapa 7b: la ubicación se elige por uno de estos dos caminos (nunca los
+    # dos): location_id apunta a un lugar ya existente (precargado por el
+    # admin o creado antes por otro organizador); location_data crea un
+    # Location nuevo con is_public=False a partir de dirección libre +
+    # coordenadas del mapa. Si vienen los dos, se usa location_id y se
+    # ignora location_data. Si no viene ninguno, 422 (se valida en el
+    # servicio, no acá, porque requiere lógica de "al menos uno").
+    location_id: UUID | None = None
+    location_data: LocationCreate | None = None
 
     ticket_type: TicketType = TicketType.gratis
     price_at_door: int | None = Field(default=None, ge=0)
@@ -180,8 +194,10 @@ class EventUpdate(BaseModel):
     # Etapa 7a: cambiar la ciudad del evento. None = no se toca.
     city_id: UUID | None = None
 
-    location_name: str | None = Field(default=None, max_length=255, min_length=1)
-    location_address: str | None = Field(default=None, max_length=500, min_length=1)
+    # Etapa 7b — ver EventCreate. None en ambos = no se toca la ubicación
+    # actual del evento.
+    location_id: UUID | None = None
+    location_data: LocationCreate | None = None
 
     ticket_type: TicketType | None = None
     price_at_door: int | None = Field(default=None, ge=0)

@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CategoryMultiSelect } from "@/features/events/components/CategoryMultiSelect";
+import { EventLocationField } from "@/features/events/components/EventLocationField";
 import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
 import { TimePicker } from "@/features/events/components/TimePicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
@@ -187,6 +188,8 @@ export function EventForm({
       time_end: "",
       categories: [],
       city_id: "",
+      location_mode: "preset",
+      location_id: "",
       location_name: "",
       location_address: "",
       ticket_type: "gratis",
@@ -206,6 +209,14 @@ export function EventForm({
   const timeValue = watch("time");
   const timeEndValue = watch("time_end");
   const cityIdValue = watch("city_id");
+  const locationMode = watch("location_mode");
+  const locationIdValue = watch("location_id");
+  const locationNameValue = watch("location_name");
+  const locationAddressValue = watch("location_address");
+  const locationLatitudeValue = watch("location_latitude");
+  const locationLongitudeValue = watch("location_longitude");
+
+  const selectedCity = (cities ?? []).find((c) => c.id === cityIdValue);
 
   // Preselecciona la ciudad activa del usuario apenas está disponible — solo
   // si el formulario todavía no tiene una ciudad cargada (create sin
@@ -226,8 +237,17 @@ export function EventForm({
       time_end: values.time_end || undefined,
       categories: values.categories,
       city_id: values.city_id || undefined,
-      location_name: values.location_name,
-      location_address: values.location_address,
+      ...(values.location_mode === "preset"
+        ? { location_id: values.location_id || undefined }
+        : {
+            location_data: {
+              name: values.location_name || undefined,
+              address: values.location_address ?? "",
+              city_id: values.city_id || activeCity?.id || "",
+              latitude: values.location_latitude,
+              longitude: values.location_longitude,
+            },
+          }),
       ticket_type: values.ticket_type,
       price_at_door: values.price_at_door ? Number(values.price_at_door) : undefined,
       price_advance: values.price_advance ? Number(values.price_advance) : undefined,
@@ -352,19 +372,31 @@ export function EventForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <FieldLabel icon={Building2} htmlFor="location_name" required>
-          Nombre del lugar
+        <FieldLabel icon={Building2} required>
+          Lugar
         </FieldLabel>
-        <Input id="location_name" {...register("location_name")} placeholder="Ej: El Tinglado Bar" />
-        <FieldError message={errors.location_name?.message} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <FieldLabel icon={MapPin} htmlFor="location_address" required>
-          Dirección
-        </FieldLabel>
-        <Input id="location_address" {...register("location_address")} placeholder="Ej: Av. Roca 1240" />
-        <FieldError message={errors.location_address?.message} />
+        <EventLocationField
+          cityId={cityIdValue || undefined}
+          cityLatitude={selectedCity?.latitude ?? activeCity?.latitude}
+          cityLongitude={selectedCity?.longitude ?? activeCity?.longitude}
+          cityName={selectedCity?.name ?? activeCity?.name}
+          mode={locationMode}
+          onModeChange={(mode) => setValue("location_mode", mode, { shouldValidate: true })}
+          locationId={locationIdValue || undefined}
+          onLocationIdChange={(id) => setValue("location_id", id, { shouldValidate: true })}
+          mapName={locationNameValue ?? ""}
+          mapAddress={locationAddressValue ?? ""}
+          mapLatitude={locationLatitudeValue}
+          mapLongitude={locationLongitudeValue}
+          onMapChange={(fields) => {
+            if (fields.name !== undefined) setValue("location_name", fields.name);
+            if (fields.address !== undefined) setValue("location_address", fields.address, { shouldValidate: true });
+            if (fields.latitude !== undefined) setValue("location_latitude", fields.latitude);
+            if (fields.longitude !== undefined) setValue("location_longitude", fields.longitude);
+          }}
+          locationIdError={errors.location_id?.message}
+          addressError={errors.location_address?.message}
+        />
       </div>
 
       <div className="flex flex-col gap-1">

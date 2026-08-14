@@ -32,8 +32,7 @@ describe("useCreateEvent", () => {
       date: "2099-01-01",
       time: "21:00:00",
       categories: ["musica"],
-      location_name: "Lugar",
-      location_address: "Dirección",
+      location_data: { name: "Lugar", address: "Dirección", city_id: "22222222-2222-2222-2222-222222222222" },
       ticket_type: "gratis",
     });
 

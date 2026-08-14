@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
 import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { EVENT_CATEGORIES, TICKET_TYPE_OPTIONS, type Event, type EventCreateInput } from "@/features/events/types";
+import { useLocation } from "@/features/locations/hooks/useLocation";
 import { ApiError } from "@/lib/api-client";
 
 interface SummaryRowProps {
@@ -56,6 +57,9 @@ interface EventSummaryViewProps {
 
 export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSummaryViewProps) {
   const createEvent = useCreateEvent();
+  const { data: pickedLocation } = useLocation(payload.location_id);
+  const locationName = payload.location_id ? (pickedLocation?.name ?? "...") : (payload.location_data?.name || payload.location_data?.address || "");
+  const locationAddress = payload.location_id ? (pickedLocation?.address ?? "...") : (payload.location_data?.address ?? "");
 
   const categoryLabels = payload.categories
     .map((value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value)
@@ -95,8 +99,8 @@ export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSu
           </div>
 
           <div className="flex flex-col gap-2">
-            <SummaryRow icon={Building2} label="Lugar" value={payload.location_name} />
-            <SummaryRow icon={MapPin} label="Dirección" value={payload.location_address} />
+            <SummaryRow icon={Building2} label="Lugar" value={locationName} />
+            <SummaryRow icon={MapPin} label="Dirección" value={locationAddress} />
           </div>
 
           <div className="flex flex-col gap-2 border-t border-border pt-3">

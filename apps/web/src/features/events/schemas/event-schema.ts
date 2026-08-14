@@ -24,8 +24,13 @@ export const eventFormSchema = z
       .min(MIN_EVENT_CATEGORIES, "Elegí al menos una categoría")
       .max(MAX_EVENT_CATEGORIES, "Máximo 3 categorías"),
     city_id: z.string().optional().or(z.literal("")),
-    location_name: z.string().min(1, "El lugar es obligatorio").max(255),
-    location_address: z.string().min(1, "La dirección es obligatoria").max(500),
+    // Etapa 7b — Tab "Elegir lugar" (preset) o "Indicar en el mapa" (map).
+    location_mode: z.enum(["preset", "map"]).default("preset"),
+    location_id: z.string().optional().or(z.literal("")),
+    location_name: z.string().max(255).optional().or(z.literal("")),
+    location_address: z.string().max(500).optional().or(z.literal("")),
+    location_latitude: z.number().optional(),
+    location_longitude: z.number().optional(),
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),
     price_at_door: z.string().optional().or(z.literal("")),
     price_advance: z.string().optional().or(z.literal("")),
@@ -37,6 +42,14 @@ export const eventFormSchema = z
   .refine((data) => data.ticket_type === "gratis" || data.price_at_door || data.price_advance, {
     message: "Indicá al menos un precio si la entrada no es gratis",
     path: ["price_at_door"],
+  })
+  .refine((data) => data.location_mode !== "preset" || Boolean(data.location_id), {
+    message: "Elegí un lugar de la lista",
+    path: ["location_id"],
+  })
+  .refine((data) => data.location_mode !== "map" || Boolean(data.location_address), {
+    message: "La dirección es obligatoria",
+    path: ["location_address"],
   });
 
 export type EventFormValues = z.infer<typeof eventFormSchema>;
