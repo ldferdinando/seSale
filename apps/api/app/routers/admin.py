@@ -12,6 +12,7 @@ from app.models.event import Event, EventStatus
 from app.models.plan import PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
+from app.schemas.city import CityAdminRead, CitySortOrderUpdate
 from app.schemas.event import AdminEventRead, EventRead
 from app.schemas.location import (
     LocationAdminCreate,
@@ -27,6 +28,11 @@ from app.schemas.subscription import (
     SubscriptionReviewRequest,
 )
 from app.schemas.user import AdminUserCreate, UserRead
+from app.services.city_service import (
+    count_active_future_events,
+    list_all_cities_with_active_event_counts,
+    update_city_sort_order,
+)
 from app.services.event_service import list_admin_events
 from app.services.location_service import (
     create_admin_location,
@@ -355,3 +361,29 @@ async def delete_admin_location_endpoint(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return {"detail": "Lugar eliminado"}
+
+
+@router.get("/cities", response_model=list[CityAdminRead])
+async def get_admin_cities(session: Session = Depends(get_session)) -> list[CityAdminRead]:
+    """Etapa 8a — todas las ciudades (activas e inactivas), con la cantidad
+    de eventos activos como contexto antes de deshabilitar. Usado por el
+    panel admin de Ciudades (GET /api/cities público solo devuelve activas)."""
+    return [
+        CityAdminRead(**city.model_dump(), active_events_count=count)
+        for city, count in list_all_cities_with_active_event_counts(session)
+    ]
+
+
+@router.patch("/cities/{city_id}/sort-order", response_model=CityAdminRead)
+async def patch_admin_city_sort_order(
+    city_id: UUID,
+    payload: CitySortOrderUpdate,
+    session: Session = Depends(get_session),
+) -> CityAdminRead:
+    try:
+        city = update_city_sort_order(session, city_id, payload.sort_order)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    count = count_active_future_events(session, city.id)
+    return CityAdminRead(**city.model_dump(), active_events_count=count)

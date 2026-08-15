@@ -188,3 +188,74 @@ async def test_update_event_without_city_id_keeps_current_city(
 
     assert response.status_code == 200
     assert response.json()["city_id"] == str(city.id)
+
+
+# Etapa 8a — PARTE 3b: contact_whatsapp no se pisa si el payload no lo manda (o manda None)
+
+
+async def test_update_event_without_contact_whatsapp_does_not_overwrite_existing(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, contact_whatsapp="5491111111111")
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"title": "Sin tocar whatsapp"}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["contact_whatsapp"] == "5491111111111"
+
+
+async def test_update_event_with_explicit_null_contact_whatsapp_does_not_overwrite_existing(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, contact_whatsapp="5491111111111")
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"contact_whatsapp": None}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["contact_whatsapp"] == "5491111111111"
+
+
+# Etapa 8a — PARTE 5: validación cruzada de location_data.city_id vs. city_id del evento
+
+
+async def test_update_event_location_data_city_mismatch_returns_422(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(other_city)
+    session.commit()
+    session.refresh(other_city)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={
+            "location_data": {
+                "name": "Lugar en otra ciudad",
+                "address": "Calle Falsa 123",
+                "city_id": str(other_city.id),
+            }
+        },
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 422

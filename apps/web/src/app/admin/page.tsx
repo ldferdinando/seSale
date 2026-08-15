@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Tabs } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { AdminCitiesPanel } from "@/features/admin/components/AdminCitiesPanel";
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
 import { AdminFeaturedPanel } from "@/features/admin/components/AdminFeaturedPanel";
 import { AdminLocationsPanel } from "@/features/admin/components/AdminLocationsPanel";
@@ -17,6 +18,7 @@ const ADMIN_TABS = [
   { value: "destacados", label: "Destacados" },
   { value: "eventos", label: "Eventos" },
   { value: "lugares", label: "Lugares" },
+  { value: "ciudades", label: "Ciudades" },
   { value: "usuarios", label: "Usuarios" },
   { value: "suscripciones", label: "Suscripciones" },
   { value: "reportes", label: "Reportes" },
@@ -57,6 +59,7 @@ export default function AdminPage() {
           {tab === "destacados" && <AdminFeaturedPanel />}
           {tab === "eventos" && <AdminEventsPanel />}
           {tab === "lugares" && <AdminLocationsPanel />}
+          {tab === "ciudades" && <AdminCitiesPanel />}
           {tab === "usuarios" && <AdminUsersPanel />}
           {tab === "suscripciones" && <AdminSubscriptionsPanel />}
           {tab === "reportes" && <AdminReportsPanel />}

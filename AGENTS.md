@@ -129,12 +129,13 @@ root/
 │   │   │   │   ├── events/
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/
-│   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a
+│   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a;
+│   │   │   │   │                  #   types/services/hooks admin (toggle, sort-order) — Etapa 8a
 │   │   │   │   ├── locations/      # Lugares precargados: selector, ABM admin — Etapa 7b
 │   │   │   │   ├── ads/
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
-│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b)
+│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b, ciudades — Etapa 8a)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
 │   │   │   │   └── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
@@ -184,7 +185,7 @@ root/
 │       │   │   ├── subscription.py # Etapa 6
 │       │   │   └── report.py       # Etapa 6.5
 │       │   ├── routers/            # Endpoints organizados por recurso
-│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5, ABM lugares — Etapa 7b
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5, ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a
 │       │   │   ├── auth.py
 │       │   │   ├── events.py
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5

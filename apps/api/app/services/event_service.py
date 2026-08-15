@@ -144,11 +144,21 @@ def _resolve_target_city(session: Session, city_id: UUID | None, fallback_city_i
     return city_id
 
 
+def _validate_location_city_matches_event(location_city_id: UUID, event_city_id: UUID) -> None:
+    """Etapa 8a — `location_data.city_id` (Tab "Indicar en el mapa") debe
+    coincidir con la ciudad efectiva del evento. El frontend siempre manda
+    el mismo city_id en ambos campos, pero el backend lo fuerza para ser
+    robusto ante llamadas directas a la API."""
+    if location_city_id != event_city_id:
+        raise ValueError("La ciudad de la ubicación debe coincidir con la ciudad del evento.")
+
+
 def _resolve_event_location(
     session: Session,
     *,
     location_id: UUID | None,
     location_data: LocationCreate | None,
+    event_city_id: UUID,
 ) -> Location:
     """Resuelve la ubicación de un evento nuevo — Etapa 7b.
 
@@ -157,10 +167,14 @@ def _resolve_event_location(
     Location nuevo con is_public=False a partir de dirección libre +
     coordenadas del mapa. Si vienen los dos, se prioriza location_id. Si no
     viene ninguno, es un error de validación (uno de los dos es requerido).
+
+    `event_city_id`: ciudad efectiva del evento — Etapa 8a, se valida contra
+    `location_data.city_id` (ver `_validate_location_city_matches_event`).
     """
     if location_id is not None:
         return get_location_or_404(session, location_id)
     if location_data is not None:
+        _validate_location_city_matches_event(location_data.city_id, event_city_id)
         return create_location_from_event_data(session, location_data)
     raise ValueError("Se requiere location_id o location_data")
 
@@ -200,6 +214,10 @@ def create_event(
     `organizer_id` solo tiene efecto si `is_admin=True` (Etapa 5.6: admin
     cargando eventos en nombre de otro organizador). Para un usuario normal
     se ignora y el organizador siempre es `user_id`.
+
+    `contact_whatsapp`: si no se manda explícito, se completa con el
+    `public_whatsapp` del perfil del organizador (Etapa 8a) — no es un
+    campo que el organizador carga por evento.
     """
     effective_organizer_id = organizer_id if (is_admin and organizer_id is not None) else user_id
 
@@ -209,9 +227,14 @@ def create_event(
     if organizer.city_id is None:
         raise ValueError("El organizador no tiene una ciudad asignada")
 
+    if not contact_whatsapp:
+        contact_whatsapp = organizer.public_whatsapp
+
     target_city_id = _resolve_target_city(session, city_id, organizer.city_id)
 
-    location = _resolve_event_location(session, location_id=location_id, location_data=location_data)
+    location = _resolve_event_location(
+        session, location_id=location_id, location_data=location_data, event_city_id=target_city_id
+    )
 
     event = Event(
         city_id=target_city_id,
@@ -366,10 +389,18 @@ def update_event(
             if isinstance(new_location_data, LocationCreate)
             else LocationCreate.model_validate(new_location_data)
         )
+        _validate_location_city_matches_event(location_data.city_id, target_city_id)
         event.location_id = create_location_from_event_data(session, location_data).id
     # Si vienen ambos None (no se mandaron), no se toca la ubicación actual.
 
     event.city_id = target_city_id
+
+    # Etapa 8a: contact_whatsapp es un dato del perfil del organizador, no
+    # un campo por evento todavía — si el payload no lo manda (o lo manda
+    # None) no se pisa el valor existente. Si en el futuro el organizador
+    # puede completarlo por evento, sacar este guard.
+    if data.get("contact_whatsapp") is None:
+        data.pop("contact_whatsapp", None)
 
     for field, value in data.items():
         setattr(event, field, value)

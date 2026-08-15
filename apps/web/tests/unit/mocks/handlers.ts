@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
+import type { AdminCity } from "@/features/cities/types";
 import type { AdminLocation, Location } from "@/features/locations/types";
 import type { Plan } from "@/features/plans/types";
 import type { AdminReport } from "@/features/reports/types";
@@ -179,6 +180,21 @@ export function makeAdminLocation(overrides: Partial<AdminLocation> = {}): Admin
   };
 }
 
+export function makeAdminCity(overrides: Partial<AdminCity> = {}): AdminCity {
+  return {
+    id: "22222222-2222-2222-2222-222222222222",
+    name: "General Roca",
+    province: "Río Negro",
+    emoji: "🏙️",
+    is_active: true,
+    sort_order: 0,
+    latitude: -39.0333,
+    longitude: -67.5833,
+    active_events_count: 0,
+    ...overrides,
+  };
+}
+
 export function makeAdminReport(overrides: Partial<AdminReport> = {}): AdminReport {
   return {
     id: "99999999-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
@@ -316,6 +332,16 @@ export const handlers = [
         longitude: -68.0,
       },
     ]);
+  }),
+  http.get(`${API_URL}/api/admin/cities`, () => {
+    return HttpResponse.json([makeAdminCity()]);
+  }),
+  http.patch(`${API_URL}/api/cities/:id/toggle`, ({ params }) => {
+    return HttpResponse.json(makeAdminCity({ id: params.id as string, is_active: false }));
+  }),
+  http.patch(`${API_URL}/api/admin/cities/:id/sort-order`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminCity({ id: params.id as string, sort_order: body.sort_order as number }));
   }),
   http.get(`${API_URL}/api/plans`, () => {
     return HttpResponse.json([

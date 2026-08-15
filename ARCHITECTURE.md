@@ -937,7 +937,13 @@ POST   /api/events                     Crear evento (user autenticado → pendin
                                        (dirección libre + mapa, Tab "Indicar en
                                        el mapa" del formulario). Si vienen los
                                        dos, se usa location_id. Si no viene
-                                       ninguno, 422
+                                       ninguno, 422. location_data.city_id debe
+                                       coincidir con la ciudad efectiva del
+                                       evento — 422 si no coincide ✓ Etapa 8a
+                                       contact_whatsapp: si no viene en el
+                                       payload (o viene vacío), se completa
+                                       automáticamente con el public_whatsapp
+                                       del perfil del organizador ✓ Etapa 8a
 PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
                                        (admin). Si edita el organizador, status
                                        vuelve a pending; si edita el admin, no
@@ -947,7 +953,15 @@ PUT    /api/events/{id}                Editar evento propio (user) o cualquiera 
                                        POST); ausente = no se toca.
                                        location_id | location_data opcionales   ✓ Etapa 7b
                                        (mismo formato que POST); ambos ausentes
-                                       = no se toca la ubicación actual
+                                       = no se toca la ubicación actual.
+                                       location_data.city_id se valida contra
+                                       la ciudad efectiva del evento, igual que
+                                       en POST ✓ Etapa 8a
+                                       contact_whatsapp: si el payload no lo
+                                       manda (o lo manda null), NO se pisa el
+                                       valor existente del evento — es un dato
+                                       del perfil del organizador, no algo que
+                                       se edita por evento hoy ✓ Etapa 8a
 DELETE /api/events/{id}                Soft delete (is_active=False). Permitido    ✓ Etapa 5.6
                                        para el organizador dueño o un admin
 PATCH  /api/events/{id}/status         Aprobar / rechazar (admin)
@@ -1011,7 +1025,31 @@ GET    /api/cities                     Listar ciudades activas (público)       
                                        detection.ts)
 GET    /api/cities/{id}                Detalle de ciudad (público)                planificado
 POST   /api/cities                     Crear ciudad (admin)                       planificado
-PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)    planificado
+PATCH  /api/cities/{id}/toggle         Habilitar / deshabilitar ciudad (admin)    ✓ Etapa 8a
+                                       Sin body. Alterna is_active. Habilitar
+                                       (False→True) siempre se permite.
+                                       Deshabilitar (True→False) se rechaza
+                                       con 409 si la ciudad tiene eventos
+                                       approved + is_active=True + date >= hoy
+                                       ("Esta ciudad tiene N evento(s)
+                                       activo(s). Desactivá o reasigná los
+                                       eventos antes de deshabilitar la
+                                       ciudad."). 404 si no existe
+```
+
+### Ciudades — administración (`/api/admin`) ✓ Etapa 8a
+
+Todas requieren rol `admin` (401 sin auth, 403 para `user`).
+
+```
+GET    /api/admin/cities               Todas las ciudades (activas e
+                                       inactivas), con active_events_count
+                                       (mismo criterio que la restricción del
+                                       toggle) — contexto para el admin antes
+                                       de deshabilitar. Orden: sort_order
+PATCH  /api/admin/cities/{id}/sort-order  Body: { sort_order: int >= 0 }.
+                                       Actualiza el orden del selector.
+                                       404 si no existe
 ```
 
 ### Ubicaciones (`/api/locations`) ✓ Etapa 7b
@@ -1182,6 +1220,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **6b-2** | Corrección de arquitectura (a pedido del usuario, detectada probando la 6b-1): el pago de un plan es **por evento**, no por cuenta del organizador. | ✓ Completa: `Subscription.event_id` (FK a `events`, migración `0010`), `_apply_plan_to_event()` reemplaza a `_apply_plan_to_organizer_events()` para dest/pro (se mantiene solo para el plan Banner, que no es un upgrade de un evento puntual); `POST /api/subscriptions/checkout` y `POST /api/subscriptions/transfer` requieren `event_id`; `/planes` requiere `?event_id=` (si falta, pide elegir un evento desde `/mis-eventos`); `expire_subscriptions` revierte solo el evento vinculado; `organizer_subscription` pasó a buscarse por `event_id` (antes por `organizer_id`, lo que mezclaba el pago de un evento con cualquier otro evento no relacionado del mismo organizador — el bug real que disparó esta corrección) |
 | **7a** | Multi-ciudad: selector de ciudad en navbar con geolocalización automática, filtrado del home por ciudad activa, ciudad del organizador en formulario de evento. | ✓ Completa: `City.latitude`/`longitude` (migración `0011`), `CityRead` los expone; `EventCreate`/`EventUpdate.city_id` opcional (default: ciudad del organizador, valida `is_active`); `lib/city-detection.ts` (Haversine, detección por GPS con localStorage), `ActiveCityProvider`/`useActiveCity()` (Context, no Zustand), selector real en `Navbar.tsx`, `GET /api/events?city_id=` conectado al home, selector de ciudad en `EventForm.tsx`. Admin habilitar/deshabilitar ciudades queda para una etapa futura (hoy se gestiona por seed/DB directa) |
 | **7b** | Lugares precargados con mapa: `Location.description`/`hours`/`place_type`/`is_verified`/`is_public`, mapa (Leaflet + OSM + Nominatim) en formulario de evento y vista detalle, ABM de lugares para admin. | ✓ Completa: migración `0012`; `GET /api/locations` (público, solo `is_public=True`) y `GET /api/locations/{id}` (cualquiera); ABM completo bajo `/api/admin/locations`; `EventCreate`/`EventUpdate` reemplazan `location_name`/`location_address` por `location_id \| location_data` (uno de los dos); `components/MapPicker.tsx` (Leaflet vanilla, dynamic import ssr:false), `lib/nominatim.ts`, `features/locations/` (selector Tab A), `EventLocationField.tsx` (dos tabs en `EventForm.tsx`), mapa readonly + description/hours en `EventDetailView.tsx`, `AdminLocationsPanel.tsx` (listado, ABM, verificar, "hacer público"), lugares precargados en `seed.py`. Ver `a_revisar.md` por el refactor de `location_name`/`location_address` a `location_id`/`location_data` (no estaba en el modelo original de esta etapa) |
+| **8a** | Fixes y pendientes de `a_revisar.md`: build de producción (Suspense en `/planes` y `/planes/transferencia*`), toggle de ciudades para admin, WhatsApp del organizador auto-completado en eventos, validación cruzada de `city_id` en `location_data`, organizer_id en `EventRead`. | ✓ Completa: `PATCH /api/cities/{id}/toggle` (409 si tiene eventos aprobados/activos/futuros), `GET /api/admin/cities` + `PATCH /api/admin/cities/{id}/sort-order`, `AdminCitiesPanel.tsx`; `create_event` completa `contact_whatsapp` desde `organizer.public_whatsapp` si no viene explícito, `update_event` no lo pisa si el payload no lo manda o lo manda `null`; `_resolve_event_location` valida `location_data.city_id` contra la ciudad efectiva del evento (422 si no coincide); `organizer_id` en `EventRead` ya estaba resuelto desde la Etapa 4.5 (confirmado, sin cambios) |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
 

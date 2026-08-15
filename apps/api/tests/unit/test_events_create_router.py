@@ -296,3 +296,98 @@ async def test_create_event_with_nonexistent_city_id_returns_404(
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
 
     assert response.status_code == 404
+
+
+# Etapa 8a — PARTE 5: validación cruzada de location_data.city_id vs. city_id del evento
+
+
+async def test_create_event_location_data_city_mismatch_returns_422(
+    client: AsyncClient, session: Session, city: City, organizer: User, user_token_headers: dict[str, str]
+):
+    other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(other_city)
+    session.commit()
+    session.refresh(other_city)
+
+    payload = _valid_payload("")
+    del payload["location_id"]
+    payload["location_data"] = {
+        "name": "Lugar en otra ciudad",
+        "address": "Calle Falsa 123",
+        "city_id": str(other_city.id),
+    }
+    # El evento no manda city_id explícito → usa la ciudad del organizador (`city`),
+    # distinta a la de location_data (`other_city`).
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_location_data_city_matches_event_city_id_succeeds(
+    client: AsyncClient, session: Session, city: City, organizer: User, user_token_headers: dict[str, str]
+):
+    other_city = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(other_city)
+    session.commit()
+    session.refresh(other_city)
+
+    payload = _valid_payload("")
+    del payload["location_id"]
+    payload["city_id"] = str(other_city.id)
+    payload["location_data"] = {
+        "name": "Lugar en la misma ciudad del evento",
+        "address": "Calle Falsa 123",
+        "city_id": str(other_city.id),
+    }
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["city_id"] == str(other_city.id)
+
+
+# Etapa 8a — PARTE 3a: contact_whatsapp se completa desde el perfil del organizador
+
+
+async def test_create_event_fills_contact_whatsapp_from_organizer_profile(
+    client: AsyncClient, session: Session, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    organizer.public_whatsapp = "5491122334455"
+    session.add(organizer)
+    session.commit()
+
+    payload = _valid_payload(str(location.id))
+    assert "contact_whatsapp" not in payload
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["contact_whatsapp"] == "5491122334455"
+
+
+async def test_create_event_without_organizer_whatsapp_leaves_contact_whatsapp_null(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["contact_whatsapp"] is None
+
+
+async def test_create_event_respects_explicit_contact_whatsapp(
+    client: AsyncClient, session: Session, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    organizer.public_whatsapp = "5491100000000"
+    session.add(organizer)
+    session.commit()
+
+    payload = _valid_payload(str(location.id))
+    payload["contact_whatsapp"] = "5491199999999"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["contact_whatsapp"] == "5491199999999"
