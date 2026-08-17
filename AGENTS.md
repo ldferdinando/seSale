@@ -128,7 +128,8 @@ root/
 │   │   │   ├── components/         # Componentes reutilizables globales
 │   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
 │   │   │   │   ├── FlyerUpload.tsx    # Subir/cambiar/eliminar flyer — solo plan pro — Etapa 8b
-│   │   │   │   └── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
+│   │   │   │   ├── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
+│   │   │   │   └── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/
 │   │   │   │   ├── auth/
@@ -173,7 +174,8 @@ root/
 │       │   │   ├── moment.py       # calculate_moments() — Etapa 6.5
 │       │   │   ├── timezone.py     # argentina_today(), utc_time_to_argentina() — Etapa 6.5
 │       │   │   ├── email.py        # send_report_email() (Resend) — Etapa 6.5
-│       │   │   └── storage.py      # upload_flyer()/delete_flyer() (Supabase Storage / disco local) — Etapa 8b
+│       │   │   ├── storage.py      # upload_flyer()/delete_flyer() (Supabase Storage / disco local) — Etapa 8b
+│       │   │   └── expiry.py       # expire_overdue_subscriptions() + disparo lazy en BackgroundTask — Etapa 8c
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py
 │       │   │   ├── user.py

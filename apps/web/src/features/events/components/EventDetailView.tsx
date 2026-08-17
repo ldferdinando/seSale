@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
+  AlertTriangle,
   Bell,
   Building2,
   Calendar,
@@ -49,6 +50,14 @@ const TICKET_TYPE_LABEL: Record<EventDetail["ticket_type"], string> = {
   gratis: "Entrada gratuita",
   pago: "Entrada paga",
   anticipo: "Con anticipo",
+};
+
+/** Etapa 8c — nombre público del plan en el banner de vencimiento. Mismo
+ * texto que ya usan EventCard.tsx/publishPlans.ts, declarado acá inline
+ * para no acoplar este componente a esos módulos de otros flujos. */
+const PLAN_NAME: Record<"dest" | "pro", string> = {
+  dest: "Destacado",
+  pro: "Destacado Plus",
 };
 
 function shareEvent(event: EventDetail) {
@@ -102,6 +111,16 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const flyerUrl = resolveMediaUrl(event.flyer_url);
   const showFlyerImage = event.plan !== "gratis" && Boolean(flyerUrl);
   const flyerClickable = event.plan === "pro" && Boolean(flyerUrl);
+
+  // Etapa 8c — aviso de vencimiento del plan pagado, solo para el
+  // organizador dueño del evento. featured_until=null (plan activo sin
+  // fecha, ej. asignado a mano por un admin) no muestra nada.
+  const featuredUntilDate = event.featured_until ? parseISO(event.featured_until) : null;
+  const now = new Date();
+  const isExpiringSoon = Boolean(featuredUntilDate && featuredUntilDate > now && featuredUntilDate <= addDays(now, 7));
+  const isExpired = Boolean(featuredUntilDate && featuredUntilDate <= now);
+  const showExpiryBanner = isOwner && event.plan !== "gratis" && (isExpiringSoon || isExpired);
+  const planName = event.plan === "pro" ? PLAN_NAME.pro : PLAN_NAME.dest;
 
   return (
     <div className="flex flex-col gap-5">
@@ -321,6 +340,44 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             <Sparkles className="h-4 w-4" aria-hidden />
             Elegir plan
           </Link>
+        )}
+
+        {showExpiryBanner && isExpired && (
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" aria-hidden />
+            <div className="flex flex-1 flex-col gap-2">
+              <div>
+                <p className="text-sm font-bold text-destructive">Tu plan destacado venció</p>
+                <p className="text-xs text-ink-4">El evento volvió al plan gratuito.</p>
+              </div>
+              <Link
+                href={`/planes?event_id=${event.id}`}
+                className="w-fit rounded-full bg-destructive px-3 py-1.5 text-xs font-bold text-white"
+              >
+                Volver a destacar
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {showExpiryBanner && !isExpired && isExpiringSoon && (
+          <div className="flex items-start gap-3 rounded-xl border border-[#EF9F2744] bg-[#2a1f0d] p-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#EF9F27]" aria-hidden />
+            <div className="flex flex-1 flex-col gap-2">
+              <div>
+                <p className="text-sm font-bold text-[#EF9F27]">
+                  Tu plan {planName} vence el {format(featuredUntilDate as Date, "d 'de' MMMM", { locale: es })}
+                </p>
+                <p className="text-xs text-ink-4">Renovalo para seguir apareciendo destacado.</p>
+              </div>
+              <Link
+                href={`/planes?event_id=${event.id}`}
+                className="w-fit rounded-full bg-[#EF9F27] px-3 py-1.5 text-xs font-bold text-[#0d0d0d]"
+              >
+                Renovar plan
+              </Link>
+            </div>
+          </div>
         )}
 
         {/* organizer_subscription solo llega no-null cuando el viewer es el

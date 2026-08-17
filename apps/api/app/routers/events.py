@@ -1,10 +1,11 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_current_user_optional, get_session, require_admin
+from app.core.expiry import run_expire_overdue_subscriptions_task
 from app.core.limiter import limiter
 from app.core.storage import InvalidFlyerFileError
 from app.models.event import EventStatus
@@ -44,6 +45,7 @@ router = APIRouter(prefix="/api/events", tags=["events"])
 @limiter.limit("60/minute")
 async def get_events(
     request: Request,
+    background_tasks: BackgroundTasks,
     city_id: UUID | None = Query(default=None),
     category: list[str] | None = Query(default=None),
     moment: str | None = Query(default=None),
@@ -52,6 +54,10 @@ async def get_events(
     search: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> list[EventRead]:
+    # Etapa 8c: vencimiento lazy de destacados — corre en background, después
+    # de enviada la respuesta, sin agregar latencia al listado. Ver
+    # app/core/expiry.py.
+    background_tasks.add_task(run_expire_overdue_subscriptions_task)
     return list_public_events(
         session,
         city_id=city_id,

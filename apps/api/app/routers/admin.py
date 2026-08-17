@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from app.core.deps import get_current_user, get_session, require_admin
 from app.core.email import send_subscription_approved_email, send_subscription_rejected_email
+from app.core.expiry import expire_overdue_subscriptions
 from app.core.limiter import limiter
 from app.models.event import Event, EventStatus
 from app.models.plan import PlanType
@@ -43,7 +44,6 @@ from app.services.location_service import (
 )
 from app.services.payment_service import (
     activate_subscription_manually,
-    expire_subscriptions,
     get_latest_subscriptions_by_event,
     review_subscription,
 )
@@ -252,7 +252,7 @@ async def patch_admin_subscription_review(
 
 @router.post("/subscriptions/expire")
 async def post_admin_subscriptions_expire(session: Session = Depends(get_session)) -> dict[str, int]:
-    expired = expire_subscriptions(session)
+    expired = expire_overdue_subscriptions(session)
     return {"expired_count": len(expired)}
 
 

@@ -128,9 +128,14 @@ export function EventLocationField({
           <MapPicker
             latitude={mapLatitude ?? null}
             longitude={mapLongitude ?? null}
-            onLocationSelect={({ latitude, longitude, address }) =>
-              onMapChange({ latitude, longitude, address: address ?? mapAddress })
-            }
+            // Se reenvía tal cual — onMapChange (EventForm.tsx) ya sabe
+            // ignorar los campos que no vienen (address undefined cuando
+            // MapPicker todavía no resolvió el reverse geocode). No hace
+            // falta (ni conviene) rellenar acá con `mapAddress`: eso
+            // dependía de un closure que quedaba obsoleto apenas el
+            // usuario tipeaba después de que el mapa montara — bug real
+            // reportado, ver MapPicker.tsx.
+            onLocationSelect={onMapChange}
             fallbackCenter={fallbackCenter}
             fallbackCityName={cityName}
           />

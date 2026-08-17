@@ -30,3 +30,37 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 }
+
+/* Etapa 8c — popup oscuro de EventsMap.tsx (mapa del home). Leaflet arma el
+   popup fuera del árbol de React (bindPopup con HTML crudo), por eso va acá
+   como CSS global en vez de clases de Tailwind en el componente. */
+.sesale-map-popup-wrapper .leaflet-popup-content-wrapper {
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+.sesale-map-popup-wrapper .leaflet-popup-tip {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+}
+.sesale-map-popup-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.sesale-map-popup-meta {
+  margin: 0 0 2px;
+  font-size: 11px;
+  color: #b3b3b3;
+}
+.sesale-map-popup-link {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e91e8c;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

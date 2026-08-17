@@ -779,11 +779,20 @@ Usuario ve /eventos/{id} (dueño, plan="gratis") → botón "Elegir plan"
         ▼
   Responde 200 a MP siempre (salvo firma inválida)
 
-Vencimiento: POST /api/admin/subscriptions/expire (admin o llamada
-interna, sin scheduler todavía) marca status="expired" las Subscription
-vencidas y revierte a plan="gratis" el evento de subscription.event_id
-(o, si no tiene event_id —Subscription previa a 6b-2 o del plan Banner—,
-todos los eventos del organizador con ese plan, criterio anterior).
+Vencimiento (app/core/expiry.py, expire_overdue_subscriptions — Etapa 8c,
+antes expire_subscriptions en payment_service.py): marca status="expired"
+las Subscription vencidas (expires_at < ahora), completa reviewed_at, y
+revierte a plan="gratis" el evento de subscription.event_id (o, si no
+tiene event_id —Subscription previa a 6b-2 o del plan Banner—, todos los
+eventos del organizador con ese plan, criterio anterior). Idempotente:
+correrla dos veces seguidas no cambia nada la segunda vez. Dos formas de
+dispararla, misma función:
+  - Manual: POST /api/admin/subscriptions/expire (admin).
+  - Lazy (Etapa 8c, sin scheduler todavía): GET /api/events la agenda
+    como BackgroundTask (run_expire_overdue_subscriptions_task) — corre
+    después de enviada la respuesta, con su propia sesión de DB, y nunca
+    propaga errores (solo loguea) porque el cliente ya recibió su
+    respuesta.
 
 Plan Banner (pricing_type=custom): no pasa por MP, no tiene event_id (no es
 el upgrade de un evento sino un espacio publicitario del sitio). El admin
@@ -874,7 +883,7 @@ Detalle del evento ("Compartir", EventDetailView) → comparte ESE evento
   Si no → window.open("https://wa.me/?text=...")
 ```
 
-### Vista de Mapa (Etapa 7b)
+### Vista de Mapa (Etapa 7b, Home — Etapa 8c)
 
 - **Leaflet** (vanilla, sin `react-leaflet`) renderiza el mapa —
   `components/MapPicker.tsx`, siempre importado con `dynamic(..., {ssr:
@@ -890,9 +899,24 @@ Detalle del evento ("Compartir", EventDetailView) → comparte ESE evento
   "Indicar en el mapa", interactivo), `EventDetailView.tsx` (readonly, si
   el lugar tiene coordenadas) y el ABM de lugares del panel admin
   (interactivo).
-- El tab "Mapa" del **Home** (mapa de todos los eventos) sigue como
-  placeholder — es una feature distinta (mapa agregado, no de un lugar
-  puntual) que queda para una etapa futura, ver `a_revisar.md`.
+- **El tab "Mapa" del Home (Etapa 8c)** ya no es un placeholder:
+  `components/EventsMap.tsx` (dynamic import `ssr: false`, igual patrón
+  que `MapPicker`) renderiza un pin por cada evento del listado actual —
+  comparte exactamente los mismos filtros que `GET /api/events` (ciudad,
+  categoría, momento, fechas, búsqueda), recibidos como prop `events`
+  desde `app/page.tsx` (mismo `useEvents`/`queryKey` que usa `EventList`,
+  sin duplicar el fetch gracias al cache de TanStack Query). Es un
+  componente **nuevo**, no una extensión de `MapPicker` — `MapPicker` solo
+  soporta un marker único, interactivo; `EventsMap` soporta N markers de
+  solo lectura. Coordenadas: se leen de `event.location.latitude/longitude`
+  (ya expuestas ahí desde la Etapa 7b, sin campos nuevos en `EventRead`);
+  un evento sin coordenadas simplemente no pinta pin, sin error. Pin
+  `L.divIcon` con color/tamaño según `event.plan` (`pro` fucsia grande,
+  `dest` fucsia claro mediano, `gratis` gris chico), popup con
+  título/fecha-hora/lugar/link "Ver evento" (navega a `/eventos/{id}`),
+  leyenda fija y botón "Cerca mío" (usa `requestUserLocation()` de
+  `lib/city-detection.ts`, sin persistir en localStorage — solo centra el
+  mapa).
 
 ---
 
@@ -1252,6 +1276,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **7b** | Lugares precargados con mapa: `Location.description`/`hours`/`place_type`/`is_verified`/`is_public`, mapa (Leaflet + OSM + Nominatim) en formulario de evento y vista detalle, ABM de lugares para admin. | ✓ Completa: migración `0012`; `GET /api/locations` (público, solo `is_public=True`) y `GET /api/locations/{id}` (cualquiera); ABM completo bajo `/api/admin/locations`; `EventCreate`/`EventUpdate` reemplazan `location_name`/`location_address` por `location_id \| location_data` (uno de los dos); `components/MapPicker.tsx` (Leaflet vanilla, dynamic import ssr:false), `lib/nominatim.ts`, `features/locations/` (selector Tab A), `EventLocationField.tsx` (dos tabs en `EventForm.tsx`), mapa readonly + description/hours en `EventDetailView.tsx`, `AdminLocationsPanel.tsx` (listado, ABM, verificar, "hacer público"), lugares precargados en `seed.py`. Ver `a_revisar.md` por el refactor de `location_name`/`location_address` a `location_id`/`location_data` (no estaba en el modelo original de esta etapa) |
 | **8a** | Fixes y pendientes de `a_revisar.md`: build de producción (Suspense en `/planes` y `/planes/transferencia*`), toggle de ciudades para admin, WhatsApp del organizador auto-completado en eventos, validación cruzada de `city_id` en `location_data`, organizer_id en `EventRead`. | ✓ Completa: `PATCH /api/cities/{id}/toggle` (409 si tiene eventos aprobados/activos/futuros), `GET /api/admin/cities` + `PATCH /api/admin/cities/{id}/sort-order`, `AdminCitiesPanel.tsx`; `create_event` completa `contact_whatsapp` desde `organizer.public_whatsapp` si no viene explícito, `update_event` no lo pisa si el payload no lo manda o lo manda `null`; `_resolve_event_location` valida `location_data.city_id` contra la ciudad efectiva del evento (422 si no coincide); `organizer_id` en `EventRead` ya estaba resuelto desde la Etapa 4.5 (confirmado, sin cambios) |
 | **8b** | Nuevo diseño visual (`seSALE_primario.html`), flyer por plan con Supabase Storage, lightbox en detalle del evento. | ✓ Completa: patrón de puntos del navbar, tab "Gastronomía" del bottom nav habilitado (`/lugares`, placeholder), swap "¿Qué hay hoy?"/"Ahora" en `TodayBanner.tsx` según la hora, `aspect-ratio` de `AdSlots.tsx` ajustado al diseño; `POST`/`DELETE /api/events/{id}/flyer` (`app/core/storage.py`, Supabase Storage en prod / disco local en dev, `supabase` + `python-multipart` agregados), flyer exclusivo del plan `pro` (confirmado con el usuario — dest y gratis no lo tienen, a diferencia del pedido original, ver `a_revisar.md`); `FlyerUpload.tsx` (solo en `/eventos/{id}/editar`, no en `/planes` — el evento recién es `pro` después de pagar) e `ImageLightbox.tsx` en `EventDetailView.tsx` |
+| **8c** | Mapa del home con pins de eventos reales (Leaflet + filtros compartidos) y vencimiento automático lazy de destacados. | ✓ Completa: `EventsMap.tsx` reemplaza a `MapPlaceholder.tsx` (dynamic import, un pin `L.divIcon` por evento con coordenadas, color/tamaño por plan, popup, leyenda, botón "Cerca mío"), sin cambios de schema/backend (usa `event.location.latitude/longitude/name`, ya expuestos desde la Etapa 7b); `expire_subscriptions` se movió y renombró a `expire_overdue_subscriptions` en `app/core/expiry.py`, se le agregó `reviewed_at`, y se dispara tanto manual (`POST /api/admin/subscriptions/expire`) como lazy vía `BackgroundTasks` en `GET /api/events`; banner de vencimiento (ámbar ≤7 días, rojo si ya venció) en `EventDetailView.tsx` para el organizador dueño |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
 

@@ -50,6 +50,13 @@ export const eventFormSchema = z
   .refine((data) => data.location_mode !== "map" || Boolean(data.location_address), {
     message: "La dirección es obligatoria",
     path: ["location_address"],
-  });
+  })
+  .refine(
+    (data) => data.location_mode !== "map" || (data.location_latitude != null && data.location_longitude != null),
+    {
+      message: "Marcá la ubicación en el mapa (clickeá o arrastrá el pin)",
+      path: ["location_address"],
+    },
+  );
 
 export type EventFormValues = z.infer<typeof eventFormSchema>;

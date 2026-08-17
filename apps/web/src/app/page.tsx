@@ -1,27 +1,48 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 import { AdSlots } from "@/features/events/components/AdSlots";
 import { CategoryChips } from "@/features/events/components/CategoryChips";
 import { EventFilters } from "@/features/events/components/EventFilters";
 import { EventList } from "@/features/events/components/EventList";
-import { MapPlaceholder } from "@/features/events/components/MapPlaceholder";
 import { MomentPills } from "@/features/events/components/MomentPills";
 import { ShareBanner } from "@/features/events/components/ShareBanner";
 import { StatsBar } from "@/features/events/components/StatsBar";
 import { TodayBanner } from "@/features/events/components/TodayBanner";
 import { ViewTabs, type EventView } from "@/features/events/components/ViewTabs";
 import { getDateRangeForPreset } from "@/features/events/lib/dateRanges";
+import { useEvents } from "@/features/events/hooks/useEvents";
 import type { EventFiltersState } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
+
+const EventsMap = dynamic(() => import("@/components/EventsMap").then((m) => m.EventsMap), {
+  ssr: false,
+  loading: () => <MapSkeleton />,
+});
+
+/** Mismo alto/estilo que .mapa-cont del diseño mientras se detecta la
+ * ciudad o se cargan los eventos del mapa. */
+function MapSkeleton() {
+  return (
+    <div
+      className="mx-5 mb-5 mt-3.5 h-[340px] rounded-[14px] border border-[#1e1e1e] bg-[#0f0f0f]"
+      data-testid="map-skeleton"
+    />
+  );
+}
 
 export default function HomePage() {
   const [filters, setFilters] = useState<EventFiltersState>({});
   const [view, setView] = useState<EventView>("lista");
   const { activeCity, isDetecting } = useActiveCity();
+  const router = useRouter();
 
   const effectiveFilters: EventFiltersState = activeCity ? { ...filters, cityId: activeCity.id } : filters;
+
+  const mapEvents = useEvents(effectiveFilters, { enabled: !isDetecting && view === "mapa" });
 
   return (
     <main className="flex flex-col">
@@ -72,8 +93,16 @@ export default function HomePage() {
             </div>
             <ShareBanner />
           </>
+        ) : isDetecting || mapEvents.isLoading || !activeCity ? (
+          <MapSkeleton />
         ) : (
-          <MapPlaceholder />
+          <div className="mx-5 mb-5 mt-3.5 h-[340px] overflow-hidden rounded-[14px] border border-[#1e1e1e] bg-[#0f0f0f]">
+            <EventsMap
+              events={mapEvents.data ?? []}
+              activeCity={activeCity}
+              onEventClick={(eventId) => router.push(`/eventos/${eventId}`)}
+            />
+          </div>
         )}
 
         <StatsBar />

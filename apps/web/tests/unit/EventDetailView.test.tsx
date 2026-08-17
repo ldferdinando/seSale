@@ -305,4 +305,60 @@ describe("EventDetailView", () => {
       expect(container.querySelector('[data-testid="flyer-placeholder"]')).not.toBeNull();
     });
   });
+
+  describe("expiry banners (Etapa 8c)", () => {
+    const OWNER_ID = "44444444-4444-4444-4444-444444444444";
+    const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+    it("shows the amber banner when featured_until is within the next 7 days and the current user is the organizer", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, plan: "pro", featured_until: inDays(3) });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      expect(await screen.findByText(/Tu plan Destacado Plus vence el/)).toBeInTheDocument();
+      expect(screen.getByText("Renovar plan")).toBeInTheDocument();
+    });
+
+    it("shows the red banner when featured_until already passed and the current user is the organizer", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, plan: "dest", featured_until: inDays(-1) });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      expect(await screen.findByText("Tu plan destacado venció")).toBeInTheDocument();
+      expect(screen.getByText("Volver a destacar")).toBeInTheDocument();
+    });
+
+    it("does not show any expiry banner for an anonymous visitor", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, plan: "pro", featured_until: inDays(3) });
+
+      renderWithClient(event);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.queryByText(/vence el/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Tu plan destacado venció")).not.toBeInTheDocument();
+    });
+
+    it("does not show any expiry banner for an authenticated user who is not the organizer", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, plan: "pro", featured_until: inDays(3) });
+      mockLoggedInAs(makeUser({ id: "99999999-9999-9999-9999-999999999999", role: "user" }));
+
+      renderWithClient(event);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.queryByText(/vence el/)).not.toBeInTheDocument();
+    });
+
+    it("does not show any expiry banner when featured_until is null", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, plan: "pro", featured_until: null });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.queryByText(/vence el/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Tu plan destacado venció")).not.toBeInTheDocument();
+    });
+  });
 });

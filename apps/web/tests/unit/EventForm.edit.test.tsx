@@ -16,6 +16,8 @@ const initialValues: Partial<EventFormValues> = {
   location_mode: "map",
   location_name: "El Tinglado Bar",
   location_address: "Av. Roca 1240",
+  location_latitude: -39.03,
+  location_longitude: -67.58,
   ticket_type: "gratis",
   price_at_door: "",
   price_advance: "",

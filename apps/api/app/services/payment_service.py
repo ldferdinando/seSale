@@ -448,48 +448,9 @@ def activate_subscription_manually(
     return subscription
 
 
-def expire_subscriptions(session: Session) -> list[Subscription]:
-    """Marca como expired las Subscription vencidas y revierte sus eventos a gratis."""
-    now = datetime.now(timezone.utc)
-    stmt = (
-        select(Subscription)
-        .where(Subscription.status == SubscriptionStatus.active)
-        .where(Subscription.expires_at < now)
-    )
-    expired = list(session.exec(stmt).all())
-
-    for subscription in expired:
-        subscription.status = SubscriptionStatus.expired
-        session.add(subscription)
-
-        plan = session.get(Plan, subscription.plan_id)
-        if plan is None:
-            continue
-
-        if subscription.event_id is not None:
-            # Etapa 6b-2: el plan es de este evento puntual, revertir solo este.
-            event = session.get(Event, subscription.event_id)
-            if event is not None and event.plan == plan.plan_type:
-                event.plan = PlanType.gratis
-                event.featured_until = None
-                event.is_featured = False
-                session.add(event)
-            continue
-
-        # Sin event_id: Subscription vieja (previa a 6b-2) o del plan Banner
-        # (cuenta completa, no un evento puntual) — mismo criterio de antes.
-        events_stmt = (
-            select(Event)
-            .where(Event.organizer_id == subscription.user_id)
-            .where(Event.plan == plan.plan_type)
-        )
-        for event in session.exec(events_stmt).all():
-            event.plan = PlanType.gratis
-            event.featured_until = None
-            event.is_featured = False
-            session.add(event)
-
-    session.commit()
-    for subscription in expired:
-        session.refresh(subscription)
-    return expired
+# Nota: el vencimiento automático de suscripciones (expire_overdue_subscriptions)
+# vive en app/core/expiry.py desde la Etapa 8c — antes estaba acá como
+# expire_subscriptions. Se movió para poder reusarla tanto desde
+# POST /api/admin/subscriptions/expire (manual) como desde un BackgroundTask
+# de GET /api/events (lazy), sin acoplar ese disparo lazy a este módulo de
+# pagos.

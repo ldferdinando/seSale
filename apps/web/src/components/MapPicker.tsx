@@ -65,6 +65,17 @@ export function MapPicker({
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // El mapa se monta una sola vez (efecto con deps []) — dragend/click se
+  // enganchan ahí también, así que closurean sobre lo que valía
+  // `onLocationSelect` (y lo que cerraba a su vez, ej. la dirección
+  // tipeada en ese momento) EN EL MOMENTO DEL MONTAJE, no la última
+  // versión. Bug real reportado: al mover el pin, se llamaba a la
+  // versión vieja de onLocationSelect, que en EventLocationField.tsx
+  // caía al fallback `address ?? mapAddress` con el `mapAddress` de
+  // cuando el mapa se montó (normalmente vacío) — pisando cualquier
+  // dirección tipeada después. El ref siempre apunta a la versión actual.
+  const onLocationSelectRef = useRef(onLocationSelect);
+  onLocationSelectRef.current = onLocationSelect;
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
@@ -94,15 +105,41 @@ export function MapPicker({
     L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 
     const marker = L.marker(center, { icon: buildPinIcon(), draggable: !readonly }).addTo(map);
-    if (!readonly) {
-      marker.on("dragend", async () => {
-        const { lat, lng } = marker.getLatLng();
+
+    async function moveMarkerAndNotify(lat: number, lng: number) {
+      marker.setLatLng([lat, lng]);
+      // Las coordenadas son el dato que realmente importa (se guardan tal
+      // cual) — se notifican de inmediato, sin esperar al reverse geocode.
+      // El reverse geocode es solo una comodidad para autocompletar la
+      // dirección: si Nominatim falla, tarda o no está disponible, el pin
+      // elegido no debe perderse (antes, si el fetch fallaba, la promesa
+      // rechazaba y onLocationSelect nunca se llamaba — el pin se veía
+      // movido en pantalla pero el form nunca se enteraba).
+      onLocationSelectRef.current({ latitude: lat, longitude: lng });
+      try {
         const result = await reverseGeocode(lat, lng);
-        onLocationSelect({
-          latitude: lat,
-          longitude: lng,
-          address: result ? displayNameToAddress(result) : undefined,
-        });
+        if (result) {
+          onLocationSelectRef.current({ latitude: lat, longitude: lng, address: displayNameToAddress(result) });
+        }
+      } catch {
+        // best-effort — el pin ya quedó marcado y notificado arriba.
+      }
+    }
+
+    if (!readonly) {
+      marker.on("dragend", () => {
+        const { lat, lng } = marker.getLatLng();
+        moveMarkerAndNotify(lat, lng);
+      });
+      // Click en cualquier punto del mapa mueve el pin ahí — antes solo se
+      // podía arrastrar el pin ya colocado (en el centro por default), lo
+      // que hacía parecer que "clickear para elegir la ubicación" no hacía
+      // nada. Bug real reportado: al no arrastrar el pin, el formulario
+      // nunca capturaba latitude/longitude (el schema no las exige, solo la
+      // dirección), así que el evento quedaba sin coordenadas — sin mapa en
+      // el detalle y sin pin en el mapa del home.
+      map.on("click", (e: L.LeafletMouseEvent) => {
+        moveMarkerAndNotify(e.latlng.lat, e.latlng.lng);
       });
     }
 

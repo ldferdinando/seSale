@@ -36,6 +36,11 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
   await user.type(screen.getByLabelText("Nombre del lugar"), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
+  // Clickear el mapa marca las coordenadas (obligatorias en modo "map" —
+  // ver event-schema.ts, bug real reportado: sin esto el evento se
+  // guardaba sin latitude/longitude).
+  const mapContainer = document.querySelector(".leaflet-container");
+  if (mapContainer) await user.click(mapContainer);
   await user.click(screen.getByLabelText("Música en vivo"));
 }
 
