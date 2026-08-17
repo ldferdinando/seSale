@@ -13,6 +13,10 @@ __pycache__/
 htmlcov/
 *.egg-info/
 
+# Flyers subidos en development sin Supabase configurado (Etapa 8b, ver
+# apps/api/app/core/storage.py) — nunca se versionan
+apps/api/uploads/
+
 # Node
 node_modules/
 .next/

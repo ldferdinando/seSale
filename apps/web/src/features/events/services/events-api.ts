@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPostFile, apiPut } from "@/lib/api-client";
 import type {
   AdminEvent,
   AdminEventFilters,
@@ -79,6 +79,19 @@ export async function fetchStats(): Promise<EventStats> {
 
 export async function deleteEvent(eventId: string): Promise<void> {
   return apiDelete<void>(`/api/events/${eventId}`);
+}
+
+interface FlyerUploadResponse {
+  flyer_url: string | null;
+}
+
+/** Etapa 8b — flyer exclusivo del plan Destacado Plus, ver a_revisar.md. */
+export async function uploadEventFlyer(eventId: string, file: File): Promise<FlyerUploadResponse> {
+  return apiPostFile<FlyerUploadResponse>(`/api/events/${eventId}/flyer`, file);
+}
+
+export async function deleteEventFlyer(eventId: string): Promise<FlyerUploadResponse> {
+  return apiDelete<FlyerUploadResponse>(`/api/events/${eventId}/flyer`);
 }
 
 export async function fetchAdminEvents(filters: AdminEventFilters): Promise<AdminEvent[]> {

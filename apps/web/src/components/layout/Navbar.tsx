@@ -103,7 +103,16 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
-      <div className="relative min-h-[72px]">
+      <div className="relative min-h-[72px] overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 1px)",
+            backgroundSize: "16px 16px",
+          }}
+          aria-hidden
+        />
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary to-transparent" />
         <div className="container mx-auto flex min-h-[72px] max-w-2xl flex-wrap items-center justify-between gap-2 px-4 py-2">
           <Link href="/" className="flex items-center gap-2">

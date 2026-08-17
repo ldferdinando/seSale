@@ -118,6 +118,33 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * POST multipart/form-data — Etapa 8b (subida de flyer). No se setea
+ * Content-Type a mano: el navegador arma el boundary correcto solo si el
+ * header no está seteado explícitamente.
+ */
+export async function apiPostFile<T>(path: string, file: File, fieldName = "file"): Promise<T> {
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  const response = await fetchWithAuthRetry(
+    new URL(path, API_URL).toString(),
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body: formData,
+    },
+    false,
+  );
+
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null);
+    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function apiPatch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const response = await fetchWithAuthRetry(
     new URL(path, API_URL).toString(),

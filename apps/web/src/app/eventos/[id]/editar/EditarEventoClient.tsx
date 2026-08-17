@@ -1,10 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { FlyerUpload } from "@/components/FlyerUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { EventForm } from "@/features/events/components/EventForm";
@@ -18,6 +20,7 @@ interface EditarEventoClientProps {
 
 export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
   const { data: event, isLoading: isLoadingEvent, isError } = useEvent(eventId);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +106,20 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
       </header>
 
       <EventForm mode="edit" eventId={eventId} initialValues={initialValues} onSuccess={handleSuccess} />
+
+      {/* Etapa 8b — el flyer es exclusivo del plan Destacado Plus, ver
+          a_revisar.md. La subida ocurre acá (no en /planes): el evento recién
+          pasa a plan="pro" cuando se confirma el pago. */}
+      {event.plan === "pro" && (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <FlyerUpload
+            eventId={eventId}
+            currentFlyerUrl={event.flyer_url}
+            onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
+            onDeleteSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
+          />
+        </div>
+      )}
     </main>
   );
 }

@@ -248,3 +248,9 @@ class EventsByStatus(BaseModel):
     pending: list[EventRead]
     approved: list[EventRead]
     rejected: list[EventRead]
+
+
+class FlyerUploadResponse(BaseModel):
+    """Respuesta de POST/DELETE /api/events/{id}/flyer — Etapa 8b."""
+
+    flyer_url: str | None

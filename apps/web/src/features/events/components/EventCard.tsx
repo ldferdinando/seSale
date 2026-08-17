@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
+import { resolveMediaUrl } from "@/lib/media";
 
 const VISIBLE_CATEGORY_BADGES = 2;
 
@@ -93,7 +94,7 @@ export function EventCard({ event }: EventCardProps) {
           >
             {event.flyer_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={event.flyer_url} alt="" className="h-full w-full object-cover" />
+              <img src={resolveMediaUrl(event.flyer_url) ?? undefined} alt="" className="h-full w-full object-cover" />
             ) : (
               <Icon className="h-[18px] w-[18px]" style={{ color: style.color }} aria-hidden />
             )}

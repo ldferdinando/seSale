@@ -88,6 +88,8 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 | httpx | 0.27.x | Cliente HTTP async (tests + llamadas a MercadoPago) |
 | mercadopago | 2.x | SDK oficial de MercadoPago (Etapa 6) |
 | resend | 2.x | Envío de emails — reporte de eventos (Etapa 6.5) |
+| supabase | 2.x | SDK de Supabase Storage — flyers de eventos (Etapa 8b) |
+| python-multipart | 0.0.x | Procesar uploads `multipart/form-data` (flyers, Etapa 8b) |
 
 ### Base de datos y servicios
 | Servicio | Etapa | Uso |
@@ -124,7 +126,9 @@ root/
 │   │   ├── src/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
 │   │   │   ├── components/         # Componentes reutilizables globales
-│   │   │   │   └── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
+│   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
+│   │   │   │   ├── FlyerUpload.tsx    # Subir/cambiar/eliminar flyer — solo plan pro — Etapa 8b
+│   │   │   │   └── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/
 │   │   │   │   ├── auth/
@@ -138,7 +142,8 @@ root/
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b, ciudades — Etapa 8a)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
-│   │   │   │   └── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
+│   │   │   │   ├── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
+│   │   │   │   └── media.ts           # resolveMediaUrl() — resuelve flyer_url relativo contra NEXT_PUBLIC_API_URL — Etapa 8b
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   │   └── useActiveCity.ts   # Consume ActiveCityContext — Etapa 7a
 │   │   │   └── types/              # Tipos TypeScript globales
@@ -167,7 +172,8 @@ root/
 │       │   │   ├── deps.py
 │       │   │   ├── moment.py       # calculate_moments() — Etapa 6.5
 │       │   │   ├── timezone.py     # argentina_today(), utc_time_to_argentina() — Etapa 6.5
-│       │   │   └── email.py        # send_report_email() (Resend) — Etapa 6.5
+│       │   │   ├── email.py        # send_report_email() (Resend) — Etapa 6.5
+│       │   │   └── storage.py      # upload_flyer()/delete_flyer() (Supabase Storage / disco local) — Etapa 8b
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py
 │       │   │   ├── user.py
@@ -187,7 +193,7 @@ root/
 │       │   ├── routers/            # Endpoints organizados por recurso
 │       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5, ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a
 │       │   │   ├── auth.py
-│       │   │   ├── events.py
+│       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py
 │       │   │   ├── cities.py

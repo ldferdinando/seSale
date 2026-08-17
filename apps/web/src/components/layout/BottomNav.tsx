@@ -15,11 +15,13 @@ interface NavTab {
   disabled?: boolean;
 }
 
-// Categorías y Gastronomía todavía no tienen pantalla propia: ver a_revisar.md
+// Categorías todavía no tiene pantalla propia: ver a_revisar.md.
+// "Gastronomía y otros" (seSALE_primario.html, id="bt-lugares") apunta a
+// /lugares con un placeholder "Próximamente" — el ABM completo es la Etapa 8e.
 const BASE_TABS: NavTab[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/categorias", label: "Categorías", icon: LayoutGrid, disabled: true },
-  { href: "/gastronomia", label: "Gastronomía", icon: Store, disabled: true },
+  { href: "/lugares", label: "Gastronomía", icon: Store },
   { href: "/publicar", label: "Publicar", icon: Plus },
 ];
 

@@ -43,7 +43,15 @@ export default function HomePage() {
       </section>
 
       <div className="container mx-auto max-w-2xl">
-        <TodayBanner onClick={() => setFilters((f) => ({ ...f, ...getDateRangeForPreset("hoy") }))} />
+        <TodayBanner
+          onClick={() =>
+            setFilters((f) => ({
+              ...f,
+              ...getDateRangeForPreset("hoy"),
+              moment: new Date().getHours() >= 20 ? "nocturno" : undefined,
+            }))
+          }
+        />
 
         <MomentPills value={filters.moment} onChange={(moment) => setFilters((f) => ({ ...f, moment }))} />
 

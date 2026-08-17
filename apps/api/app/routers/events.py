@@ -1,11 +1,12 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_current_user_optional, get_session, require_admin
 from app.core.limiter import limiter
+from app.core.storage import InvalidFlyerFileError
 from app.models.event import EventStatus
 from app.models.user import User
 from app.schemas.event import (
@@ -17,12 +18,14 @@ from app.schemas.event import (
     EventsByStatus,
     EventStatusUpdate,
     EventUpdate,
+    FlyerUploadResponse,
     OrganizerPublicRead,
 )
 from app.schemas.subscription import OrganizerSubscriptionRead
 from app.services.event_service import (
     create_event,
     delete_event,
+    delete_event_flyer,
     get_event_detail,
     get_events_for_organizer,
     list_public_events,
@@ -30,6 +33,7 @@ from app.services.event_service import (
     update_event_featured,
     update_event_plan,
     update_event_status,
+    upload_event_flyer,
 )
 from app.services.payment_service import get_latest_subscriptions_by_event
 
@@ -190,6 +194,57 @@ async def delete_event_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.post("/{event_id}/flyer", response_model=FlyerUploadResponse)
+@limiter.limit("20/minute")
+async def post_event_flyer(
+    request: Request,
+    event_id: UUID,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FlyerUploadResponse:
+    """Etapa 8b. Organizador dueño del evento o admin. Solo el plan Destacado
+    Plus (`pro`) incluye flyer — ver a_revisar.md."""
+    content = await file.read()
+    try:
+        event = await upload_event_flyer(
+            session,
+            event_id,
+            current_user,
+            file_content=content,
+            filename=file.filename or "flyer",
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except InvalidFlyerFileError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return FlyerUploadResponse(flyer_url=event.flyer_url)
+
+
+@router.delete("/{event_id}/flyer", response_model=FlyerUploadResponse)
+@limiter.limit("20/minute")
+async def delete_event_flyer_endpoint(
+    request: Request,
+    event_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> FlyerUploadResponse:
+    try:
+        event = delete_event_flyer(session, event_id, current_user)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return FlyerUploadResponse(flyer_url=event.flyer_url)
 
 
 @router.patch("/{event_id}/status", response_model=EventRead, dependencies=[Depends(require_admin)])

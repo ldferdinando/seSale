@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -43,6 +46,13 @@ app.include_router(admin.router)
 app.include_router(plans.router)
 app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
+
+# Etapa 8b — sirve los flyers subidos en development sin Supabase configurado
+# (ver app/core/storage.py, fallback a disco local). En producción con
+# Supabase Storage esto no se usa: flyer_url ya es una URL pública externa.
+_UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
 
 
 @app.get("/health")

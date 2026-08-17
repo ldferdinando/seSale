@@ -327,6 +327,16 @@ class Event(SQLModel, table=True):
     contact_email: str | None = Field(default=None)
 
     # Media
+    # Etapa 8b: exclusivo del plan pro (Destacado Plus) — dest y gratis
+    # nunca lo suben (ver a_revisar.md, sigue seSALE_primario.html al pie de
+    # la letra). Se sube/borra vía POST/DELETE /api/events/{id}/flyer
+    # (app/core/storage.py). Con Supabase configurado, guarda una URL
+    # absoluta (pública). Sin Supabase (fallback de development), guarda una
+    # ruta RELATIVA (`/uploads/flyers/{id}/...`) — el backend no puede saber
+    # en qué origen es alcanzable públicamente (localhost, un túnel, prod).
+    # El frontend la resuelve al momento de mostrarla con
+    # resolveMediaUrl() (apps/web/src/lib/media.ts), anteponiendo
+    # NEXT_PUBLIC_API_URL solo si no es ya absoluta.
     flyer_url: str | None = Field(default=None)    # Supabase Storage
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -984,6 +994,26 @@ POST   /api/events/{id}/report         Reportar un evento (público, sin login) 
                                        y envía un email al admin (Resend) — si el
                                        email falla, se loguea pero no se falla el
                                        endpoint (el reporte ya quedó guardado)
+POST   /api/events/{id}/flyer          Sube/reemplaza el flyer del evento     ✓ Etapa 8b
+                                       (multipart/form-data, campo "file").
+                                       Organizador dueño o admin — 403 si no,
+                                       404 si el evento no existe. Exclusivo
+                                       del plan pro (Destacado Plus) — 400 si
+                                       el plan es gratis o dest (ver
+                                       a_revisar.md, sigue
+                                       seSALE_primario.html). 422 si el
+                                       archivo no es JPG/PNG/WEBP o supera
+                                       5MB. Si ya había un flyer, se
+                                       reemplaza en el storage (no quedan
+                                       archivos huérfanos). Devuelve
+                                       { flyer_url } — relativo en dev sin
+                                       Supabase, el frontend lo resuelve con
+                                       resolveMediaUrl() (lib/media.ts)
+DELETE /api/events/{id}/flyer          Elimina el flyer del evento            ✓ Etapa 8b
+                                       Organizador dueño o admin — 403 si no,
+                                       404 si el evento no existe. Borra el
+                                       archivo del storage y pone
+                                       flyer_url=null. Devuelve { flyer_url }
 ```
 
 ### Usuarios (`/api/users`)
@@ -1221,6 +1251,7 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **7a** | Multi-ciudad: selector de ciudad en navbar con geolocalización automática, filtrado del home por ciudad activa, ciudad del organizador en formulario de evento. | ✓ Completa: `City.latitude`/`longitude` (migración `0011`), `CityRead` los expone; `EventCreate`/`EventUpdate.city_id` opcional (default: ciudad del organizador, valida `is_active`); `lib/city-detection.ts` (Haversine, detección por GPS con localStorage), `ActiveCityProvider`/`useActiveCity()` (Context, no Zustand), selector real en `Navbar.tsx`, `GET /api/events?city_id=` conectado al home, selector de ciudad en `EventForm.tsx`. Admin habilitar/deshabilitar ciudades queda para una etapa futura (hoy se gestiona por seed/DB directa) |
 | **7b** | Lugares precargados con mapa: `Location.description`/`hours`/`place_type`/`is_verified`/`is_public`, mapa (Leaflet + OSM + Nominatim) en formulario de evento y vista detalle, ABM de lugares para admin. | ✓ Completa: migración `0012`; `GET /api/locations` (público, solo `is_public=True`) y `GET /api/locations/{id}` (cualquiera); ABM completo bajo `/api/admin/locations`; `EventCreate`/`EventUpdate` reemplazan `location_name`/`location_address` por `location_id \| location_data` (uno de los dos); `components/MapPicker.tsx` (Leaflet vanilla, dynamic import ssr:false), `lib/nominatim.ts`, `features/locations/` (selector Tab A), `EventLocationField.tsx` (dos tabs en `EventForm.tsx`), mapa readonly + description/hours en `EventDetailView.tsx`, `AdminLocationsPanel.tsx` (listado, ABM, verificar, "hacer público"), lugares precargados en `seed.py`. Ver `a_revisar.md` por el refactor de `location_name`/`location_address` a `location_id`/`location_data` (no estaba en el modelo original de esta etapa) |
 | **8a** | Fixes y pendientes de `a_revisar.md`: build de producción (Suspense en `/planes` y `/planes/transferencia*`), toggle de ciudades para admin, WhatsApp del organizador auto-completado en eventos, validación cruzada de `city_id` en `location_data`, organizer_id en `EventRead`. | ✓ Completa: `PATCH /api/cities/{id}/toggle` (409 si tiene eventos aprobados/activos/futuros), `GET /api/admin/cities` + `PATCH /api/admin/cities/{id}/sort-order`, `AdminCitiesPanel.tsx`; `create_event` completa `contact_whatsapp` desde `organizer.public_whatsapp` si no viene explícito, `update_event` no lo pisa si el payload no lo manda o lo manda `null`; `_resolve_event_location` valida `location_data.city_id` contra la ciudad efectiva del evento (422 si no coincide); `organizer_id` en `EventRead` ya estaba resuelto desde la Etapa 4.5 (confirmado, sin cambios) |
+| **8b** | Nuevo diseño visual (`seSALE_primario.html`), flyer por plan con Supabase Storage, lightbox en detalle del evento. | ✓ Completa: patrón de puntos del navbar, tab "Gastronomía" del bottom nav habilitado (`/lugares`, placeholder), swap "¿Qué hay hoy?"/"Ahora" en `TodayBanner.tsx` según la hora, `aspect-ratio` de `AdSlots.tsx` ajustado al diseño; `POST`/`DELETE /api/events/{id}/flyer` (`app/core/storage.py`, Supabase Storage en prod / disco local en dev, `supabase` + `python-multipart` agregados), flyer exclusivo del plan `pro` (confirmado con el usuario — dest y gratis no lo tienen, a diferencia del pedido original, ver `a_revisar.md`); `FlyerUpload.tsx` (solo en `/eventos/{id}/editar`, no en `/planes` — el evento recién es `pro` después de pagar) e `ImageLightbox.tsx` en `EventDetailView.tsx` |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
 | **9** | App mobile (Expo) — consume la misma API. | |
 

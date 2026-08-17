@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     admin_email: str = "admin@sesale.com.ar"
 
+    # Etapa 8b — flyers de eventos (plan Destacado Plus). Sin Supabase
+    # configurado (supabase_url/supabase_service_key vacíos), storage.py cae
+    # a guardar los archivos en apps/api/uploads/flyers/ para desarrollo.
+    supabase_url: str | None = None
+    supabase_service_key: str | None = None
+    supabase_storage_bucket: str = "flyers"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

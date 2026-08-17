@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.moment import calculate_moments
+from app.core.storage import delete_flyer, upload_flyer, validate_flyer_file
 from app.core.timezone import argentina_today, utc_time_to_argentina
 from app.models.category import EventCategory
 from app.models.city import City
@@ -436,6 +437,74 @@ def delete_event(session: Session, event_id: UUID, current_user: User) -> Event:
         raise PermissionError("No tenés permiso para eliminar este evento")
 
     event.is_active = False
+    event.updated_at = datetime.now(timezone.utc)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def _check_flyer_permission_and_plan(event: Event, current_user: User) -> None:
+    """Etapa 8b — el flyer es exclusivo del plan Destacado Plus (`pro`), tal
+    como lo modela seSALE_primario.html (`selPlan(el, esPlus)`: el bloque de
+    subida solo aparece con Destacado Plus, nunca con Destacado). Confirmado
+    con el usuario — ver a_revisar.md."""
+    is_owner = event.organizer_id == current_user.id
+    is_admin = current_user.role == "admin"
+    if not is_owner and not is_admin:
+        raise PermissionError("No tenés permiso para gestionar el flyer de este evento")
+
+    if event.plan == PlanType.gratis:
+        raise ValueError("El plan Gratuito no incluye flyer. Actualizá tu plan para subir una imagen.")
+    if event.plan == PlanType.dest:
+        raise ValueError("El plan Destacado no incluye flyer. Actualizá a Destacado Plus para subir una imagen.")
+
+
+async def upload_event_flyer(
+    session: Session,
+    event_id: UUID,
+    current_user: User,
+    *,
+    file_content: bytes,
+    filename: str,
+    content_type: str,
+) -> Event:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise LookupError("Evento no encontrado")
+
+    _check_flyer_permission_and_plan(event, current_user)
+
+    # Si ya tenía un flyer, se reemplaza en el storage — no se acumulan
+    # archivos huérfanos (validar el archivo nuevo primero: si es inválido,
+    # no se toca el flyer existente).
+    validate_flyer_file(content_type, len(file_content))
+    if event.flyer_url:
+        delete_flyer(event.flyer_url, event.id)
+
+    event.flyer_url = await upload_flyer(
+        file_content=file_content, filename=filename, content_type=content_type, event_id=event.id
+    )
+    event.updated_at = datetime.now(timezone.utc)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def delete_event_flyer(session: Session, event_id: UUID, current_user: User) -> Event:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise LookupError("Evento no encontrado")
+
+    is_owner = event.organizer_id == current_user.id
+    is_admin = current_user.role == "admin"
+    if not is_owner and not is_admin:
+        raise PermissionError("No tenés permiso para gestionar el flyer de este evento")
+
+    if event.flyer_url:
+        delete_flyer(event.flyer_url, event.id)
+    event.flyer_url = None
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
     session.commit()

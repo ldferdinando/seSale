@@ -11,6 +11,7 @@ import {
   Clock,
   Flag,
   Globe,
+  Image as ImageIcon,
   Mail,
   MapPin,
   MessageCircle,
@@ -20,10 +21,12 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
+  ZoomIn,
 } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import {
@@ -34,6 +37,7 @@ import { ReportEventModal } from "@/features/events/components/ReportEventModal"
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
+import { resolveMediaUrl } from "@/lib/media";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
 
@@ -65,6 +69,7 @@ function shareEvent(event: EventDetail) {
 export function EventDetailView({ event }: EventDetailViewProps) {
   const { data: currentUser } = useCurrentUser();
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const style = CATEGORY_STYLES[event.categories[0]] ?? DEFAULT_CATEGORY_STYLE;
   const Icon = style.icon;
@@ -89,19 +94,44 @@ export function EventDetailView({ event }: EventDetailViewProps) {
     : null;
   const emailHref = event.contact_email ? `mailto:${event.contact_email}` : null;
 
+  // Etapa 8b — el flyer es exclusivo del plan Destacado Plus (ver
+  // a_revisar.md): "pro" con flyer_url es clickable (lightbox), "dest" con
+  // flyer_url (caso raro: downgrade de plan sin borrar el flyer) se muestra
+  // sin lightbox, y "gratis" nunca muestra imagen aunque flyer_url tenga
+  // valor (no debería pasar, pero el backend no lo garantiza).
+  const flyerUrl = resolveMediaUrl(event.flyer_url);
+  const showFlyerImage = event.plan !== "gratis" && Boolean(flyerUrl);
+  const flyerClickable = event.plan === "pro" && Boolean(flyerUrl);
+
   return (
     <div className="flex flex-col gap-5">
-      <div
-        className="flex h-40 items-center justify-center rounded-2xl"
-        style={{ background: event.flyer_url ? undefined : `linear-gradient(135deg, ${style.color}22, ${style.color}44)` }}
-      >
-        {event.flyer_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.flyer_url} alt={event.title} className="h-full w-full rounded-2xl object-cover" />
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-surface-0">
+        {showFlyerImage ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={flyerUrl ?? undefined}
+              alt={event.title}
+              onClick={flyerClickable ? () => setLightboxOpen(true) : undefined}
+              className={`h-full w-full object-cover ${flyerClickable ? "cursor-pointer" : ""}`}
+            />
+            {flyerClickable && (
+              <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white">
+                <ZoomIn className="h-3.5 w-3.5" aria-hidden />
+                Ver flyer
+              </div>
+            )}
+          </>
         ) : (
-          <Icon className="h-14 w-14" style={{ color: style.color }} aria-hidden />
+          <div className="flex h-full w-full items-center justify-center" data-testid="flyer-placeholder">
+            <ImageIcon className="h-10 w-10 text-ink-5" aria-hidden />
+          </div>
         )}
       </div>
+
+      {flyerClickable && lightboxOpen && flyerUrl && (
+        <ImageLightbox src={flyerUrl} alt={event.title} onClose={() => setLightboxOpen(false)} />
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-1.5">

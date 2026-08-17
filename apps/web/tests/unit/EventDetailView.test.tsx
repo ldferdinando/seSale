@@ -248,4 +248,61 @@ describe("EventDetailView", () => {
 
     expect(container.querySelector(".leaflet-container")).toBeNull();
   });
+
+  describe("flyer (Etapa 8b — exclusivo del plan Destacado Plus)", () => {
+    it("shows a dark placeholder with no text when there is no flyer_url", () => {
+      const { container } = renderWithClient(makeEventDetail({ plan: "gratis", flyer_url: null }));
+
+      expect(container.querySelector('[data-testid="flyer-placeholder"]')).not.toBeNull();
+    });
+
+    it("shows the flyer image as clickable when plan is pro", () => {
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
+      renderWithClient(event);
+
+      const img = screen.getByAltText(event.title) as HTMLImageElement;
+      expect(img.src).toBe("https://example.com/flyer.jpg");
+      expect(screen.getByText("Ver flyer")).toBeInTheDocument();
+    });
+
+    it("opens the lightbox when clicking the flyer image on a pro plan event", async () => {
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
+      renderWithClient(event);
+
+      screen.getByAltText(event.title).click();
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("closes the lightbox with the close button", async () => {
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
+      renderWithClient(event);
+
+      screen.getByAltText(event.title).click();
+      await screen.findByRole("dialog");
+      screen.getByLabelText("Cerrar").click();
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+
+    it("shows the flyer image but not clickable when plan is dest", () => {
+      const event = makeEventDetail({ plan: "dest", flyer_url: "https://example.com/flyer.jpg" });
+      renderWithClient(event);
+
+      const img = screen.getByAltText(event.title) as HTMLImageElement;
+      expect(img.src).toBe("https://example.com/flyer.jpg");
+      expect(screen.queryByText("Ver flyer")).not.toBeInTheDocument();
+
+      img.click();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("hides the image for the gratis plan even if flyer_url has a value", () => {
+      const event = makeEventDetail({ plan: "gratis", flyer_url: "https://example.com/flyer.jpg" });
+      const { container } = renderWithClient(event);
+
+      expect(screen.queryByAltText(event.title)).not.toBeInTheDocument();
+      expect(container.querySelector('[data-testid="flyer-placeholder"]')).not.toBeNull();
+    });
+  });
 });

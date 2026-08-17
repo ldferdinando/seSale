@@ -22,10 +22,10 @@ export function AdSlots() {
         </span>
         <em className="text-[9px] not-italic text-primary">Home · 3 slots</em>
       </div>
-      <AdPlaceholder className="mb-2 h-[78px] w-full" />
+      <AdPlaceholder className="mb-2 w-full aspect-[3.2/1] md:aspect-[3.88/1]" />
       <div className="grid grid-cols-2 gap-2.5">
-        <AdPlaceholder className="aspect-[3/2]" />
-        <AdPlaceholder className="aspect-[3/2]" />
+        <AdPlaceholder className="aspect-square md:aspect-[6/5]" />
+        <AdPlaceholder className="aspect-square md:aspect-[6/5]" />
       </div>
     </div>
   );
