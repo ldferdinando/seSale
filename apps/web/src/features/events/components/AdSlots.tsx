@@ -1,18 +1,23 @@
+"use client";
+
 import { Megaphone } from "lucide-react";
 
-// Sin modelo/tabla de publicidad todavía: ver a_revisar.md
-function AdPlaceholder({ className }: { className?: string }) {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-surface-4 bg-surface-2 text-ink-5 ${className ?? ""}`}
-    >
-      <Megaphone className="h-5 w-5 text-brand-pink/40" aria-hidden />
-      <span className="text-[10px] font-semibold">Espacio publicitario</span>
-    </div>
-  );
-}
+import { BannerSlot } from "@/components/BannerSlot";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBannerSlots } from "@/hooks/useBannerSlots";
+import { useActiveCity } from "@/hooks/useActiveCity";
 
+/** Etapa 8d — los 3 carruseles wide de la sección "eventos" (antes:
+ * placeholders estáticos, ver a_revisar.md Etapa 8d-pre). Van arriba del
+ * listado de eventos. Los tiles cuadrados ("eventos-grid") van DESPUÉS del
+ * listado — ver AdSlotsGrid más abajo, usado aparte en app/page.tsx
+ * (feedback de QA manual: quedaban pegados a los carruseles). */
 export function AdSlots() {
+  const { activeCity } = useActiveCity();
+  const cityId = activeCity?.id ?? null;
+
+  const wide = useBannerSlots({ cityId, section: "eventos" });
+
   return (
     <div className="px-4 pt-3.5">
       <div className="mb-2 flex items-center justify-between">
@@ -20,13 +25,43 @@ export function AdSlots() {
           <Megaphone className="h-2.5 w-2.5 text-primary" aria-hidden />
           Publicidad
         </span>
-        <em className="text-[9px] not-italic text-primary">Home · 3 slots</em>
       </div>
-      <AdPlaceholder className="mb-2 w-full aspect-[3.2/1] md:aspect-[3.88/1]" />
-      <div className="grid grid-cols-2 gap-2.5">
-        <AdPlaceholder className="aspect-square md:aspect-[6/5]" />
-        <AdPlaceholder className="aspect-square md:aspect-[6/5]" />
-      </div>
+
+      {wide.isLoading ? (
+        <div className="flex flex-col gap-2" data-testid="ad-slots-wide-loading">
+          <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+          <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+          <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+        </div>
+      ) : (
+        wide.slots.map((slot) => <BannerSlot key={slot.id} slot={slot} className="mb-2" />)
+      )}
+    </div>
+  );
+}
+
+/** Tiles cuadrados de la sección "eventos-grid", en grilla de 2 columnas —
+ * van después del listado de eventos (feedback de QA manual, Etapa 8d). */
+export function AdSlotsGrid() {
+  const { activeCity } = useActiveCity();
+  const cityId = activeCity?.id ?? null;
+
+  const grid = useBannerSlots({ cityId, section: "eventos-grid" });
+
+  return (
+    <div className="px-4 pb-3.5">
+      {grid.isLoading ? (
+        <div className="grid grid-cols-2 gap-2.5" data-testid="ad-slots-grid-loading">
+          <Skeleton className="aspect-square w-full rounded-xl md:aspect-[6/5]" />
+          <Skeleton className="aspect-square w-full rounded-xl md:aspect-[6/5]" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5">
+          {grid.slots.map((slot) => (
+            <BannerSlot key={slot.id} slot={slot} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

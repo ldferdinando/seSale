@@ -5,7 +5,9 @@ from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_session, require_admin
 from app.models.user import User
+from app.schemas.ad_slot import AdItemWithSlotRead
 from app.schemas.user import UserRead, UserUpdate
+from app.services.ad_service import list_user_banners
 from app.services.user_service import get_user, list_users, update_user, verify_user
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -14,6 +16,16 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 @router.get("/me", response_model=UserRead)
 async def get_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.get("/me/banners", response_model=list[AdItemWithSlotRead])
+async def get_my_banners(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[AdItemWithSlotRead]:
+    """Etapa 8d — los AdItem del usuario autenticado (anunciante), vigentes y
+    futuros, solo lectura. Ordenados por starts_at DESC."""
+    return list_user_banners(session, current_user.id)
 
 
 @router.put("/me", response_model=UserRead)

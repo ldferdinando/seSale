@@ -164,17 +164,32 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
 │ phone (privado)         │      └──────────────────┘     │
 │ phone_verified          │                                │
 │ email_verified          │      ┌──────────────────────┐  │
-│ — Datos públicos —      │      │      ad_slots        │  │
+│ — Datos públicos —      │      │       ad_slots        │  │
 │ public_name             │      │──────────────────────│  │
 │ public_whatsapp         │      │ id (UUID) PK         │  │
-│ city_id (FK)            │      │ slot_key (str)       │  │
-│ is_verified (by admin)  │      │ city_id (FK)         │  │
-│ is_active               │      │ img_url              │  │
-│ created_at / updated_at │      │ link_url             │  │
-└─────────────────────────┘      │ alt_text             │  │
+│ city_id (FK)            │      │ city_id (FK)         │  │
+│ is_verified (by admin)  │      │ section (str)        │  │
+│ is_active               │      │ slot_position (int)  │  │
+│ created_at / updated_at │      │ rotation_mode        │  │
+└─────────────────────────┘      │ rotation_interval_s  │  │
               │                  │ is_active            │  │
+              │                  └──────────┬───────────┘  │
+              │                             │ 1:N          │
+              │                  ┌──────────▼───────────┐  │
+              │                  │       ad_items        │  │
+              │                  │──────────────────────│  │
+              │                  │ id (UUID) PK         │  │
+              │                  │ slot_id (FK)         │  │
+              │                  │ user_id (FK users)   │  │  ← anunciante
+              │                  │ img_url / link_url   │  │
+              │                  │ alt_text             │  │
               │                  │ advertiser_name      │  │
-              ▼                  └──────────────────────┘  │
+              │                  │ starts_at / ends_at  │  │
+              │                  │ status               │  │
+              │                  │ display_order        │  │
+              │                  │ created_by (FK users) │  ← admin
+              │                  └──────────────────────┘  │
+              ▼                                             │
 ┌─────────────────────────┐                                │
 │      subscriptions      │◄───────────────────────────────┘
 │─────────────────────────│   (plan pago del organizador)
@@ -568,21 +583,107 @@ class Subscription(SQLModel, table=True):
 > migración (no se puede inferir retroactivamente a qué evento
 > correspondían). Ver `a_revisar.md`.
 
-#### `ad_slots`
+#### `ad_slots` / `ad_items` (Etapa 8d-pre)
+
+Sistema de banners rediseñado en dos tablas para soportar el sistema
+completo definido en `seSALE.html` (`BANS_HOME`/`ADS_GRID_HOME`/
+`BANS_LUGARES`, `registerAndRenderSlots`, `tickBanners`). Antes de esta
+etapa, `AdSlot` mezclaba "espacio" (posición fija) y "contenido" (imagen,
+link, anunciante) en una sola tabla — no soportaba múltiples imágenes por
+posición ni un anunciante como usuario registrado.
+
+- **`ad_slots`** — el ESPACIO publicitario: la posición fija en la página.
+  Lo crea el sistema (seed), no el admin — no cambia frecuentemente.
+- **`ad_items`** — la PIEZA publicitaria: una imagen con su link y
+  vigencia, cargada por el admin **para un usuario registrado**
+  (`user_id`, el anunciante) y auditada con `created_by` (el admin que la
+  cargó). Un `AdSlot` puede tener múltiples `AdItem` (rotan entre ellos).
+
+**Dos secciones de banners, independientes entre sí** (un mismo anunciante
+puede estar en una, en la otra, o en ambas, con `AdItem` separados):
+
+| `section` | Dónde aparece | `slot_position` válidos | `rotation_mode` |
+|---|---|---|---|
+| `"eventos"` | Home, banners wide arriba del listado de eventos — 3 carruseles apilados, el admin elige en cuál carga cada banner | `0`, `1`, `2` | `"sequential"` (rota en orden cada `rotation_interval_seconds`, default 3s) |
+| `"eventos-grid"` | Home, tiles cuadrados en grilla de 2 columnas debajo del listado — se pueden agregar más de 2 tiles (se acomodan de a 2 por fila) | `0`, `1`, `2`... sin límite | `"random"` (cada tile rota en orden random entre sus imágenes) |
+| `"gastronomia"` | Pantalla de Gastronomía — mismos 3 carruseles wide apilados que `"eventos"`, independientes | `0`, `1`, `2` | `"sequential"` |
+
+Categorías y tipos de gastronomía quedan para una etapa futura — no se
+modelan todavía.
+
 ```python
 class AdSlot(SQLModel, table=True):
+    """Espacio publicitario — la posición fija en la página. Lo crea el
+    sistema (seed), no el admin: no cambia frecuentemente. El contenido
+    vive en AdItem."""
+
     __tablename__ = "ad_slots"
+    __table_args__ = (
+        UniqueConstraint("city_id", "section", "slot_position", name="uq_ad_slots_city_section_position"),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    slot_key: str = Field(max_length=50)           # "home-0", "cat-musica-1", etc.
-    city_id: UUID = Field(foreign_key="cities.id")
-    advertiser_name: str | None = Field(default=None)
-    img_url: str | None = Field(default=None)
-    link_url: str | None = Field(default=None)
-    alt_text: str | None = Field(default=None)
-    is_active: bool = Field(default=False)
-    sort_order: int = Field(default=0)             # orden de rotación
+    city_id: UUID = Field(foreign_key="cities.id", index=True)
+    section: str = Field(max_length=20)              # "eventos" | "eventos-grid" | "gastronomia"
+    slot_position: int = Field(default=0)             # 0-based, ver tabla arriba
+    rotation_mode: str = Field(default="sequential", max_length=20)  # "sequential" | "random"
+    rotation_interval_seconds: int = Field(default=3)
+    is_active: bool = Field(default=True)             # si False, no se muestra aunque tenga AdItems activos
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    city: "City" = Relationship(back_populates="ad_slots")
+    items: list["AdItem"] = Relationship(back_populates="slot")
+
+
+class AdItem(SQLModel, table=True):
+    """Pieza publicitaria — imagen + link + vigencia, cargada por el admin
+    para un anunciante (usuario registrado)."""
+
+    __tablename__ = "ad_items"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    slot_id: UUID = Field(foreign_key="ad_slots.id", index=True)
+    user_id: UUID = Field(foreign_key="users.id", index=True)   # anunciante — siempre un usuario registrado
+
+    img_url: str = Field(max_length=500)
+    link_url: str | None = Field(default=None, max_length=500)
+    alt_text: str | None = Field(default=None, max_length=255)
+    advertiser_name: str | None = Field(default=None, max_length=255)  # copiado de User.public_name si no se especifica
+
+    starts_at: date = Field(default_factory=lambda: datetime.now(timezone.utc).date())  # default: día de carga
+    ends_at: date | None = Field(default=None)        # None = vigente indefinidamente
+
+    status: str = Field(default="active", max_length=20)  # "active" | "paused" | "expired" — sin "pending"
+    display_order: int = Field(default=0)              # orden dentro del slot, solo con rotation_mode="sequential"
+
+    created_by: UUID = Field(foreign_key="users.id")   # admin que cargó el banner — siempre un admin
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    slot: "AdSlot" = Relationship(back_populates="items")
+    user: "User" = Relationship(back_populates="ad_items", sa_relationship_kwargs={"foreign_keys": "[AdItem.user_id]"})
+    creator: "User" = Relationship(back_populates="created_ad_items", sa_relationship_kwargs={"foreign_keys": "[AdItem.created_by]"})
 ```
+
+**Reglas de negocio confirmadas:**
+- Solo el admin sube banners — no hay autogestión ni solicitud del
+  anunciante, ni flujo de aprobación (`status="pending"` no existe: el
+  admin carga y queda `"active"` directamente).
+- El admin siempre elige un `user_id` existente como anunciante.
+- El usuario puede **ver** sus banners (vigentes y futuros) desde su
+  cuenta, pero no puede crearlos ni editarlos.
+
+**Vencimiento automático** (`app/core/expiry.py:expire_overdue_ad_items`,
+mismo patrón que `expire_overdue_subscriptions`): marca `status="expired"`
+los `AdItem` con `status="active"` y `ends_at` pasado; `ends_at=None`
+nunca se toca. Idempotente. Se dispara lazy como `BackgroundTask` en
+`GET /api/events` (`run_expire_overdue_ad_items_task`), junto al de
+`Subscription`.
+
+**Esta etapa (8d-pre) es solo modelo y migración** — sin endpoints ni
+frontend. Ver `a_revisar.md` (sección Etapa 8d-pre) por lo que queda
+pendiente para la Etapa 8d: validación de `section` en schemas Pydantic,
+subida real de imagen a Supabase Storage, y `GET /api/users/me/banners`.
 
 #### `reports` (Etapa 6.5)
 
@@ -1243,12 +1344,59 @@ GET    /api/admin/reports              Admin. Filtros: status, event_id,
 PATCH  /api/admin/reports/{id}/status  Admin. Body: { status: "reviewed"|"dismissed" }
 ```
 
-### Espacios publicitarios (`/api/ads`)
+### Banners (`/api/ads`, `/api/admin`) ✓ Etapa 8d
 ```
-GET    /api/ads                        Listar slots activos por city_id y slot_key (público)
-POST   /api/ads                        Crear slot (admin)
-PUT    /api/ads/{id}                   Editar slot (admin)
-PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
+GET    /api/ads                          Público. Params: city_id (requerido),
+                                         section (requerido, "eventos" |
+                                         "eventos-grid" | "gastronomia").
+                                         AdSlot de esa ciudad/sección con sus
+                                         AdItem vigentes anidados (status=active
+                                         y starts_at<=hoy<=ends_at o ends_at=None),
+                                         ordenados por display_order ASC. Slots
+                                         sin items vigentes igual se incluyen
+                                         (items=[]). Dispara expire_overdue_ad_items
+                                         lazy (BackgroundTask), igual que GET /api/events
+
+GET    /api/admin/ad-slots               Admin. Params: city_id (requerido),
+                                         section (opcional). TODOS los AdItem
+                                         del slot (activos/pausados/vencidos)
+
+GET    /api/admin/ad-items               Admin. Filtros: city_id, section,
+                                         status, user_id, date_from, date_to.
+                                         Orden: created_at DESC
+
+POST   /api/admin/ad-items               Admin. Crea un AdItem para un
+                                         user_id (anunciante) existente.
+                                         advertiser_name se copia de
+                                         User.public_name si no se especifica.
+                                         created_by = admin autenticado
+
+PUT    /api/admin/ad-items/{id}          Admin. Edita cualquier campo salvo
+                                         slot_id/user_id (no cambian tras crear)
+
+DELETE /api/admin/ad-items/{id}          Admin. Elimina el AdItem y, si
+                                         corresponde, el archivo del storage
+                                         (ver delete_banner_if_owned — no
+                                         borra imágenes externas pegadas por URL)
+
+PATCH  /api/admin/ad-items/{id}/status   Admin. Body: {status:"active"|"paused"}.
+                                         Nunca "expired" (400) — eso lo hace
+                                         expire_overdue_ad_items automáticamente
+
+POST   /api/admin/ad-items/{id}/image    Admin. multipart/form-data. JPG/PNG/
+                                         WEBP/GIF, máx. 2MB (banners pueden ser
+                                         animados). Supabase Storage (bucket
+                                         SUPABASE_BANNER_BUCKET) o disco local
+                                         en dev — mismo patrón que el flyer
+
+PATCH  /api/admin/ad-items/reorder       Admin. Body: {slot_id, ordered_ids[]}.
+                                         Solo slots rotation_mode="sequential"
+                                         (400 en "random")
+
+GET    /api/users/me/banners             Usuario autenticado. Sus propios
+                                         AdItem (vigentes y futuros), con
+                                         section/slot_position de su AdSlot.
+                                         Orden: starts_at DESC. Solo lectura
 ```
 
 ---
@@ -1277,7 +1425,10 @@ PATCH  /api/ads/{id}/toggle            Activar / desactivar slot (admin)
 | **8a** | Fixes y pendientes de `a_revisar.md`: build de producción (Suspense en `/planes` y `/planes/transferencia*`), toggle de ciudades para admin, WhatsApp del organizador auto-completado en eventos, validación cruzada de `city_id` en `location_data`, organizer_id en `EventRead`. | ✓ Completa: `PATCH /api/cities/{id}/toggle` (409 si tiene eventos aprobados/activos/futuros), `GET /api/admin/cities` + `PATCH /api/admin/cities/{id}/sort-order`, `AdminCitiesPanel.tsx`; `create_event` completa `contact_whatsapp` desde `organizer.public_whatsapp` si no viene explícito, `update_event` no lo pisa si el payload no lo manda o lo manda `null`; `_resolve_event_location` valida `location_data.city_id` contra la ciudad efectiva del evento (422 si no coincide); `organizer_id` en `EventRead` ya estaba resuelto desde la Etapa 4.5 (confirmado, sin cambios) |
 | **8b** | Nuevo diseño visual (`seSALE_primario.html`), flyer por plan con Supabase Storage, lightbox en detalle del evento. | ✓ Completa: patrón de puntos del navbar, tab "Gastronomía" del bottom nav habilitado (`/lugares`, placeholder), swap "¿Qué hay hoy?"/"Ahora" en `TodayBanner.tsx` según la hora, `aspect-ratio` de `AdSlots.tsx` ajustado al diseño; `POST`/`DELETE /api/events/{id}/flyer` (`app/core/storage.py`, Supabase Storage en prod / disco local en dev, `supabase` + `python-multipart` agregados), flyer exclusivo del plan `pro` (confirmado con el usuario — dest y gratis no lo tienen, a diferencia del pedido original, ver `a_revisar.md`); `FlyerUpload.tsx` (solo en `/eventos/{id}/editar`, no en `/planes` — el evento recién es `pro` después de pagar) e `ImageLightbox.tsx` en `EventDetailView.tsx` |
 | **8c** | Mapa del home con pins de eventos reales (Leaflet + filtros compartidos) y vencimiento automático lazy de destacados. | ✓ Completa: `EventsMap.tsx` reemplaza a `MapPlaceholder.tsx` (dynamic import, un pin `L.divIcon` por evento con coordenadas, color/tamaño por plan, popup, leyenda, botón "Cerca mío"), sin cambios de schema/backend (usa `event.location.latitude/longitude/name`, ya expuestos desde la Etapa 7b); `expire_subscriptions` se movió y renombró a `expire_overdue_subscriptions` en `app/core/expiry.py`, se le agregó `reviewed_at`, y se dispara tanto manual (`POST /api/admin/subscriptions/expire`) como lazy vía `BackgroundTasks` en `GET /api/events`; banner de vencimiento (ámbar ≤7 días, rojo si ya venció) en `EventDetailView.tsx` para el organizador dueño |
-| **8** | Espacios publicitarios (banners): CRUD de `ad_slots` desde admin, render en frontend. | |
+| **8d-pre** | Rediseño del modelo AdSlot en dos tablas (AdSlot + AdItem) para soportar banners por sección (Eventos/Gastronomía), carruseles con rotación secuencial y random, vigencia automática y anunciantes como usuarios | ✓ Completa: `ad_slots` pasa a modelar solo el espacio (`section`/`slot_position`/`rotation_mode`/`rotation_interval_seconds` + `UniqueConstraint(city_id, section, slot_position)`); tabla nueva `ad_items` (contenido: imagen/link/vigencia/anunciante/auditoría), migración `0013` (mapea in-place los 3 `ad_slots` de seed existentes `home-N` → `section="eventos"`); `expire_overdue_ad_items` + disparo lazy en `GET /api/events` (mismo patrón que `expire_overdue_subscriptions`); seed con 8 `AdSlot` por ciudad (General Roca y Cipolletti). Solo modelo/migración — sin endpoints ni frontend, ver `a_revisar.md` |
+| **8d** | Banners completos: endpoints públicos/admin, ABM de banners en el panel admin, carruseles reales en el home/gastronomía, "Mis banners" en Mi cuenta. | ✓ Completa: `GET /api/ads` (público); `GET /api/admin/ad-slots`, `GET/POST/PUT/DELETE /api/admin/ad-items`, `PATCH .../status`, `POST .../image` (Supabase/disco local, GIF permitido, 2MB), `PATCH .../reorder`; `GET /api/users/me/banners`; schemas Pydantic con `Literal` para `section`/`rotation_mode`/`status` (resuelve el pendiente de 8d-pre); `components/BannerSlot.tsx` (rotación sequential/random, estado vacío punteado, click abre `link_url`), `hooks/useBannerSlots.ts` (TanStack Query), `features/ads/` (types/services/hooks/schemas/componentes admin), `AdSlots.tsx` con datos reales (antes placeholder), banners de gastronomía en `/lugares`, tab "Banners" en `/admin` (`AdminAdsPanel.tsx`, drag-and-drop nativo HTML5 para reordenar slots secuenciales), sección "Mis banners" en `/mi-cuenta` (solo lectura). Ver `a_revisar.md` por el gap encontrado (`AdItemWithSlotRead`, section/slot_position no estaban en `AdItemAdminRead`) |
+| **8d (fixes post-QA)** | Correcciones encontradas probando la 8d apenas cerrada: imágenes de banner subidas como archivo no se veían, y los tiles del grid quedaban pegados a los carruseles wide en vez de ir después del listado de eventos. | ✓ Completa: `img_url` se resuelve con `resolveMediaUrl()` (mismo bug que el flyer en la Etapa 8b, ver `lib/media.ts`) en todos los `<img>` que la renderizan (`BannerSlot.tsx`, `AdSlotCard.tsx`, `MyBannersSection.tsx`, preview de `AdItemFormModal.tsx`) — el dato guardado en la DB ya era correcto, solo faltaba resolverlo al mostrar, así que los banners existentes no necesitan volver a subirse; `AdSlots.tsx` se separó en `AdSlots` (3 carruseles wide, misma posición) y `AdSlotsGrid` (tiles), este último movido en `app/page.tsx` a después de `<EventList />` |
+| **8** | Espacios publicitarios (banners): CRUD de `ad_slots`/`ad_items` desde admin, render en frontend. | ✓ Completa — ver 8d-pre y 8d arriba |
 | **9** | App mobile (Expo) — consume la misma API. | |
 
 ---

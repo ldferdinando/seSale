@@ -37,4 +37,23 @@ describe("HomePage", () => {
     const eventListRequest = requestedUrls.find((url) => url.includes("city_id"));
     expect(eventListRequest).toContain("city_id=22222222-2222-2222-2222-222222222222");
   });
+
+  it("shows the 3 eventos banner slots once the city is detected", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    await waitFor(() => expect(screen.getAllByTestId("banner-slot").length).toBeGreaterThanOrEqual(3));
+  });
+
+  it("renders the eventos-grid tiles after the events list, not next to the wide carousels", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    await waitFor(() => expect(screen.getAllByTestId("banner-slot")).toHaveLength(5));
+    const eventCard = await screen.findByTestId("event-card");
+
+    // Los banner-slot del grid (eventos-grid) deben venir después del
+    // listado de eventos, nunca pegados a los carruseles wide de arriba.
+    const banners = screen.getAllByTestId("banner-slot");
+    const lastBanner = banners[banners.length - 1];
+    expect(eventCard.compareDocumentPosition(lastBanner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

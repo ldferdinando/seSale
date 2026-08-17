@@ -1,12 +1,14 @@
-"""Vencimiento automático de planes pagos (Subscription → Event).
+"""Vencimiento automático de planes pagos (Subscription → Event) y de
+banners (AdItem).
 
 Dos formas de disparar el mismo procesamiento:
 - Manual: `POST /api/admin/subscriptions/expire` (admin) llama
   `expire_overdue_subscriptions` con la sesión del request.
-- Lazy: `GET /api/events` agenda `run_expire_overdue_subscriptions_task` como
-  BackgroundTask (Etapa 8c) — corre después de que la respuesta ya se envió,
-  con su propia sesión de DB, y nunca propaga errores (el cliente ya recibió
-  su respuesta).
+- Lazy: `GET /api/events` agenda `run_expire_overdue_subscriptions_task` y
+  `run_expire_overdue_ad_items_task` como BackgroundTask (Etapa 8c/8d-pre) —
+  corren después de que la respuesta ya se envió, cada una con su propia
+  sesión de DB, y nunca propagan errores (el cliente ya recibió su
+  respuesta).
 """
 
 import logging
@@ -15,6 +17,7 @@ from datetime import datetime, timezone
 from sqlmodel import Session, select
 
 from app.core.deps import engine
+from app.models.ad_item import AdItem
 from app.models.event import Event, PlanType
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
@@ -84,3 +87,42 @@ def run_expire_overdue_subscriptions_task() -> None:
             expire_overdue_subscriptions(session)
     except Exception:
         logger.exception("Fallo al procesar el vencimiento lazy de suscripciones")
+
+
+def expire_overdue_ad_items(session: Session) -> list[AdItem]:
+    """Marca como "expired" los AdItem activos cuya vigencia (`ends_at`) ya
+    pasó. `ends_at=None` es vigente indefinidamente y nunca se toca acá.
+
+    Idempotente: solo toca AdItem con status="active" y ends_at < hoy, así
+    que llamarla dos veces seguidas no cambia nada en la segunda (los ya
+    procesados quedaron con status="expired" y no matchean el filtro).
+    """
+    today = datetime.now(timezone.utc).date()
+    stmt = (
+        select(AdItem)
+        .where(AdItem.status == "active")
+        .where(AdItem.ends_at.is_not(None))
+        .where(AdItem.ends_at < today)
+    )
+    expired = list(session.exec(stmt).all())
+
+    for ad_item in expired:
+        ad_item.status = "expired"
+        ad_item.updated_at = datetime.now(timezone.utc)
+        session.add(ad_item)
+
+    session.commit()
+    for ad_item in expired:
+        session.refresh(ad_item)
+    return expired
+
+
+def run_expire_overdue_ad_items_task() -> None:
+    """Entry point para BackgroundTasks, mismo patrón que
+    `run_expire_overdue_subscriptions_task`: sesión propia, nunca propaga
+    excepciones."""
+    try:
+        with Session(engine) as session:
+            expire_overdue_ad_items(session)
+    except Exception:
+        logger.exception("Fallo al procesar el vencimiento lazy de banners (AdItem)")

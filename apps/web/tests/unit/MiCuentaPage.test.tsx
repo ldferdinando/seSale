@@ -75,4 +75,16 @@ describe("MiCuentaPage", () => {
     expect(await screen.findByText("Destacado")).toBeInTheDocument();
     expect(screen.getByText("Activa")).toBeInTheDocument();
   });
+
+  it('muestra la sección "Mis banners" con mensaje cuando no tiene banners', async () => {
+    server.use(
+      http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())),
+      http.get(`${API_URL}/api/users/me/banners`, () => HttpResponse.json([])),
+    );
+
+    renderWithClient();
+
+    expect(await screen.findByText("Mis banners")).toBeInTheDocument();
+    expect(await screen.findByText(/No tenés banners activos/i)).toBeInTheDocument();
+  });
 });

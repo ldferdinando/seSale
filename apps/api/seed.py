@@ -4,6 +4,7 @@ Uso: uv run python seed.py
 """
 
 from datetime import date, datetime, time, timedelta, timezone
+from uuid import UUID
 
 from sqlmodel import Session, SQLModel, delete
 
@@ -11,6 +12,7 @@ from app.core.deps import engine
 from app.core.moment import calculate_moments
 from app.core.security import hash_password
 from app.models import (
+    AdItem,
     AdSlot,
     City,
     Event,
@@ -32,9 +34,27 @@ SEED_PASSWORD = "Password123!"
 
 
 def _wipe(session: Session) -> None:
-    for model in (Subscription, PlanPrice, Plan, Report, EventCategory, EventMoment, Event, AdSlot, Location, User, City):
+    for model in (Subscription, PlanPrice, Plan, Report, EventCategory, EventMoment, Event, AdItem, AdSlot, Location, User, City):
         session.exec(delete(model))
     session.commit()
+
+
+def _ad_slots_for_city(city_id: UUID) -> list[AdSlot]:
+    """8 AdSlot por ciudad (espacio publicitario — la posición fija, sin
+    contenido todavía). Etapa 8d-pre — ver ARCHITECTURE.md."""
+    return [
+        # Sección Eventos — 3 carruseles wide (rotación secuencial)
+        AdSlot(city_id=city_id, section="eventos", slot_position=0, rotation_mode="sequential"),
+        AdSlot(city_id=city_id, section="eventos", slot_position=1, rotation_mode="sequential"),
+        AdSlot(city_id=city_id, section="eventos", slot_position=2, rotation_mode="sequential"),
+        # Sección Eventos — tiles grid (rotación random)
+        AdSlot(city_id=city_id, section="eventos-grid", slot_position=0, rotation_mode="random"),
+        AdSlot(city_id=city_id, section="eventos-grid", slot_position=1, rotation_mode="random"),
+        # Sección Gastronomía — 3 carruseles wide (rotación secuencial)
+        AdSlot(city_id=city_id, section="gastronomia", slot_position=0, rotation_mode="sequential"),
+        AdSlot(city_id=city_id, section="gastronomia", slot_position=1, rotation_mode="sequential"),
+        AdSlot(city_id=city_id, section="gastronomia", slot_position=2, rotation_mode="sequential"),
+    ]
 
 
 def seed() -> None:
@@ -268,12 +288,7 @@ def seed() -> None:
             for moment in calculate_moments(event_time, event_time_end):
                 session.add(EventMoment(event_id=event.id, moment=moment))
 
-        ad_slots = [
-            AdSlot(slot_key="home-0", city_id=general_roca.id, is_active=False, sort_order=0),
-            AdSlot(slot_key="home-1", city_id=general_roca.id, is_active=False, sort_order=1),
-            AdSlot(slot_key="home-2", city_id=general_roca.id, is_active=False, sort_order=2),
-        ]
-        for ad_slot in ad_slots:
+        for ad_slot in _ad_slots_for_city(general_roca.id) + _ad_slots_for_city(cipolletti.id):
             session.add(ad_slot)
 
         plans = [
@@ -299,7 +314,7 @@ def seed() -> None:
         session.commit()
         print(
             "Seed completo: 6 ciudades, 10 ubicaciones (3 automáticas + 7 lugares precargados), "
-            "8 eventos, 2 usuarios, 3 ad slots, 4 planes."
+            "8 eventos, 2 usuarios, 16 ad slots (8 por ciudad, General Roca y Cipolletti), 4 planes."
         )
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")

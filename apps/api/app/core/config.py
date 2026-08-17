@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     supabase_service_key: str | None = None
     supabase_storage_bucket: str = "flyers"
 
+    # Etapa 8d — imágenes de banners (AdItem). Mismas credenciales de
+    # Supabase que los flyers, bucket propio.
+    supabase_banner_bucket: str = "banners"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

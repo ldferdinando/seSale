@@ -45,3 +45,13 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "[Subscription.user_id]"},
     )
+    # Banners cargados PARA este usuario (anunciante) — Etapa 8d-pre
+    ad_items: list["AdItem"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[AdItem.user_id]"},
+    )
+    # Banners cargados POR este usuario como admin — Etapa 8d-pre
+    created_ad_items: list["AdItem"] = Relationship(
+        back_populates="creator",
+        sa_relationship_kwargs={"foreign_keys": "[AdItem.created_by]"},
+    )

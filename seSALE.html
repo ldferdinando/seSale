@@ -33,7 +33,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .nav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1}
 .cpill{background:var(--s2);border:1px solid var(--s4);border-radius:20px;padding:6px 11px;font-size:11px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:5px;cursor:pointer}
 .cpill i{color:var(--F);font-size:13px}
-.btn-pub{background:var(--F);color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700}
+.cpill-lg{padding:8px 14px;font-size:13px;border-color:#E91E8C55;gap:7px}
+.cpill-lg i:first-child{font-size:15px}
 /* BNAV */
 .bnav{background:var(--s1);border-top:1px solid #1e1e1e;display:flex;justify-content:space-around;padding:10px 0 16px;position:fixed;bottom:0;left:0;right:0;z-index:200}
 .btab{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;background:none;border:none;padding:0 8px;min-width:56px}
@@ -66,7 +67,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .bans-section{padding:14px 20px 0}
 .ban-lbl{font-size:9px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
 .ban-lbl em{color:var(--F);font-style:normal;font-size:9px}
-.ban-full{border-radius:12px;overflow:hidden;margin-bottom:8px;cursor:pointer;position:relative;height:78px;background:var(--s2)}
+.ban-full{border-radius:12px;overflow:hidden;margin-bottom:8px;cursor:pointer;position:relative;aspect-ratio:3.2/1;background:var(--s2)}
+@media (min-width:768px){.ban-full{aspect-ratio:3.88/1}}
 .ban-full img,.ad-tile img{width:100%;height:100%;object-fit:cover;display:block}
 .ad-empty-content{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:5px;border:1px dashed var(--s4);border-radius:12px;color:var(--t5);font-size:11px;font-weight:600;text-align:center;padding:8px}
 .ad-empty-content i{font-size:22px;color:#E91E8C66}
@@ -103,6 +105,10 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .fil:hover{background:var(--s6)}
 .fil.on{background:var(--F)}
 .fil i{font-size:13px}
+.fil-cal{background:var(--FB);border:1.5px solid var(--F);color:var(--F);padding:10px 18px;font-size:12px}
+.fil-cal:hover{background:#2a0d1c}
+.fil-cal i{font-size:15px}
+.fil-cal.on{background:var(--F);color:#fff}
 /* FECHA PANEL */
 .fp{background:#161616;border-bottom:1px solid #1e1e1e;padding:14px 20px;display:none}
 .fp.open{display:block}
@@ -142,7 +148,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .seclbl i{font-size:13px;color:var(--F)}
 .ev-list{padding:0 20px 8px}
 .ads-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:2px 0 10px}
-.ad-tile{position:relative;border-radius:12px;overflow:hidden;background:var(--s2);aspect-ratio:3/2;cursor:pointer}
+.ad-tile{position:relative;border-radius:12px;overflow:hidden;background:var(--s2);aspect-ratio:1/1;cursor:pointer}
+@media (min-width:768px){.ad-tile{aspect-ratio:6/5}}
 .sep-f{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;padding:9px 0 5px;border-bottom:1px solid #1e1e1e;margin-bottom:5px;display:flex;align-items:center;gap:5px}
 .sep-f i{font-size:11px;color:var(--F)}
 .evi{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--s1);cursor:pointer}
@@ -155,6 +162,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .eico i{font-size:18px}
 .einf{flex:1;min-width:0}
 .enom{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.etipo{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .elug{font-size:11px;color:var(--t5);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
 .elug i{font-size:11px;color:var(--F);flex-shrink:0}
 /* WA STRIP */
@@ -207,14 +215,24 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .sug-btn:disabled{background:#3a1a2a;color:#664;cursor:not-allowed}
 .sug-ok{background:#0a1a0a;border:1px solid #1D9E7544;border-radius:8px;padding:10px 12px;display:none;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;font-weight:600;color:#5DCAA5}
 .sug-ok i{font-size:16px;color:var(--V)}
-/* LUGARES */
+/* LUGARES — Gastronomía y otros: mismos 3 niveles que los eventos (Gratis / Destacado /
+   Destacado Plus). Se diferencian igual que en los eventos: sin etiqueta de texto de plan,
+   solo por fondo y borde de la tarjeta — ver comentario NIVELES DE AVISO más abajo. */
 .lugares-wrap{padding:0}
 .tipo-chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px}
 .ticon{font-size:13px}
-/* LUGAR CARD */
+/* LUGAR CARD — Destacado / Destacado Plus */
 .lugar-card{background:var(--s2);border:1px solid var(--s4);border-radius:12px;overflow:hidden;margin:0 20px 12px;cursor:pointer;transition:border-color .15s}
 .lugar-card:hover{border-color:#E91E8C44}
-.lugar-card.dest{border-color:var(--F)}
+.lugar-card.dest{background:linear-gradient(135deg,#E91E8C1a,#E91E8C08);border-color:#E91E8C77}
+.lugar-card.plus{background:linear-gradient(160deg,#2a0d1f,#150910);border:1.75px solid #E91E8C99;border-left:6px solid var(--F)}
+/* Destacado Plus: foto/logo al costado (no arriba) — se abre en el lightbox al hacer clic */
+.lc-plus-row{display:flex;align-items:flex-start;gap:12px}
+.lc-plus-img{width:72px;height:72px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;position:relative;overflow:hidden;cursor:pointer}
+.lc-plus-zoom{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);opacity:0;transition:opacity .15s,background .15s}
+.lc-plus-zoom i{font-size:16px;color:#fff}
+.lc-plus-img:hover .lc-plus-zoom{opacity:1;background:rgba(0,0,0,.35)}
+/* LUGAR ROW — Gratis (ficha compacta, sin foto) */
 .lugar-row{display:flex;align-items:center;gap:11px;background:var(--s1);border-radius:10px;margin:0 20px 10px;padding:11px 13px}
 .lr-ico{width:40px;height:40px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .lr-body{flex:1;min-width:0}
@@ -224,24 +242,23 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .lr-meta{font-size:10px;color:var(--t5);display:flex;gap:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lr-meta span{display:flex;align-items:center;gap:3px}
 .lr-meta i{font-size:10px;color:var(--F)}
-.lr-wa{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--VW);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
-.lc-img{height:90px;display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
-.lc-bdes{position:absolute;top:8px;left:8px;background:var(--F);color:#fff;font-size:9px;font-weight:800;border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px}
-.lc-bdes i{font-size:10px}
-.lc-bopen{position:absolute;top:8px;right:8px;border-radius:20px;padding:3px 9px;font-size:9px;font-weight:700;display:flex;align-items:center;gap:4px}
-.is-open{background:#0d2a1a;color:var(--V);border:1px solid #1D9E7544}
-.is-closed{background:var(--s2);color:var(--t5);border:1px solid var(--s4)}
+.lr-actions{display:flex;gap:6px;flex-shrink:0}
+.lr-wa,.lr-map,.lr-report{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
+.lr-wa{background:var(--VW);color:#fff;border:none}
+.lr-map{background:var(--AZ)22;color:var(--AZ);border:1px solid var(--AZ)44}
+.lr-report{background:#E24B4A1a;color:#E24B4A;border:1px solid #E24B4A44;font-size:13px}
 .odot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .lc-body{padding:12px 14px}
 .lc-tipo{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;display:flex;align-items:center;gap:5px}
 .lc-tipo i{font-size:11px}
-.lc-nom{font-size:15px;font-weight:800;color:#fff;margin-bottom:4px;letter-spacing:-.3px}
-.lc-meta{font-size:11px;color:var(--t5);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
+.lc-nom{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.lc-meta{font-size:11px;color:var(--t5);margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:10px}
 .lc-meta span{display:flex;align-items:center;gap:4px}
 .lc-meta i{font-size:11px;color:var(--F)}
-.lc-foot{display:flex;gap:8px}
+.lc-foot{display:flex;flex-wrap:wrap;gap:8px}
 .btn-wa-s{background:var(--VW);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
-.btn-ig-s{background:var(--s5);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.btn-sec-s{background:var(--s5);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.btn-fb-s{background:#1877F222;color:#4B93F5;border:1px solid #1877F244;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
 .btn-map-s{background:var(--AZ)22;color:var(--AZ);border:1px solid var(--AZ)44;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;margin-left:auto}
 .no-deliv{background:var(--s1);border-radius:10px;margin:0 20px 20px;padding:12px 14px;font-size:11px;color:var(--t5);line-height:1.6;display:flex;align-items:flex-start;gap:9px}
 .no-deliv i{font-size:16px;color:var(--F);flex-shrink:0;margin-top:1px}
@@ -289,22 +306,52 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .ev-img-zoom{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.65);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;gap:5px}
 .ev-img-zoom i{font-size:13px}
 /* LIGHTBOX FLYER */
+/* FLYER (solo Destacado Plus) — medida fija a pedirle al cliente: 1080×1440px (proporción 3:4, tipo poster
+   vertical, el mismo formato que ya usan en Canva/Instagram). Un solo archivo a esa resolución sirve para
+   mobile y desktop: la proporción no cambia entre dispositivos (a diferencia de los banners horizontales,
+   que sí necesitan dos medidas distintas), lo único que cambia es el max-width del contenedor al agrandarse.
+   .lightbox-img ya está seteado en aspect-ratio 3/4 esperando ese formato. */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;align-items:center;justify-content:center;padding:30px}
 .lightbox.open{display:flex}
 .lightbox-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.12);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .lightbox-img{width:100%;max-width:420px;aspect-ratio:3/4;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+@media (min-width:768px){.lightbox-img{max-width:520px}}
 .ev-body{padding:18px 20px}
 .ev-cat-tag{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:5px 15px;font-size:11px;font-weight:700;margin-bottom:13px}
 .ev-cat-tag i{font-size:13px}
-.ev-tit{font-size:21px;font-weight:800;margin-bottom:16px;line-height:1.2;letter-spacing:-.5px;color:#fff}
-.ev-mg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.ev-tit{font-size:21px;font-weight:800;margin-bottom:20px;line-height:1.25;letter-spacing:-.5px;color:#fff}
+.ev-mg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .mi{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:9px}
 .mi i{font-size:15px;color:var(--F);flex-shrink:0}
 .mi-l{font-size:10px;color:var(--t5);text-transform:uppercase;letter-spacing:.5px}
 .mi-v{font-size:13px;font-weight:700;color:#fff;margin-top:2px}
-.ent-sec{margin-bottom:18px}
-.ent-tit{font-size:11px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
-.ent-tit i{font-size:12px;color:var(--F)}
+.ev-horario{background:var(--s2);border:1px solid var(--s4);border-radius:10px;padding:11px 12px;display:flex;align-items:center;margin-bottom:24px}
+.ev-horario .eh-col{flex:1}
+.ev-horario i{font-size:14px;color:var(--t5);margin:0 12px;flex-shrink:0}
+.evsec-lbl{font-size:10px;font-weight:700;color:var(--F);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.evsec-note{font-size:11px;color:var(--t4);margin:-6px 0 12px;line-height:1.5}
+.ev-desc-txt{font-size:12px;color:var(--t2);line-height:1.65;margin:0 0 24px}
+.verif-mini{display:inline-flex;align-items:center;gap:3px;color:#5DCAA5;font-size:9px;font-weight:700}
+.verif-mini i{font-size:11px}
+.evlg-card{background:var(--s2);border:1px solid #E91E8C44;border-radius:12px;padding:14px;margin-bottom:24px}
+.lc-top{display:flex;align-items:center;gap:12px;cursor:pointer}
+.lc-ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lc-ico i{font-size:20px}
+.lc-info{flex:1;min-width:0}
+.lc-nom-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.evlg-nom{font-size:14px;font-weight:700;color:#fff}
+.evlg-meta{font-size:11px;color:var(--t3)}
+.lc-maps{display:flex;align-items:center;gap:5px;margin-top:12px;padding-top:12px;border-top:1px solid var(--s4);font-size:11px;font-weight:700;color:var(--AZ);cursor:pointer}
+.org-card{background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:16px;margin-bottom:24px}
+.org-hd{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.org-av{width:40px;height:40px;border-radius:50%;background:#E91E8C22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--F);flex-shrink:0}
+.org-nom-row{display:flex;align-items:center;gap:5px}
+.org-nom{font-size:14px;font-weight:700;color:#fff}
+.org-sub{font-size:11px;color:var(--t3)}
+.org-chips{display:flex;flex-wrap:wrap;gap:8px}
+.org-chip{display:flex;align-items:center;gap:6px;border-radius:20px;padding:7px 13px;font-size:12px;font-weight:600;color:#fff}
+.org-chip i{font-size:14px}
+.ent-sec{margin-bottom:24px}
 .ent-pago{background:var(--s2);border:1px solid var(--s4);border-radius:12px;overflow:hidden}
 .ent-precio{background:var(--s3);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--s4)}
 .ent-pv{font-size:21px;font-weight:800;color:#fff;letter-spacing:-1px}
@@ -312,45 +359,35 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .ent-ant{font-size:12px;font-weight:700;color:#fff;background:var(--F);border-radius:20px;padding:5px 13px;display:flex;align-items:center;gap:5px}
 .ent-ant i{font-size:12px}
 .ent-donde{padding:13px 16px}
-.ent-dl{font-size:10px;font-weight:700;color:var(--t5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-.ent-op{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #111}
+.ent-dl{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.ent-dl i{font-size:13px;color:var(--t3)}
+.ent-op{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #141414}
 .ent-op:last-child{border-bottom:none}
-.ent-op-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ent-op-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .ent-op-ico i{font-size:16px}
-.ent-op-n{flex:1}
+.ent-op-n{flex:1;min-width:0}
 .ent-op-n strong{font-size:13px;font-weight:700;color:#fff;display:block}
-.ent-op-n span{font-size:11px;color:var(--t4)}
+.ent-op-n span{font-size:11px;color:var(--t4);margin-top:1px}
+.como-llegar{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--AZ);flex-shrink:0;cursor:pointer}
+.como-llegar i{font-size:13px}
 .ent-gratis{background:#0d2a1a;border:1px solid var(--V);border-radius:12px;padding:15px;display:flex;align-items:center;gap:13px}
 .ent-gratis i{font-size:24px;color:var(--V);flex-shrink:0}
 .eg-t{font-size:16px;font-weight:700;color:#5DCAA5}
 .eg-s{font-size:11px;color:#3a6a3a;margin-top:3px}
-.ev-accs{display:flex;gap:10px;margin-bottom:18px}
-.acc-bell{flex:1;background:var(--F);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
-.acc-bell i{font-size:15px}
-.acc-wa{flex:1;background:var(--VW);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
-.acc-wa i{font-size:15px}
-/* PERFIL ORGANIZADOR */
-.perf-card{background:var(--s1);border:1px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:18px}
-.perf-hd{background:var(--s2);padding:14px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:11px}
-.perf-logo{width:46px;height:46px;border-radius:10px;background:#E91E8C22;border:1px solid #E91E8C44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--F);flex-shrink:0}
-.perf-n{font-size:14px;font-weight:700;color:#fff}
-.perf-t{font-size:11px;color:var(--t4);margin-top:2px}
-.perf-plan{font-size:10px;font-weight:700;background:var(--F);color:#fff;border-radius:20px;padding:3px 10px;margin-left:auto;display:flex;align-items:center;gap:4px}
-.perf-plan i{font-size:11px}
-.perf-row{display:flex;align-items:center;gap:11px;padding:11px 16px;border-bottom:1px solid #111}
-.perf-row:last-child{border-bottom:none}
-.perf-row i{font-size:14px;color:var(--F);width:17px;flex-shrink:0}
-.perf-row span{font-size:12px;color:var(--t2)}
-.perf-row a{font-size:12px;color:var(--F)}
-/* VERIFICADO PÚBLICO */
-.verif-pub{background:#0d2a1a;border:1px solid #1D9E7544;border-radius:10px;padding:13px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
-.vp-ico{width:38px;height:38px;background:#1D9E7522;border:1.5px solid #1D9E75;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.vp-ico i{font-size:18px;color:var(--V)}
-.vp-t{font-size:13px;font-weight:700;color:#5DCAA5;margin-bottom:3px}
-.vp-s{font-size:11px;color:#3a6a3a;margin-bottom:7px}
-.vp-badges{display:flex;flex-wrap:wrap;gap:5px}
-.vp-badge{background:#1D9E7518;border:1px solid #1D9E7533;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:#5DCAA5;display:flex;align-items:center;gap:4px}
-.vp-badge i{font-size:11px}
+.btn-compartir-amigo{width:100%;background:var(--VW);color:#fff;border:none;border-radius:12px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;font-family:'Inter',sans-serif}
+.btn-compartir-amigo i{font-size:16px}
+.btn-recordar{width:100%;background:transparent;color:#fff;border:1px solid var(--s4);border-radius:12px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif}
+.btn-recordar i{font-size:16px;color:var(--F)}
+.recordar-panel{display:none;background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:14px;margin-top:8px}
+.recordar-panel.open{display:block}
+.rp-lbl{font-size:11px;color:var(--t3);margin-bottom:10px}
+.rp-canales{display:flex;gap:8px;margin-bottom:10px}
+.chan-btn{flex:1;background:transparent;color:var(--t3);border:1px solid var(--s4);border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-family:'Inter',sans-serif}
+.chan-btn.on{background:#E91E8C1a;color:var(--F);border-color:var(--F)}
+.rp-inp{width:100%;background:var(--s0);border:1px solid var(--s4);border-radius:8px;padding:10px 12px;color:#fff;font-size:12px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;margin-bottom:6px}
+.rp-err{display:none;font-size:11px;color:#E24B4A;margin-bottom:6px}
+.rp-confirm{width:100%;background:var(--F);color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+.ev-actions-wrap{margin-bottom:28px}
 /* REPORT */
 .report-box{background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:20px}
 .report-s{font-size:11px;color:var(--t5);line-height:1.6;margin-bottom:9px}
@@ -415,6 +452,21 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .reg-terms a{color:var(--F)}
 /* PUBLICAR */
 .pub-wrap{padding:18px 20px}
+/* AVISO PUBLICADO ACTIVO — permite dar de baja un evento ya publicado si se cancela */
+.aviso-activo-box{background:var(--s2);border:1px solid var(--s4);border-radius:12px;padding:15px}
+.aviso-activo-hd{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.aviso-activo-ico{width:38px;height:38px;border-radius:9px;background:#E91E8C22;color:var(--F);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.aviso-activo-inf{flex:1;min-width:0}
+.aviso-activo-t{font-size:13px;font-weight:700;color:#fff}
+.aviso-activo-s{font-size:11px;color:var(--t4);margin-top:2px}
+.aviso-activo-badge{font-size:9px;font-weight:700;background:#1D9E7522;color:var(--V);border:1px solid #1D9E7533;border-radius:20px;padding:3px 9px;flex-shrink:0;white-space:nowrap}
+.btn-baja{width:100%;background:#E24B4A1a;color:#E24B4A;border:1px solid #E24B4A44;border-radius:10px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Inter',sans-serif}
+.baja-panel{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--s4)}
+.baja-panel.open{display:block}
+.baja-txt{font-size:11px;color:var(--t4);line-height:1.6;margin-bottom:10px}
+.baja-btns{display:flex;gap:8px}
+.btn-baja-conf{flex:1;background:#E24B4A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-baja-cancel{flex:1;background:var(--s5);color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
 .et-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .et-o{background:var(--s5);border:none;border-radius:10px;padding:12px 6px;text-align:center;cursor:pointer;transition:background .15s}
 .et-o i{font-size:20px;color:var(--t5);display:block;margin-bottom:5px}
@@ -439,6 +491,23 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .po-n i{font-size:13px;color:var(--F)}
 .po-p{font-size:12px;color:var(--F);margin-bottom:4px;font-weight:700}
 .po-d{font-size:10px;color:var(--t5);line-height:1.4}
+/* FLYER — Destacado Plus */
+.flyer-sec{margin-bottom:16px}
+.flyer-note{font-size:11px;color:var(--t4);line-height:1.55;margin-bottom:12px}
+.flyer-drop{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s2);border:1.5px dashed var(--s4);border-radius:12px;padding:22px 14px;font-size:12px;font-weight:700;color:var(--t3);cursor:pointer}
+.flyer-drop:hover{border-color:#E91E8C66;color:#fff}
+.flyer-drop i{font-size:18px;color:var(--F)}
+.flyer-crop-wrap{display:flex;gap:16px;align-items:flex-start}
+.crop-stage{width:150px;height:200px;border-radius:12px;overflow:hidden;position:relative;background:var(--s2);border:1px solid var(--s4);cursor:grab;touch-action:none}
+.crop-stage:active{cursor:grabbing}
+.crop-stage img{position:absolute;left:0;top:0;width:150px;height:auto;user-select:none;pointer-events:none}
+.crop-frame{position:absolute;left:53px;top:78px;width:44px;height:44px;border:2px solid #fff;border-radius:9px;box-shadow:0 0 0 999px rgba(0,0,0,.45);pointer-events:none}
+.crop-hint{font-size:10px;color:var(--t5);text-align:center;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:4px}
+.crop-thumb-col{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:10px}
+.crop-thumb-lbl{font-size:10px;color:var(--t4);text-align:center;line-height:1.3}
+.crop-thumb-box{width:44px;height:44px;border-radius:9px;overflow:hidden;border:1.75px solid #E91E8C99;position:relative;background:var(--s2)}
+.crop-thumb-box img{position:absolute;width:150px;height:auto}
+.crop-replace{font-size:10px;font-weight:700;color:var(--F);cursor:pointer;text-align:center}
 .btn-cont{width:100%;background:var(--F);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-cont i{font-size:17px}
 /* PAGO */
@@ -582,32 +651,25 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 .btn-prx{background:var(--s3);color:var(--t5);border:1px solid var(--s4);border-radius:20px;padding:6px 14px;font-size:11px;font-weight:600;cursor:default;font-family:'Inter',sans-serif}
 /* BANNERS ROTATIVOS */
 .ban-slot-wrap{display:block}
-.ban-slot-wrap .ban-full{animation:banFade .4s ease}
+.ban-slot-wrap .ban-full,.ban-slot-wrap .ad-tile{animation:banFade .4s ease}
 @keyframes banFade{from{opacity:0}to{opacity:1}}
-/* NIVELES DE AVISO */
-.evi.evi-dest{background:linear-gradient(135deg,#E91E8C24,#E91E8C0a);border:1px solid #E91E8C55;border-left:3px solid var(--F);border-radius:10px;padding:11px 12px;margin-bottom:4px}
+/* NIVELES DE AVISO — jerarquía visual: Gratis (línea simple) < Destacado (trazo y fondo propio) <
+   Destacado Plus (trazo apenas más grueso + rayita de acento a la izquierda, exclusiva de este nivel,
+   fondo distinto, miniatura de flyer). El plan pago NO se etiquetea con texto en la tarjeta pública
+   (evita que se confunda con el tipo de entrada) — la diferencia es solo de borde/fondo. */
+.evi.evi-dest{background:linear-gradient(135deg,#E91E8C22,#E91E8C0d);border:1.5px solid #E91E8C77;border-radius:10px;padding:12px 14px;margin:0 -6px 6px}
 .evi.evi-dest .enom{font-size:14px}
 .enom-row{display:flex;align-items:center;gap:6px}
-.bdest{font-size:9px;font-weight:800;background:var(--F);color:#fff;border-radius:20px;padding:3px 9px;flex-shrink:0;display:flex;align-items:center;gap:3px}
-.bdest i{font-size:10px}
-.bpro{font-size:9px;font-weight:800;background:linear-gradient(90deg,var(--F),#c4166f);color:#fff;border-radius:20px;padding:4px 10px;flex-shrink:0;display:flex;align-items:center;gap:3px;box-shadow:0 2px 8px rgba(233,30,140,.4)}
-.bpro i{font-size:10px}
 .bfree{font-size:9px;font-weight:700;background:var(--s3);color:var(--t3);border:1px solid var(--s4);border-radius:20px;padding:3px 9px;flex-shrink:0}
 .eprecio{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px}
 .eprecio.eg{color:var(--V)}
 .eprecio.ep{color:var(--t3)}
-.evi-plus{border-radius:12px;overflow:hidden;margin-bottom:10px;cursor:pointer;background:var(--s1);border:1.5px solid #E91E8C55;box-shadow:0 6px 18px rgba(233,30,140,.14)}
-.evi-plus-img{height:120px;display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
-.evi-plus-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase}
-.evi-plus-body{padding:11px 13px}
-.evi-plus-tit{font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px;margin-bottom:4px}
-.evi-plus-meta{font-size:11px;color:var(--t4);display:flex;align-items:center;gap:4px;margin-bottom:3px}
-.evi-plus-desc{font-size:11px;color:var(--t4);line-height:1.4;margin-top:5px}
+.evi-plus{background:linear-gradient(160deg,#2a0d1f,#150910);border:1.75px solid #E91E8C99;border-left:6px solid var(--F);border-radius:10px;padding:12px 14px;margin:0 -6px 6px;display:flex;align-items:center;gap:11px}
+.evi-plus .enom{font-size:14px}
+.evi-plus-thumb{width:42px;height:42px;border-radius:9px;overflow:hidden;flex-shrink:0;position:relative}
+.evi-plus-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 /* MOMENTO DÍA/NOCHE */
-.mom-pills{display:flex;gap:8px;margin:12px 20px 0}
-.mom-pill{flex:1;background:var(--s2);border:1px solid var(--s4);border-radius:20px;padding:9px;font-size:12px;font-weight:700;color:var(--t2);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
-.mom-pill.on{background:var(--F);border-color:var(--F);color:#fff}
-.momento-nota{font-size:9px;color:var(--t5);text-align:center;margin:6px 20px 0}
+.momento-nota{font-size:9px;color:var(--t5);text-align:center;margin:8px 0 0}
 /* DROPDOWN CIUDAD */
 .ciu-drop{position:absolute;top:60px;right:16px;left:16px;max-width:280px;margin-left:auto;background:var(--s1);border:1px solid var(--s4);border-radius:12px;padding:8px;box-shadow:0 12px 28px rgba(0,0,0,.5);z-index:250;display:none}
 .ciu-drop.open{display:block}
@@ -626,8 +688,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
     <span class="se">se</span><span class="sale">SALE</span><div class="punto"></div>
   </div>
   <div class="nav-r">
-    <div class="cpill" onclick="togCiuDrop()"><i class="ti ti-map-pin"></i><span id="ciudad-activa">Gral. Roca</span><i class="ti ti-chevron-right" style="font-size:10px;transform:rotate(90deg)"></i></div>
-    <button class="btn-pub" onclick="ir('registro')"><i class="ti ti-user" style="font-size:13px;vertical-align:-1px"></i> Ingresar</button>
+    <div class="cpill cpill-lg" onclick="togCiuDrop()"><i class="ti ti-map-pin"></i><span id="ciudad-activa">Gral. Roca</span><i class="ti ti-chevron-right" style="font-size:10px;transform:rotate(90deg)"></i></div>
   </div>
   <div class="ciu-drop" id="ciu-drop">
     <div id="ciu-drop-lista"></div>
@@ -651,35 +712,10 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
     <div class="en-inf"><div class="en-t" id="en-txt">¿Qué hay hoy?</div><div class="en-s" id="en-sub">Viernes 20 de junio · Gral. Roca</div></div>
     <div class="en-c" id="en-cont"><i class="ti ti-calendar-event" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>8 planes</div>
   </div>
-  <div class="mom-pills" id="mom-pills">
-    <button class="mom-pill" id="mom-dia" onclick="filtrarMomento('dia')"><i class="ti ti-sun"></i>De día</button>
-    <button class="mom-pill" id="mom-noche" onclick="filtrarMomento('noche')"><i class="ti ti-moon"></i>De noche</button>
-  </div>
-  <div class="momento-nota"><i class="ti ti-sun" style="font-size:9px"></i> Día 07:00–19:59 hs · <i class="ti ti-moon" style="font-size:9px"></i> Noche 20:00–06:59 hs</div>
-
   <!-- BANNERS HOME -->
   <div class="bans-section">
     <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em>HOME · 3 slots</em></div>
     <div id="home-bans"></div>
-  </div>
-
-  <!-- CHIPS CATEGORÍAS -->
-  <div class="cat-wrap">
-    <div class="cat-lbl"><i class="ti ti-tag" style="font-size:10px;color:var(--F);margin-right:4px"></i>Explorar por categoría</div>
-    <div class="chips chips-lg">
-      <div class="chip chip-lg on" onclick="irCat(null,this)"><i class="ti ti-apps"></i>Todos</div>
-      <div class="chip chip-lg" onclick="irCat('musica',this)"><i class="ti ti-music" style="color:#7F77DD"></i>Música en vivo</div>
-      <div class="chip chip-lg" onclick="irCat('fiesta',this)"><i class="ti ti-confetti" style="color:#E91E8C"></i>Fiesta / Baile</div>
-      <div class="chip chip-lg" onclick="irCat('teatro',this)"><i class="ti ti-theater" style="color:#EF9F27"></i>Teatro</div>
-      <div class="chip chip-lg" onclick="irCat('feria',this)"><i class="ti ti-building-store" style="color:#1D9E75"></i>Feria</div>
-      <div class="chip chip-lg" onclick="irCat('dj',this)"><i class="ti ti-vinyl" style="color:#378ADD"></i>DJ / Electrónica</div>
-      <div class="chip chip-lg" onclick="irCat('milonga',this)"><i class="ti ti-shoe" style="color:#378ADD"></i>Milonga</div>
-      <div class="chip chip-lg" onclick="irCat('pena',this)"><i class="ti ti-guitar-pick" style="color:#D85A30"></i>Peña</div>
-      <div class="chip chip-lg" onclick="irCat('standup',this)"><i class="ti ti-microphone-2" style="color:#888"></i>Stand up</div>
-      <div class="chip chip-lg" onclick="irCat('arte',this)"><i class="ti ti-palette" style="color:#7F77DD"></i>Arte</div>
-      <div class="chip chip-lg" onclick="irCat('infantil',this)"><i class="ti ti-baby-carriage" style="color:#FF8FA3"></i>Infantil</div>
-      <div class="chip chip-lg" onclick="irCat('deportes',this)"><i class="ti ti-ball-football" style="color:#14B8A6"></i>Deportes</div>
-    </div>
   </div>
 
   <!-- VISTA TABS -->
@@ -700,8 +736,42 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
         <button class="fil" onclick="sff(this,'semana')"><i class="ti ti-calendar"></i>Esta semana</button>
         <button class="fil" onclick="sff(this,'julio')"><i class="ti ti-calendar-event"></i>Julio</button>
         <button class="fil" onclick="sff(this,'vacaciones')"><i class="ti ti-snowflake"></i>Vac. invierno</button>
-        <button class="fil" id="btn-cal" onclick="togCal()"><i class="ti ti-calendar-plus"></i>Elegir fecha</button>
+        <button class="fil fil-cal" id="btn-cal" onclick="togCal()"><i class="ti ti-calendar-plus"></i>Elegir fecha</button>
       </div>
+    </div>
+
+    <!-- CHIPS CATEGORÍAS -->
+    <div class="cat-wrap">
+      <div class="cat-lbl"><i class="ti ti-tag" style="font-size:10px;color:var(--F);margin-right:4px"></i>Explorar por categoría</div>
+      <div class="chips chips-lg">
+        <div class="chip chip-lg on" onclick="irCat(null,this)"><i class="ti ti-apps"></i>Todos</div>
+        <div class="chip chip-lg" onclick="irCat('musica',this)"><i class="ti ti-music" style="color:#7F77DD"></i>Música en vivo</div>
+        <div class="chip chip-lg" onclick="irCat('fiesta',this)"><i class="ti ti-confetti" style="color:#E91E8C"></i>Fiesta / Baile</div>
+        <div class="chip chip-lg" onclick="irCat('teatro',this)"><i class="ti ti-theater" style="color:#EF9F27"></i>Teatro</div>
+        <div class="chip chip-lg" onclick="irCat('feria',this)"><i class="ti ti-building-store" style="color:#1D9E75"></i>Feria</div>
+        <div class="chip chip-lg" onclick="irCat('dj',this)"><i class="ti ti-vinyl" style="color:#378ADD"></i>DJ / Electrónica</div>
+        <div class="chip chip-lg" onclick="irCat('milonga',this)"><i class="ti ti-shoe" style="color:#378ADD"></i>Milonga</div>
+        <div class="chip chip-lg" onclick="irCat('pena',this)"><i class="ti ti-guitar-pick" style="color:#D85A30"></i>Peña</div>
+        <div class="chip chip-lg" onclick="irCat('standup',this)"><i class="ti ti-microphone-2" style="color:#888"></i>Stand up</div>
+        <div class="chip chip-lg" onclick="irCat('arte',this)"><i class="ti ti-palette" style="color:#7F77DD"></i>Arte</div>
+        <div class="chip chip-lg" onclick="irCat('infantil',this)"><i class="ti ti-baby-carriage" style="color:#FF8FA3"></i>Infantil</div>
+        <div class="chip chip-lg" onclick="irCat('deportes',this)"><i class="ti ti-ball-football" style="color:#14B8A6"></i>Deportes</div>
+        <div class="chip chip-lg" onclick="irCat('gastronomia',this)"><i class="ti ti-tools-kitchen-2" style="color:#C2410C"></i>Gastronomía / Vinos</div>
+        <div class="chip chip-lg" onclick="irCat('turismo',this)"><i class="ti ti-compass" style="color:#65A30D"></i>Turismo / Excursiones</div>
+        <div class="chip chip-lg" onclick="irCat('charlas',this)"><i class="ti ti-presentation" style="color:#0EA5E9"></i>Charlas / Conferencias</div>
+        <div class="chip chip-lg" onclick="irCat('literatura',this)"><i class="ti ti-book-2" style="color:#8B5E3C"></i>Literatura / Libros</div>
+        <div class="chip chip-lg" onclick="irCat('juegos',this)"><i class="ti ti-device-gamepad-2" style="color:#A855F7"></i>Juegos</div>
+        <div class="chip chip-lg" onclick="irCat('religioso',this)"><i class="ti ti-cross" style="color:#64748B"></i>Religioso / Espiritual</div>
+      </div>
+    </div>
+
+    <div class="fwrap">
+      <div class="flbl"><i class="ti ti-sun"></i>¿En qué momento?</div>
+      <div class="fils" id="mom-pills">
+        <button class="fil" id="mom-dia" onclick="filtrarMomento('dia')"><i class="ti ti-sun"></i>De día</button>
+        <button class="fil" id="mom-noche" onclick="filtrarMomento('noche')"><i class="ti ti-moon"></i>De noche</button>
+      </div>
+      <div class="momento-nota"><i class="ti ti-sun" style="font-size:9px"></i> Día 07:00–19:59 hs · <i class="ti ti-moon" style="font-size:9px"></i> Noche 20:00–06:59 hs</div>
     </div>
 
     <!-- PANEL CALENDARIO -->
@@ -734,14 +804,15 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
       </div>
     </div>
 
-    <div class="seclbl" id="sec-lbl"><i class="ti ti-filter"></i>Elegí cuándo salir para ver los planes</div>
-    <div class="ev-list" id="ev-lista"></div>
-
+    <!-- COMPARTIR — arriba de los banners/eventos del listado -->
     <div class="wa-strip" onclick="compartirSitio()">
       <i class="ti ti-brand-whatsapp ico"></i>
       <div><div class="wa-t">Compartí seSALE</div><div class="wa-s">Mandala a tus amigos y descubran qué hacer en su ciudad</div></div>
       <i class="ti ti-chevron-right wa-arr"></i>
     </div>
+
+    <div class="seclbl" id="sec-lbl"><i class="ti ti-filter"></i>Elegí cuándo salir para ver los planes</div>
+    <div class="ev-list" id="ev-lista"></div>
   </div>
 
   <!-- VISTA MAPA -->
@@ -842,6 +913,12 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
     <div class="ccat" onclick="verCat('cine')"><div class="ccat-img" style="background:#0a0a14"><i class="ti ti-movie" style="color:#555"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Cine</div><div class="ccat-desc">Proyecciones</div></div></div>
     <div class="ccat" onclick="verCat('infantil')"><div class="ccat-img" style="background:#1a0d12"><i class="ti ti-baby-carriage" style="color:#FF8FA3"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Infantil</div><div class="ccat-desc">Shows, talleres, cine</div></div></div>
     <div class="ccat" onclick="verCat('deportes')"><div class="ccat-img" style="background:#0a1a17"><i class="ti ti-ball-football" style="color:#14B8A6"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Deportes</div><div class="ccat-desc">Fútbol, running, outdoor</div></div></div>
+    <div class="ccat" onclick="verCat('gastronomia')"><div class="ccat-img" style="background:#1a0f0a"><i class="ti ti-tools-kitchen-2" style="color:#C2410C"></i><div class="ccat-cnt">3 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Gastronomía / Vinos</div><div class="ccat-desc">Catas, food trucks</div></div></div>
+    <div class="ccat" onclick="verCat('turismo')"><div class="ccat-img" style="background:#10140a"><i class="ti ti-compass" style="color:#65A30D"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Turismo / Excursiones</div><div class="ccat-desc">Rural, trekking</div></div></div>
+    <div class="ccat" onclick="verCat('charlas')"><div class="ccat-img" style="background:#0a161a"><i class="ti ti-presentation" style="color:#0EA5E9"></i><div class="ccat-cnt">2 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Charlas / Conferencias</div><div class="ccat-desc">Ciencia, salud, negocios</div></div></div>
+    <div class="ccat" onclick="verCat('literatura')"><div class="ccat-img" style="background:#160f0a"><i class="ti ti-book-2" style="color:#8B5E3C"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Literatura / Libros</div><div class="ccat-desc">Presentaciones, ferias</div></div></div>
+    <div class="ccat" onclick="verCat('juegos')"><div class="ccat-img" style="background:#150a1a"><i class="ti ti-device-gamepad-2" style="color:#A855F7"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Juegos</div><div class="ccat-desc">Mesa, cosplay, geek</div></div></div>
+    <div class="ccat" onclick="verCat('religioso')"><div class="ccat-img" style="background:#12141a"><i class="ti ti-cross" style="color:#64748B"></i><div class="ccat-cnt">1 ev.</div></div><div class="ccat-info"><div class="ccat-nom">Religioso / Espiritual</div><div class="ccat-desc">Misas, peregrinaciones</div></div></div>
     <div class="ccat" style="border-style:dashed;border-color:#E91E8C44"><div class="ccat-img" style="background:#1a0d14"><i class="ti ti-dots-circle-horizontal" style="color:#E91E8C66"></i></div><div class="ccat-info" style="background:#1a0d14"><div class="ccat-nom" style="color:#E91E8C">Otro</div><div class="ccat-desc">Categoría general</div></div></div>
   </div>
   <div class="sug-box">
@@ -852,9 +929,9 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
   </div>
 </div>
 
-<!-- ═══ LUGARES FIJOS ═══ -->
+<!-- ═══ GASTRONOMÍA Y OTROS ═══ -->
 <div id="s-lugares" class="screen">
-  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Bares, cafés y restaurantes</span></div>
+  <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Gastronomía y otros</span></div>
   <div class="sbar-wrap" style="margin-bottom:0"><div class="sbar"><i class="ti ti-search"></i><input type="text" placeholder="Buscar restaurante, bar, cervecería..."></div></div>
   <div class="tipo-chips">
     <button class="chip on" onclick="setTipo(this,'todos')"><i class="ti ti-grid-dots"></i>Todos</button>
@@ -866,35 +943,71 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
     <button class="chip" onclick="setTipo(this,'pizza')"><i class="ti ti-pizza" style="color:#E91E8C"></i>Pizzerías</button>
   </div>
 
-  <!-- BANNERS LUGARES -->
+  <!-- BANNERS GASTRONOMÍA — mismos 3 espacios que HOME. Totalmente independientes de los de HOME/Categorías:
+       cada slot tiene su propia clave interna (prefijo "lug-todos-N", ver BANS_LUGARES en el
+       script) y su propio contenido/anunciante. Además hay 2 slots extra por cada tipo de
+       lugar (ver BANS_LUG_TIPO) que aparecen al filtrar por Cervecerías/Restaurantes/etc.
+       Todos cambian según la ciudad activa; lo administra el equipo de seSALE. -->
   <div class="bans-section">
-    <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em id="lugares-ban-em">2 slots</em></div>
+    <div class="ban-lbl"><span><i class="ti ti-speakerphone" style="font-size:10px;color:var(--F);margin-right:4px"></i>Publicidad</span><em id="lugares-ban-lbl">GASTRONOMÍA · 3 slots</em></div>
     <div id="lugares-bans"></div>
   </div>
 
-  <!-- LUGAR DESTACADO -->
-  <div class="lugar-card dest">
-    <div class="lc-img" style="background:linear-gradient(135deg,#1a0a0a,#2d1010)">🥩
-      <div class="lc-bdes"><i class="ti ti-star-filled"></i>Destacado</div>
-      <div class="lc-bopen is-open"><div class="odot" style="background:var(--V)"></div>Abierto ahora</div>
+  <!-- DESTACADO PLUS — igual criterio que evi-plus: sin etiqueta de texto de plan, se
+       distingue por el fondo, la rayita de acento a la izquierda y la foto/logo al costado
+       (no arriba como en Destacado) — al hacer clic sobre la foto se amplía en el lightbox -->
+  <div class="lugar-card plus">
+    <div class="lc-body">
+      <div class="lc-plus-row">
+        <div class="lc-plus-img" style="background:linear-gradient(135deg,#1a0d1f,#2d1030)" onclick="abrirLightbox('linear-gradient(135deg,#1a0d1f,#2d1030)','ti-glass','#7F77DD')">
+          🍷
+          <div class="lc-plus-zoom"><i class="ti ti-zoom-in"></i></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="lc-tipo" style="color:#7F77DD"><i class="ti ti-glass"></i>Vinoteca / Bar de vinos</div>
+          <div class="lc-nom-row"><span class="lc-nom">Enoteca del Valle</span><span class="verif-mini"><i class="ti ti-rosette-discount-check"></i>Verificado</span></div>
+        </div>
+      </div>
+      <div class="lc-meta" style="margin-top:11px">
+        <span><i class="ti ti-map-pin"></i>Mitre 430</span>
+        <span><i class="ti ti-clock"></i>18:00 a 02:00 hs</span>
+        <span><i class="ti ti-star-filled" style="color:#EF9F27"></i>4.9</span>
+        <span><div class="odot" style="background:var(--V)"></div>Abierto ahora</span>
+      </div>
+      <div class="lc-foot">
+        <button class="btn-wa-s"><i class="ti ti-brand-whatsapp"></i>Reservar</button>
+        <button class="btn-sec-s"><i class="ti ti-brand-instagram"></i>Instagram</button>
+        <button class="btn-fb-s"><i class="ti ti-brand-facebook"></i>Facebook</button>
+        <button class="btn-sec-s"><i class="ti ti-world"></i>Sitio web</button>
+        <button class="btn-map-s" onclick="abrirMapa('Mitre 430, General Roca')"><i class="ti ti-map-pin"></i>Llegar</button>
+      </div>
+      <button class="btn-report" style="margin-top:10px"><i class="ti ti-flag"></i>Reportar</button>
     </div>
+  </div>
+
+  <!-- DESTACADO — sin foto (la foto es exclusiva de Destacado Plus): se distingue del
+       Gratis solo por el formato tarjeta y el fondo/borde propio -->
+  <div class="lugar-card dest">
     <div class="lc-body">
       <div class="lc-tipo" style="color:#D85A30"><i class="ti ti-flame"></i>Parrilla</div>
-      <div class="lc-nom">La Querencia</div>
+      <div class="lc-nom-row"><span class="lc-nom">La Querencia</span><span class="verif-mini"><i class="ti ti-rosette-discount-check"></i>Verificado</span></div>
       <div class="lc-meta">
         <span><i class="ti ti-map-pin"></i>San Martín 850</span>
         <span><i class="ti ti-clock"></i>12:00 a 01:00 hs</span>
         <span><i class="ti ti-star-filled" style="color:#EF9F27"></i>4.8</span>
+        <span><div class="odot" style="background:var(--V)"></div>Abierto ahora</span>
       </div>
       <div class="lc-foot">
         <button class="btn-wa-s"><i class="ti ti-brand-whatsapp"></i>Reservar</button>
-        <button class="btn-ig-s"><i class="ti ti-brand-instagram"></i>Instagram</button>
-        <button class="btn-map-s"><i class="ti ti-map-pin"></i>Llegar</button>
+        <button class="btn-sec-s"><i class="ti ti-brand-instagram"></i>Instagram</button>
+        <button class="btn-fb-s"><i class="ti ti-brand-facebook"></i>Facebook</button>
+        <button class="btn-map-s" onclick="abrirMapa('San Martín 850, General Roca')"><i class="ti ti-map-pin"></i>Llegar</button>
       </div>
+      <button class="btn-report" style="margin-top:10px"><i class="ti ti-flag"></i>Reportar</button>
     </div>
   </div>
 
-  <!-- LUGARES GRATUITOS — sin logo, ficha compacta -->
+  <!-- GRATIS — ficha compacta sin foto: nombre, dirección, horario, WhatsApp, mapa y reporte -->
   <div class="lugar-row">
     <div class="lr-ico" style="background:#0d152a">🍺</div>
     <div class="lr-body">
@@ -902,7 +1015,11 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
       <div class="lr-nom">Aquelarre Brewing</div>
       <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Tucumán 850</span><span><i class="ti ti-clock"></i>18 a 02 hs</span><span><div class="odot" style="background:var(--V)"></div>Abierto</span></div>
     </div>
-    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+    <div class="lr-actions">
+      <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+      <button class="lr-map" onclick="abrirMapa('Tucumán 850, General Roca')"><i class="ti ti-map-pin"></i></button>
+      <button class="lr-report"><i class="ti ti-flag"></i></button>
+    </div>
   </div>
 
   <div class="lugar-row">
@@ -912,7 +1029,11 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
       <div class="lr-nom">Il Forno</div>
       <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Belgrano 1200</span><span><i class="ti ti-clock"></i>20 a 00 hs</span><span><i class="ti ti-clock" style="font-size:10px"></i>Abre a las 20</span></div>
     </div>
-    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+    <div class="lr-actions">
+      <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+      <button class="lr-map" onclick="abrirMapa('Belgrano 1200, General Roca')"><i class="ti ti-map-pin"></i></button>
+      <button class="lr-report"><i class="ti ti-flag"></i></button>
+    </div>
   </div>
 
   <div class="lugar-row">
@@ -922,10 +1043,14 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
       <div class="lr-nom">Bar del Centro</div>
       <div class="lr-meta"><span><i class="ti ti-map-pin"></i>Av. Roca 560</span><span><i class="ti ti-clock"></i>19 a 03 hs</span><span><div class="odot" style="background:var(--V)"></div>Abierto</span></div>
     </div>
-    <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+    <div class="lr-actions">
+      <button class="lr-wa"><i class="ti ti-brand-whatsapp"></i></button>
+      <button class="lr-map" onclick="abrirMapa('Av. Roca 560, General Roca')"><i class="ti ti-map-pin"></i></button>
+      <button class="lr-report"><i class="ti ti-flag"></i></button>
+    </div>
   </div>
 
-  <div class="no-deliv"><i class="ti ti-info-circle"></i><span>Solo lugares para salir — bares, restaurantes y cafés. Sin delivery, sin clases, sin servicios.</span></div>
+  <div class="no-deliv"><i class="ti ti-info-circle"></i><span>Solo lugares para salir — bares, restaurantes, cafés y otros. Sin delivery, sin clases, sin servicios.</span></div>
 </div>
 
 <!-- ═══ EVENTO DETALLE ═══ -->
@@ -939,14 +1064,54 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
   <div class="ev-body">
     <div class="ev-cat-tag" style="background:#7F77DD;color:#fff"><i class="ti ti-music"></i>Música en vivo</div>
     <h2 class="ev-tit">Los Wachiturros del Alma — Noche de Rock</h2>
+
     <div class="ev-mg">
-      <div class="mi"><i class="ti ti-calendar"></i><div><div class="mi-l">Fecha</div><div class="mi-v">Vie 20 junio</div></div></div>
-      <div class="mi"><i class="ti ti-clock"></i><div><div class="mi-l">Horario</div><div class="mi-v">21:30 hs</div></div></div>
-      <div class="mi"><i class="ti ti-map-pin"></i><div><div class="mi-l">Lugar</div><div class="mi-v">El Tinglado</div></div></div>
+      <div class="mi"><i class="ti ti-calendar"></i><div><div class="mi-l">Fecha</div><div class="mi-v" id="ev-fecha-v">Vie 20 junio</div></div></div>
       <div class="mi"><i class="ti ti-moon"></i><div><div class="mi-l">Momento</div><div class="mi-v">Nocturno</div></div></div>
     </div>
+    <div class="ev-horario">
+      <div class="eh-col"><div class="mi-l">Desde</div><div class="mi-v" id="ev-desde-v">21:30 hs</div></div>
+      <i class="ti ti-arrow-right"></i>
+      <div class="eh-col"><div class="mi-l">Hasta</div><div class="mi-v" id="ev-hasta-v">01:00 hs</div></div>
+    </div>
+
+    <div class="evsec-lbl"><i class="ti ti-align-left" style="margin-right:5px"></i>De qué se trata</div>
+    <p class="ev-desc-txt">Una noche de rock nacional a pura banda en vivo: repasamos clásicos de los 90 y 2000 con la energía de siempre. Barra abierta hasta las 00:30 y patio al aire libre para el que necesite tomar aire entre tema y tema.</p>
+
+    <div class="evsec-lbl">Lugar</div>
+    <div class="evlg-card">
+      <div class="lc-top">
+        <!-- TODO programador: al tener ficha individual de lugar, agregar onclick="ir('lugar-det')" o similar -->
+        <div class="lc-ico" style="background:#2d0d2d"><i class="ti ti-building" style="color:#7F77DD"></i></div>
+        <div class="lc-info">
+          <div class="lc-nom-row"><span class="evlg-nom" id="ev-lugar-v">El Tinglado Bar</span><span class="verif-mini"><i class="ti ti-rosette-discount-check"></i>Verificado</span></div>
+          <div class="evlg-meta">Av. Roca 1240 · Jue a Dom 20 a 03 hs</div>
+        </div>
+        <i class="ti ti-chevron-right" style="font-size:16px;color:var(--F);flex-shrink:0"></i>
+      </div>
+      <div class="lc-maps" onclick="abrirMapa('Av. Roca 1240, General Roca')"><i class="ti ti-map-pin"></i>Cómo llegar (Google Maps)</div>
+    </div>
+
+    <div class="evsec-lbl">Organizador</div>
+    <div class="evsec-note">La banda toca acá pero el bar no es suyo — por eso lugar y organizador van separados</div>
+    <div class="org-card">
+      <div class="org-hd">
+        <div class="org-av">MP</div>
+        <div>
+          <div class="org-nom-row"><span class="org-nom">Martín Producciones</span><span class="verif-mini" title="Identidad confirmada por seSALE"><i class="ti ti-rosette-discount-check"></i>Verificado</span></div>
+          <div class="org-sub">Organizador del evento</div>
+        </div>
+      </div>
+      <div class="org-chips">
+        <a class="org-chip" href="#" style="background:#0d1a12;border:1px solid #25D36644"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i>WhatsApp</a>
+        <a class="org-chip" href="#" style="background:#0d131f;border:1px solid #1877F244"><i class="ti ti-brand-facebook" style="color:#4B93F5"></i>Facebook</a>
+        <a class="org-chip" href="#" style="background:#1f0d17;border:1px solid #E1306C44"><i class="ti ti-brand-instagram" style="color:#E1306C"></i>Instagram</a>
+        <a class="org-chip" href="#" style="background:#0d1520;border:1px solid #378ADD44"><i class="ti ti-world" style="color:#378ADD"></i>Web</a>
+      </div>
+    </div>
+
     <div class="ent-sec">
-      <div class="ent-tit"><i class="ti ti-ticket"></i>Entradas</div>
+      <div class="evsec-lbl">Entradas</div>
       <div class="ent-pago">
         <div class="ent-precio">
           <div><div class="ent-pl">Precio en puerta</div><div class="ent-pv">$3.000</div></div>
@@ -957,66 +1122,49 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
           <div class="ent-op">
             <div class="ent-op-ico" style="background:#1a3a22"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i></div>
             <div class="ent-op-n"><strong>WhatsApp del organizador</strong><span>Anticipo · Cupos limitados</span></div>
-            <button style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-brand-whatsapp" style="font-size:13px"></i>Escribir</button>
+            <i class="ti ti-chevron-right" style="font-size:15px;color:var(--t5);flex-shrink:0"></i>
           </div>
           <div class="ent-op">
             <div class="ent-op-ico" style="background:#2a0d1a"><i class="ti ti-brand-instagram" style="color:#E91E8C"></i></div>
             <div class="ent-op-n"><strong>Instagram</strong><span>@eltingladobar</span></div>
-            <button style="background:#E91E8C;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:13px"></i>Abrir</button>
+            <i class="ti ti-chevron-right" style="font-size:15px;color:var(--t5);flex-shrink:0"></i>
+          </div>
+          <div class="ent-op">
+            <div class="ent-op-ico" style="background:#0d131f"><i class="ti ti-brand-facebook" style="color:#4B93F5"></i></div>
+            <div class="ent-op-n"><strong>Facebook</strong><span>El Tinglado Bar</span></div>
+            <i class="ti ti-chevron-right" style="font-size:15px;color:var(--t5);flex-shrink:0"></i>
           </div>
           <div class="ent-op">
             <div class="ent-op-ico" style="background:#0d1a2a"><i class="ti ti-world" style="color:#378ADD"></i></div>
             <div class="ent-op-n"><strong>Página web</strong><span>Venta online del organizador</span></div>
-            <button style="background:#378ADD;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:13px"></i>Ir al sitio</button>
-          </div>
-          <div class="ent-op">
-            <div class="ent-op-ico" style="background:#241a2a"><i class="ti ti-mail" style="color:#7F77DD"></i></div>
-            <div class="ent-op-n"><strong>Email</strong><span>reservas@eltingladobar.com</span></div>
-            <button style="background:#7F77DD;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-mail" style="font-size:13px"></i>Escribir</button>
+            <i class="ti ti-chevron-right" style="font-size:15px;color:var(--t5);flex-shrink:0"></i>
           </div>
           <div class="ent-op">
             <div class="ent-op-ico" style="background:#222"><i class="ti ti-map-pin" style="color:#aaa"></i></div>
-            <div class="ent-op-n"><strong>En el lugar</strong><span>Av. Roca 1240, General Roca</span></div>
-            <button onclick="abrirMapa('Av. Roca 1240, General Roca')" style="background:#383838;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-map-pin" style="font-size:13px"></i>Cómo llegar</button>
+            <div class="ent-op-n"><strong>En el lugar físico</strong><span>Av. Roca 1240, General Roca</span></div>
+            <span class="como-llegar" onclick="abrirMapa('Av. Roca 1240, General Roca')"><i class="ti ti-map-pin"></i>Cómo llegar</span>
           </div>
         </div>
       </div>
     </div>
-    <div class="ev-accs">
-      <button class="acc-bell"><i class="ti ti-bell"></i>Avisame antes</button>
-      <button class="acc-wa" onclick="compartirEvento()"><i class="ti ti-brand-whatsapp"></i>Compartir</button>
-    </div>
-    <!-- LUGAR — detalle -->
-    <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:18px"><i class="ti ti-building" style="color:var(--F);font-size:14px;margin-top:2px;flex-shrink:0"></i><span style="font-size:12px;color:var(--t2);line-height:1.6">El Tinglado Bar es un espacio cultural con shows en vivo, barra y patio al aire libre.</span></div>
-    <!-- VERIFICADO PÚBLICO — sin datos privados -->
-    <div class="verif-pub">
-      <div class="vp-ico"><i class="ti ti-shield-check"></i></div>
-      <div>
-        <div class="vp-t">Organizador verificado por seSALE</div>
-        <div class="vp-s">Identidad confirmada. Datos personales confidenciales.</div>
-        <div class="vp-badges">
-          <span class="vp-badge"><i class="ti ti-id-badge"></i>Documento</span>
-          <span class="vp-badge"><i class="ti ti-device-mobile"></i>Celular</span>
-          <span class="vp-badge"><i class="ti ti-mail"></i>Email</span>
-          <span class="vp-badge"><i class="ti ti-calendar"></i>Desde jun 2025</span>
+
+    <div class="ev-actions-wrap">
+      <button class="btn-compartir-amigo" onclick="compartirEvento()"><i class="ti ti-brand-whatsapp"></i>Compartir con un amigo</button>
+      <button class="btn-recordar" onclick="togRecordar()"><i class="ti ti-bell"></i>Recordarme este evento</button>
+      <div class="recordar-panel" id="recordar-panel">
+        <div class="rp-lbl">¿Cómo querés que te avisemos?</div>
+        <div class="rp-canales">
+          <button type="button" class="chan-btn on" onclick="selCanal(this,'wa')"><i class="ti ti-brand-whatsapp"></i>WhatsApp</button>
+          <button type="button" class="chan-btn" onclick="selCanal(this,'mail')"><i class="ti ti-mail"></i>Email</button>
         </div>
+        <input class="rp-inp" id="rp-inp" type="text" placeholder="Tu WhatsApp (con código de área)">
+        <div class="rp-err" id="rp-err">Ingresá un dato de contacto primero</div>
+        <button type="button" class="rp-confirm" id="rp-confirm-btn" onclick="confirmarRecordar()">Confirmar recordatorio</button>
       </div>
     </div>
-    <!-- PERFIL — solo datos públicos que el organizador eligió mostrar -->
-    <div class="perf-card">
-      <div class="perf-hd">
-        <div class="perf-logo">ET</div>
-        <div><div class="perf-n">El Tinglado Bar</div><div class="perf-t">Espacio cultural · Gral. Roca</div></div>
-        <span class="perf-plan"><i class="ti ti-crown"></i>PRO</span>
-      </div>
-      <div class="perf-row"><i class="ti ti-map-pin"></i><span>Av. Roca 1240, General Roca</span></div>
-      <div class="perf-row"><i class="ti ti-clock"></i><span>Jue a Dom · 20:00 a 03:00 hs</span></div>
-      <div class="perf-row"><i class="ti ti-brand-whatsapp"></i><a href="#">+54 9 298 456-7890</a></div>
-      <div class="perf-row"><i class="ti ti-brand-instagram"></i><a href="#">@eltingladobar</a></div>
-      <div class="perf-row"><i class="ti ti-world"></i><a href="#">eltingladobar.com.ar</a></div>
-    </div>
+
     <div class="report-box">
-      <div class="report-s">El contenido de seSALE es moderado. Si este evento no te parece cultural o apropiado, podés reportarlo y lo revisamos en menos de 24 hs.</div>
+      <div class="report-s">El contenido de seSALE es moderado. Si algo de este evento no te cierra o sabés algo que deberíamos revisar, contanos y lo evaluamos en menos de 24 hs.</div>
       <button class="btn-report"><i class="ti ti-flag"></i>Reportar evento</button>
     </div>
   </div>
@@ -1075,10 +1223,34 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 <div id="s-publicar" class="screen">
   <div class="bkhd"><button class="bkbtn" onclick="ir('home')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Publicar evento</span></div>
   <div class="pub-wrap">
+    <!-- AVISO PUBLICADO ACTIVO — la opción de "dar de baja" solo aparece acá, cuando el
+         cliente ya tiene un aviso publicado (si nunca publicó nada, este bloque no se muestra
+         y va directo al formulario de abajo). TODO programador: renderizar uno de estos por
+         cada aviso activo del organizador logueado, en vez del ejemplo fijo de acá. -->
+    <div class="aviso-activo-box" id="aviso-activo-box">
+      <div class="aviso-activo-hd">
+        <div class="aviso-activo-ico"><i class="ti ti-calendar-event"></i></div>
+        <div class="aviso-activo-inf">
+          <div class="aviso-activo-t">Tenés un aviso publicado</div>
+          <div class="aviso-activo-s">Los Wachiturros del Alma — Noche de Rock · Vie 20 jun · Plan Destacado</div>
+        </div>
+        <span class="aviso-activo-badge">Activo</span>
+      </div>
+      <button class="btn-baja" onclick="togBajaAviso()"><i class="ti ti-flag-off"></i>Dar de baja (se canceló el evento)</button>
+      <div class="baja-panel" id="baja-panel">
+        <p class="baja-txt">Esta acción oculta el evento de la agenda pública de inmediato. Si fue un error, vas a poder volver a publicarlo desde acá.</p>
+        <div class="baja-btns">
+          <button class="btn-baja-conf" onclick="confirmarBaja()"><i class="ti ti-check"></i>Sí, dar de baja</button>
+          <button class="btn-baja-cancel" onclick="togBajaAviso()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+    <div class="divisor" style="margin:18px 0"></div>
+
     <label class="fl"><i class="ti ti-pencil"></i>Nombre del evento <em>*</em></label>
     <input class="fi" type="text" placeholder="Ej: Noche de Jazz en vivo">
     <label class="fl"><i class="ti ti-apps"></i>Categoría <em>*</em></label>
-    <select class="fsel"><option>Música en vivo</option><option>Fiesta / Baile</option><option>Teatro</option><option>Feria</option><option>DJ / Electrónica</option><option>Milonga / Tango</option><option>Peña folclórica</option><option>Stand up</option><option>Exposición / Arte</option><option>Recital</option><option>Cine</option><option>Infantil</option><option>Deportes</option><option>Otro</option></select>
+    <select class="fsel"><option>Música en vivo</option><option>Fiesta / Baile</option><option>Teatro</option><option>Feria</option><option>DJ / Electrónica</option><option>Milonga / Tango</option><option>Peña folclórica</option><option>Stand up</option><option>Exposición / Arte</option><option>Recital</option><option>Cine</option><option>Infantil</option><option>Deportes</option><option>Gastronomía / Vinos</option><option>Turismo / Excursiones</option><option>Charlas / Conferencias</option><option>Literatura / Libros</option><option>Juegos</option><option>Religioso / Espiritual</option><option>Otro</option></select>
     <label class="fl"><i class="ti ti-clock"></i>Momento del evento <em>*</em></label>
     <div class="ht-g">
       <button class="ht-o on" onclick="selHT(this)"><i class="ti ti-moon"></i><span>Nocturno</span></button>
@@ -1132,12 +1304,37 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
     </div>
     <label class="fl" style="margin-bottom:9px"><i class="ti ti-crown"></i>Elegí tu plan</label>
     <div class="planes-g">
-      <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-circle"></i>Gratuito</div><div class="po-p">$0</div><div class="po-d">1 evento · básico · sin prioridad</div></div>
+      <div class="plan-o" data-tipo="gratis" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-circle"></i>Gratuito</div><div class="po-p">$0</div><div class="po-d">1 evento · básico · sin prioridad</div></div>
       <div class="plan-o on" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-star"></i>Destacado</div><div class="po-p" id="precio-dest-pub">$X.XXX/mes</div><div class="po-d">Ilimitado · fondo destacado · 2° prioridad</div></div>
-      <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-crown"></i>Destacado Plus</div><div class="po-p" id="precio-pro-pub">$X.XXX/mes</div><div class="po-d">Imagen · banner · stats · 1° prioridad</div></div>
+      <div class="plan-o" onclick="selPlan(this,true)"><div class="po-n"><i class="ti ti-crown"></i>Destacado Plus</div><div class="po-p" id="precio-pro-pub">$X.XXX/mes</div><div class="po-d">Imagen · banner · stats · 1° prioridad</div></div>
       <div class="plan-o" onclick="selPlan(this)"><div class="po-n"><i class="ti ti-ad"></i>Banner web</div><div class="po-p">Consultar</div><div class="po-d">Home + categorías · máxima visibilidad</div></div>
     </div>
-    <button class="btn-cont" onclick="ir('pago')"><i class="ti ti-arrow-right"></i>Continuar</button>
+
+    <!-- FLYER — solo visible con plan Destacado Plus. Medida a pedir: 1080×1440px (3:4). -->
+    <div id="flyer-upload-sec" class="flyer-sec" style="display:none">
+      <label class="fl" style="margin-bottom:6px"><i class="ti ti-photo"></i>Flyer del evento <em>*</em></label>
+      <div class="flyer-note">Subí una imagen de 1080 × 1440px (proporción 3:4). El flyer completo se ve al ampliarlo dentro del evento; después arrastrá para elegir qué parte se usa como miniatura en la lista.</div>
+
+      <input type="file" accept="image/*" id="flyer-file-inp" style="display:none" onchange="cargarFlyer(this)">
+      <label for="flyer-file-inp" id="flyer-drop" class="flyer-drop"><i class="ti ti-upload"></i>Subir flyer (JPG o PNG, 1080×1440px)</label>
+
+      <div class="flyer-crop-wrap" id="flyer-crop-wrap" style="display:none">
+        <div>
+          <div class="crop-stage" id="crop-stage">
+            <img id="crop-img" src="" alt="">
+            <div class="crop-frame"></div>
+          </div>
+          <div class="crop-hint"><i class="ti ti-arrows-move"></i>Arrastrá la imagen</div>
+        </div>
+        <div class="crop-thumb-col">
+          <div class="crop-thumb-lbl">Así se ve en<br>la lista</div>
+          <div class="crop-thumb-box"><img id="crop-thumb-img" src="" alt=""></div>
+          <label for="flyer-file-inp" class="crop-replace"><i class="ti ti-refresh"></i>Cambiar flyer</label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-cont" id="btn-continuar-pub" onclick="irPago()"><i class="ti ti-arrow-right"></i>Continuar al pago</button>
   </div>
 </div>
 
@@ -1146,18 +1343,18 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
   <div class="bkhd"><button class="bkbtn" onclick="ir('publicar')"><i class="ti ti-arrow-left"></i></button><span class="bktit">Pagar plan</span></div>
   <div class="pago-box">
     <div class="pago-hd"><i class="ti ti-shield-check"></i><div><div class="pago-hd-t">Resumen de tu plan</div><div class="pago-hd-s"><i class="ti ti-lock"></i>Pago 100% seguro</div></div></div>
-    <div class="pr"><span class="pr-l"><i class="ti ti-crown"></i>Plan elegido</span><span class="pr-v">Destacado</span></div>
+    <div class="pr"><span class="pr-l"><i class="ti ti-crown"></i>Plan elegido</span><span class="pr-v" id="pago-plan-nombre">Destacado</span></div>
     <div class="pr"><span class="pr-l"><i class="ti ti-calendar"></i>Duración</span><span class="pr-v">1 mes</span></div>
     <div class="pr"><span class="pr-l"><i class="ti ti-infinite"></i>Eventos ilimitados</span><span class="pr-v vd"><i class="ti ti-check"></i>Incluido</span></div>
     <div class="pr"><span class="pr-l"><i class="ti ti-star"></i>Badge destacado</span><span class="pr-v vd"><i class="ti ti-check"></i>Incluido</span></div>
     <div class="pr"><span class="pr-l"><i class="ti ti-refresh"></i>Renovación</span><span class="pr-v">Automática · cancelable</span></div>
-    <div class="pr-total"><span class="pr-tl"><i class="ti ti-receipt"></i>Total</span><span class="pr-tv">$X.XXX</span></div>
+    <div class="pr-total"><span class="pr-tl"><i class="ti ti-receipt"></i>Total</span><span class="pr-tv" id="pago-total">$X.XXX</span></div>
   </div>
   <div class="mp-btns">
     <div class="mp-lbl"><i class="ti ti-credit-card"></i>Elegí cómo pagar</div>
-    <button class="btn-mp" onclick="ir('exito')"><i class="ti ti-credit-card"></i>Pagar con Mercado Pago</button>
-    <button class="btn-qr" onclick="ir('exito')"><i class="ti ti-qrcode"></i>Pagar con QR</button>
-    <button class="btn-transf" onclick="ir('exito')"><i class="ti ti-building-bank"></i>Transferencia bancaria</button>
+    <button class="btn-mp" onclick="irExito(false)"><i class="ti ti-credit-card"></i>Pagar con Mercado Pago</button>
+    <button class="btn-qr" onclick="irExito(false)"><i class="ti ti-qrcode"></i>Pagar con QR</button>
+    <button class="btn-transf" onclick="irExito(false)"><i class="ti ti-building-bank"></i>Transferencia bancaria</button>
     <div class="mp-seg"><i class="ti ti-lock"></i>SSL encriptado · pago seguro</div>
   </div>
 </div>
@@ -1166,11 +1363,11 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 <div id="s-exito" class="screen">
   <div class="exito-wrap">
     <div class="exito-ico"><i class="ti ti-check"></i></div>
-    <div class="exito-t">¡Pago confirmado!</div>
-    <p style="font-size:13px;color:#666;margin-bottom:28px;line-height:1.7">Tu plan fue activado automáticamente.<br>Ya podés publicar eventos ilimitados.</p>
-    <div class="exito-plan">
+    <div class="exito-t" id="exito-t">¡Pago confirmado!</div>
+    <p id="exito-sub" style="font-size:13px;color:#666;margin-bottom:28px;line-height:1.7">Tu plan fue activado automáticamente.<br>Ya podés publicar eventos ilimitados.</p>
+    <div class="exito-plan" id="exito-plan-box">
       <div class="exp-l"><i class="ti ti-crown"></i>Plan activo</div>
-      <div class="exp-v">Destacado · $X.XXX/mes</div>
+      <div class="exp-v" id="exito-plan-v">Destacado · $X.XXX/mes</div>
       <div class="exp-s"><i class="ti ti-calendar"></i>Próximo vencimiento: 20 de julio 2025</div>
     </div>
     <button class="btn-vol" onclick="ir('publicar')"><i class="ti ti-plus"></i>Publicar mi primer evento</button>
@@ -1377,14 +1574,14 @@ button{font-family:'Inter',sans-serif;cursor:pointer}
 <div class="bnav">
   <button class="btab on" id="bt-home" onclick="ir('home')"><i class="ti ti-home"></i><span>Inicio</span></button>
   <button class="btab" id="bt-categorias" onclick="ir('categorias')"><i class="ti ti-apps"></i><span>Categorías</span></button>
-  <button class="btab" id="bt-lugares" onclick="ir('lugares')"><i class="ti ti-building-store"></i><span>Gastronomía</span></button>
+  <button class="btab" id="bt-lugares" onclick="ir('lugares')"><i class="ti ti-building-store"></i><span>Gastronomía y otros</span></button>
   <button class="btab" id="bt-publicar" onclick="ir('publicar')"><i class="ti ti-plus"></i><span>Publicar</span></button>
   <button class="btab" id="bt-cuenta" onclick="ir('registro')"><i class="ti ti-user"></i><span>Mi cuenta</span></button>
 </div>
 
 <!-- LIGHTBOX FLYER — ver imagen ampliada sin salir del sitio -->
-<div class="lightbox" id="lightbox" onclick="cerrarFlyer()">
-  <button class="lightbox-close" onclick="cerrarFlyer()"><i class="ti ti-x"></i></button>
+<div class="lightbox" id="lightbox" onclick="cerrarLightbox()">
+  <button class="lightbox-close" onclick="cerrarLightbox()"><i class="ti ti-x"></i></button>
   <div class="lightbox-img" id="lightbox-img" style="background:linear-gradient(135deg,#1a0a1a,#2d0d2d)">
     <i class="ti ti-music" style="font-size:120px;color:#7F77DD"></i>
   </div>
@@ -1397,44 +1594,44 @@ var EVS_CAL={5:[20,21,22,27,28,29],6:[5,6,7,8,9,10,12,13,14,15,17,18,19,20,26,27
 var mesC=5,anioC=2025,calI=null,calF=null,calCk=0;
 
 // Eventos — plan: pro (Destacado Plus), dest (Destacado), gratis (Gratuito) — aviso/listing, NO el precio de entrada
-// precio: 0 = entrada gratis; pub: timestamp para ordenamiento
+// precio: 0 = entrada gratis; pub: orden de carga — número más BAJO = se publicó ANTES (sale primero al competir con otro del mismo plan)
 var EVTS={
   hoy:[
-    {d:20,m:'Jun',nom:'Festival Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:1000,precio:5000},
-    {d:20,m:'Jun',nom:'Fiesta de los 80s — Aquelarre',lug:'23:00 · Aquelarre Bar',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-confetti',plan:'pro',pub:900,precio:3000},
-    {d:20,m:'Jun',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado Bar',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',plan:'dest',pub:800,precio:2000},
-    {d:20,m:'Jun',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',plan:'dest',pub:700,precio:3000},
-    {d:20,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:600,precio:0},
-    {d:20,m:'Jun',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
-    {d:20,m:'Jun',nom:'Cuentos y Títeres en la Plaza',lug:'17:00 · Plaza San Martín',ibg:'#FF8FA322',ic:'#FF8FA3',ico:'ti-baby-carriage',plan:'gratis',pub:300,precio:0},
-    {d:20,m:'Jun',nom:'Maratón Nocturna 5K',lug:'21:00 · Costanera',ibg:'#14B8A622',ic:'#14B8A6',ico:'ti-ball-football',plan:'dest',pub:350,precio:1500},
+    {d:20,m:'Jun',nom:'Festival Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',cat:'musica',plan:'pro',pub:1000,precio:5000,flyer:{img:'data:image/png;base64,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',pos:'50% 18%'}},
+    {d:20,m:'Jun',nom:'Fiesta de los 80s — Aquelarre',lug:'23:00 · Aquelarre Bar',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-confetti',cat:'fiesta',plan:'pro',pub:900,precio:3000},
+    {d:20,m:'Jun',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado Bar',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',cat:'musica',plan:'dest',pub:800,precio:2000},
+    {d:20,m:'Jun',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',cat:'teatro',plan:'dest',pub:700,precio:3000},
+    {d:20,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',cat:'pena',plan:'gratis',pub:600,precio:0},
+    {d:20,m:'Jun',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',cat:'milonga',plan:'gratis',pub:500,precio:0},
+    {d:20,m:'Jun',nom:'Cuentos y Títeres en la Plaza',lug:'17:00 · Plaza San Martín',ibg:'#FF8FA322',ic:'#FF8FA3',ico:'ti-baby-carriage',cat:'infantil',plan:'gratis',pub:300,precio:0},
+    {d:20,m:'Jun',nom:'Maratón Nocturna 5K',lug:'21:00 · Costanera',ibg:'#14B8A622',ic:'#14B8A6',ico:'ti-ball-football',cat:'deportes',plan:'dest',pub:350,precio:1500},
   ],
   manana:[
-    {d:21,m:'Jun',nom:'DJ Morena — Electro Night',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',plan:'dest',pub:800,precio:2500},
-    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
-    {d:21,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:500,precio:0},
+    {d:21,m:'Jun',nom:'DJ Morena — Electro Night',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',cat:'dj',plan:'dest',pub:800,precio:2500},
+    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',cat:'feria',plan:'gratis',pub:600,precio:0},
+    {d:21,m:'Jun',nom:'Peña Los Cardones',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',cat:'pena',plan:'gratis',pub:500,precio:0},
   ],
   finde:[
-    {d:21,m:'Jun',sep:'Sábado 21',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',plan:'dest',pub:700,precio:3000},
-    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
-    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
-    {d:22,m:'Jun',nom:'DJ Electrónico',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',plan:'dest',pub:400,precio:2500},
+    {d:21,m:'Jun',sep:'Sábado 21',nom:'Bodas de Sangre',lug:'20:00 · Teatro Municipal',ibg:'#EF9F2722',ic:'#EF9F27',ico:'ti-theater',cat:'teatro',plan:'dest',pub:700,precio:3000},
+    {d:21,m:'Jun',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',cat:'feria',plan:'gratis',pub:600,precio:0},
+    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',cat:'milonga',plan:'gratis',pub:500,precio:0},
+    {d:22,m:'Jun',nom:'DJ Electrónico',lug:'23:00 · Club 69',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-vinyl',cat:'dj',plan:'dest',pub:400,precio:2500},
   ],
   semana:[
-    {d:20,m:'Jun',sep:'Viernes 20',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',plan:'dest',pub:800,precio:2000},
-    {d:21,m:'Jun',sep:'Sábado 21',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:600,precio:0},
-    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',plan:'gratis',pub:500,precio:0},
+    {d:20,m:'Jun',sep:'Viernes 20',nom:'Los Wachiturros del Alma',lug:'21:30 · El Tinglado',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-guitar',cat:'musica',plan:'dest',pub:800,precio:2000},
+    {d:21,m:'Jun',sep:'Sábado 21',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',cat:'feria',plan:'gratis',pub:600,precio:0},
+    {d:22,m:'Jun',sep:'Domingo 22',nom:'Milonga del Centro',lug:'22:00 · Salón Gardel',ibg:'#378ADD22',ic:'#378ADD',ico:'ti-shoe',cat:'milonga',plan:'gratis',pub:500,precio:0},
   ],
   julio:[
-    {d:12,m:'Jul',sep:'Vacaciones invierno',nom:'Festival de Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:1000,precio:5000},
-    {d:15,m:'Jul',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',plan:'dest',pub:800,precio:4000},
-    {d:5,m:'Jul',sep:'Finde 5-6 julio',nom:'Peña Los Gauchos',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',plan:'gratis',pub:500,precio:0},
+    {d:12,m:'Jul',sep:'Vacaciones invierno',nom:'Festival de Jazz Patagónico',lug:'20:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',cat:'musica',plan:'pro',pub:1000,precio:5000},
+    {d:15,m:'Jul',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',cat:'infantil',plan:'dest',pub:800,precio:4000},
+    {d:5,m:'Jul',sep:'Finde 5-6 julio',nom:'Peña Los Gauchos',lug:'21:00 · Club Italiano',ibg:'#D85A3022',ic:'#D85A30',ico:'ti-guitar-pick',cat:'pena',plan:'gratis',pub:500,precio:0},
   ],
   vacaciones:[
-    {d:7,m:'Jul',sep:'Semana 1 · 7-11 julio',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',plan:'dest',pub:800,precio:4000},
-    {d:9,m:'Jul',nom:'Show Bajo el Mar',lug:'17:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-theater',plan:'dest',pub:700,precio:3500},
-    {d:14,m:'Jul',sep:'Semana 2 · 14-18 julio',nom:'Festival de Jazz',lug:'20:00 · Anfiteatro',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',plan:'pro',pub:900,precio:5000},
-    {d:17,m:'Jul',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',plan:'gratis',pub:400,precio:0},
+    {d:7,m:'Jul',sep:'Semana 1 · 7-11 julio',nom:'Circo del Viento Sur',lug:'19:00 · Predio Municipal',ibg:'#E91E8C22',ic:'#E91E8C',ico:'ti-star',cat:'infantil',plan:'dest',pub:800,precio:4000},
+    {d:9,m:'Jul',nom:'Show Bajo el Mar',lug:'17:00 · Teatro Municipal',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-theater',cat:'teatro',plan:'dest',pub:700,precio:3500},
+    {d:14,m:'Jul',sep:'Semana 2 · 14-18 julio',nom:'Festival de Jazz',lug:'20:00 · Anfiteatro',ibg:'#7F77DD22',ic:'#7F77DD',ico:'ti-music',cat:'musica',plan:'pro',pub:900,precio:5000},
+    {d:17,m:'Jul',nom:'Feria de Artesanos',lug:'10:00 · Plaza San Martín',ibg:'#1D9E7522',ic:'#1D9E75',ico:'ti-building-store',cat:'feria',plan:'gratis',pub:400,precio:0},
   ],
 };
 
@@ -1445,13 +1642,16 @@ var BANS_HOME=[[],[],[]];
 // BANS_CAT: 2 slots por categoría — mismo formato { img, alt, link }
 var BANS_CAT={};
 
-// ADS_GRID_HOME / ADS_GRID_CAT: grilla de 2 columnas (hasta 4 imágenes) que se muestra
-// en vez del listado de eventos, hasta que el usuario elige un filtro de fecha/momento.
+// ADS_GRID_HOME / ADS_GRID_CAT: grilla de 2 columnas que reemplaza al listado de eventos hasta que
+// el usuario elige un filtro. Cada elemento es un TILE (no una imagen suelta): un array de hasta 4
+// piezas { img, alt, link } que rota sola y en orden random. Para agregar más filas simplemente se
+// agregan más arrays al final de la lista — no hay límite de cantidad, se van acomodando de a 2 por fila.
+// Ej: ADS_GRID_HOME=[ [{img:'..1.jpg'}], [{img:'..2.jpg'},{img:'..2b.jpg'}], [{img:'..3.jpg'}] ] → 3 tiles, 2 filas.
 var ADS_GRID_HOME=[];
 var ADS_GRID_CAT={};
 
 var CATS={
-  musica:{nom:'Música en vivo',ico:'ti-music',ico2:'ti-music',col:'#7F77DD',bg:'#1a0a2a',cnt:'8 eventos',evs:'hoy'},
+  musica:{nom:'Música en vivo',ico:'ti-music',ico2:'ti-music',col:'#7F77DD',bg:'#1a0a2a',cnt:'8 eventos',evs:'hoy',subs:['Rock','Pop','Folclore','Cumbia','Trap / Urbano','Jazz / Blues','Clásica','Covers / Tributos','Bandas locales']},
   fiesta:{nom:'Fiesta / Baile',ico:'ti-confetti',ico2:'ti-confetti',col:'#E91E8C',bg:'#1a0a14',cnt:'5 eventos',evs:'finde'},
   teatro:{nom:'Teatro',ico:'ti-theater',ico2:'ti-theater',col:'#EF9F27',bg:'#1a140a',cnt:'3 obras',evs:'semana'},
   feria:{nom:'Feria',ico:'ti-building-store',ico2:'ti-building-store',col:'#1D9E75',bg:'#0a1a12',cnt:'2 ferias',evs:'finde'},
@@ -1459,11 +1659,17 @@ var CATS={
   milonga:{nom:'Milonga / Tango',ico:'ti-shoe',ico2:'ti-shoe',col:'#378ADD',bg:'#0a121a',cnt:'2 eventos',evs:'semana'},
   pena:{nom:'Peña folclórica',ico:'ti-guitar-pick',ico2:'ti-guitar-pick',col:'#D85A30',bg:'#1a0e0a',cnt:'3 eventos',evs:'julio'},
   standup:{nom:'Stand up',ico:'ti-microphone-2',ico2:'ti-microphone-2',col:'#888',bg:'#111',cnt:'1 evento',evs:'hoy'},
-  arte:{nom:'Exposición / Arte',ico:'ti-palette',ico2:'ti-palette',col:'#7F77DD',bg:'#1a0a1a',cnt:'2 muestras',evs:'semana'},
+  arte:{nom:'Exposición / Arte',ico:'ti-palette',ico2:'ti-palette',col:'#7F77DD',bg:'#1a0a1a',cnt:'2 muestras',evs:'semana',subs:['Pintura','Fotografía','Escultura','Muestra colectiva','Arte digital','Muralismo']},
   recital:{nom:'Recital',ico:'ti-microphone',ico2:'ti-microphone',col:'#7F77DD',bg:'#1a0a2a',cnt:'2 eventos',evs:'hoy'},
   cine:{nom:'Cine',ico:'ti-movie',ico2:'ti-movie',col:'#555',bg:'#0a0a14',cnt:'1 función',evs:'hoy'},
   infantil:{nom:'Infantil',ico:'ti-baby-carriage',ico2:'ti-baby-carriage',col:'#FF8FA3',bg:'#1a0d12',cnt:'2 eventos',evs:'hoy',subs:['Espectáculos','Talleres y juegos','Cine infantil','Cumpleaños y fiestas','Parques y aire libre']},
-  deportes:{nom:'Deportes',ico:'ti-ball-football',ico2:'ti-ball-football',col:'#14B8A6',bg:'#0a1a17',cnt:'2 eventos',evs:'hoy',subs:['Fútbol','Running y trail','Ciclismo','Outdoor / aventura','Torneos']},
+  deportes:{nom:'Deportes',ico:'ti-ball-football',ico2:'ti-ball-football',col:'#14B8A6',bg:'#0a1a17',cnt:'2 eventos',evs:'hoy',subs:['Fútbol','Running y trail','Ciclismo','Outdoor / aventura','Torneos deportivos','Hockey','Rugby','Vóley','Patín','Gimnasia','Natación','Tenis','Pádel','Kayak','Básquet','Atletismo','Pesca deportiva']},
+  gastronomia:{nom:'Gastronomía / Vinos',ico:'ti-tools-kitchen-2',ico2:'ti-tools-kitchen-2',col:'#C2410C',bg:'#1a0f0a',cnt:'3 eventos',evs:'finde',subs:['Cata de vinos','Cerveza artesanal','Food trucks','Cena show','Maridaje','Bodegas abiertas']},
+  turismo:{nom:'Turismo / Excursiones',ico:'ti-compass',ico2:'ti-compass',col:'#65A30D',bg:'#10140a',cnt:'2 eventos',evs:'finde',subs:['Turismo rural','Cabalgatas','Trekking','Turismo aventura','Bodegas y enoturismo','Costanera / Río']},
+  charlas:{nom:'Charlas / Conferencias',ico:'ti-presentation',ico2:'ti-presentation',col:'#0EA5E9',bg:'#0a161a',cnt:'2 eventos',evs:'semana',subs:['Ciencia y tecnología','Emprendedurismo','Salud','Educación']},
+  literatura:{nom:'Literatura / Libros',ico:'ti-book-2',ico2:'ti-book-2',col:'#8B5E3C',bg:'#160f0a',cnt:'1 evento',evs:'semana',subs:['Presentación de libro','Feria del libro','Club de lectura','Recital de poesía','Firma de ejemplares']},
+  juegos:{nom:'Juegos',ico:'ti-device-gamepad-2',ico2:'ti-device-gamepad-2',col:'#A855F7',bg:'#150a1a',cnt:'1 evento',evs:'finde',subs:['Juegos de mesa','Rol y cartas coleccionables','Cosplay / Convenciones','Cultura geek','Torneos de juegos','Escape room','Karting','Paintball']},
+  religioso:{nom:'Religioso / Espiritual',ico:'ti-cross',ico2:'ti-cross',col:'#64748B',bg:'#12141a',cnt:'1 evento',evs:'semana',subs:['Misas especiales','Peregrinaciones','Retiro espiritual','Procesión','Eventos comunitarios']},
 };
 
 // ── BANNERS ROTATIVOS: cada slot rota entre hasta 4 imágenes, una a la vez, cada 3s
@@ -1474,23 +1680,30 @@ function padAds(ads){
   while(out.length<4)out.push(null);
   return out;
 }
-function registerSlot(key,ads){
-  BANNER_REG[key]={ads:padAds(ads),idx:0};
+function registerSlot(key,ads,cls,random){
+  cls=cls||'ban-full';
+  BANNER_REG[key]={ads:padAds(ads),idx:0,cls:cls,random:!!random};
   return renderSlot(key);
 }
 function renderSlot(key){
   var s=BANNER_REG[key];if(!s)return '';
-  return '<div class="ban-slot-wrap" data-slot="'+key+'">'+rAdImg(s.ads[s.idx],'ban-full')+'</div>';
+  return '<div class="ban-slot-wrap" data-slot="'+key+'">'+rAdImg(s.ads[s.idx],s.cls)+'</div>';
 }
-function registerAndRenderSlots(prefix,slots){
-  return slots.map(function(ads,i){return registerSlot(prefix+'-'+i,ads);}).join('');
+function registerAndRenderSlots(prefix,slots,cls,random){
+  return slots.map(function(ads,i){return registerSlot(prefix+'-'+i,ads,cls,random);}).join('');
 }
 function tickBanners(){
   document.querySelectorAll('.ban-slot-wrap').forEach(function(el){
     var key=el.dataset.slot,s=BANNER_REG[key];
     if(!s||s.ads.length<=1)return;
-    s.idx=(s.idx+1)%s.ads.length;
-    el.innerHTML=rAdImg(s.ads[s.idx],'ban-full');
+    if(s.random){
+      var next=s.idx;
+      while(next===s.idx&&s.ads.length>1)next=Math.floor(Math.random()*s.ads.length);
+      s.idx=next;
+    } else {
+      s.idx=(s.idx+1)%s.ads.length;
+    }
+    el.innerHTML=rAdImg(s.ads[s.idx],s.cls);
   });
 }
 setInterval(tickBanners,3000);
@@ -1498,8 +1711,11 @@ setInterval(tickBanners,3000);
 // ── CATEGORÍAS GRID: 2 slots arriba del listado completo de categorías
 var BANS_CATEGORIAS=[[],[]];
 
-// ── LUGARES: 2 slots generales + 2 slots por cada tipo (todo placeholder hasta sumar anunciantes reales)
-var BANS_LUGARES=[[],[]];
+// ── GASTRONOMÍA Y OTROS (ex "Lugares"): mismos 3 slots generales que BANS_HOME + 2 slots
+// extra por cada tipo de lugar. Cada grupo es 100% independiente del resto (HOME, Categorías,
+// etc.) — tiene su propia clave y su propio contenido cargado por el admin, y varía según la
+// ciudad activa. Todo placeholder hasta sumar anunciantes reales.
+var BANS_LUGARES=[[],[],[]];
 var BANS_LUG_TIPO={
   cerveceria:[[],[]],restaurante:[[],[]],parrilla:[[],[]],bar:[[],[]],cafe:[[],[]],pizza:[[],[]]
 };
@@ -1520,12 +1736,14 @@ var CIUDADES=[
 ];
 
 // ── ORDENAMIENTO PRO → DEST → GRATIS dentro del mismo plan → más reciente primero
+// ── ORDENAMIENTO PRO → DEST → GRATIS. Dentro del mismo plan, cuando compiten
+// varios en el mismo día, gana el que se publicó primero (orden de carga, no de fecha del evento).
 function ordenar(arr){
   var p={pro:0,dest:1,gratis:2};
   return arr.slice().sort(function(a,b){
-    var pa=p[a.plan]||2,pb=p[b.plan]||2;
+    var pa=(a.plan in p)?p[a.plan]:2,pb=(b.plan in p)?p[b.plan]:2;
     if(pa!==pb)return pa-pb;
-    return b.pub-a.pub;
+    return a.pub-b.pub;
   });
 }
 
@@ -1541,11 +1759,13 @@ function rAdImg(ad,cls){
   h+='</div>';
   return h;
 }
-// ── GRILLA 2 COLUMNAS: reemplaza al listado de eventos hasta que el usuario elige un filtro
-function rAdsGrid(ads){
-  var list=(ads||[]).slice(0,4);
-  while(list.length<4)list.push(null);
-  return '<div class="ads-2col">'+list.map(function(a){return rAdImg(a,'ad-tile');}).join('')+'</div>';
+// ── GRILLA 2 COLUMNAS: reemplaza al listado de eventos hasta que el usuario elige un filtro.
+// Cada tile es un slot rotativo (random, no en orden) de hasta 4 imágenes. La cantidad de tiles
+// no tiene techo: para sumar más basta con agregar otro array a la lista (ADS_GRID_HOME / ADS_GRID_CAT[key]),
+// se van acomodando de a 2 por fila hacia abajo. Sin anunciantes = 2 tiles placeholder (1 fila) por defecto.
+function rAdsGrid(prefix,slots){
+  var arr=(slots&&slots.length)?slots:[[],[]];
+  return '<div class="ads-2col">'+registerAndRenderSlots(prefix,arr,'ad-tile',true)+'</div>';
 }
 
 // ── RENDER EVENTO — el nivel (Gratuito/Destacado/Destacado Plus) se ve en el estilo de la tarjeta, no en una etiqueta de "pagó/no pagó"
@@ -1555,21 +1775,29 @@ function precioLinea(e){
 }
 function rEvi(e){
   var cls='evi'+(e.plan==='dest'?' evi-dest':'');
-  var badge=e.plan==='dest'?'<span class="bdest"><i class="ti ti-star-filled"></i>Destacado</span>':(!e.precio?'<span class="bfree">Gratis</span>':'');
+  var badge=!e.precio?'<span class="bfree">Gratis</span>':'';
+  var tipo=CATS[e.cat]?CATS[e.cat].nom:'';
   return '<div class="'+cls+'" onclick="ir(\'evento\')">'
     +'<div class="efc"><div class="efd">'+e.d+'</div><div class="efm">'+e.m+'</div></div>'
     +'<div class="eico" style="background:'+e.ibg+'"><i class="ti '+e.ico+'" style="color:'+e.ic+'"></i></div>'
-    +'<div class="einf"><div class="enom-row"><div class="enom">'+e.nom+'</div>'+badge+'</div><div class="elug"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'+precioLinea(e)+'</div>'
+    +'<div class="einf"><div class="etipo" style="color:'+e.ic+'">'+tipo+'</div><div class="enom-row"><div class="enom">'+e.nom+'</div>'+badge+'</div><div class="elug"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'+precioLinea(e)+'</div>'
     +'</div>';
 }
+// Destacado Plus — misma fila que Gratis/Destacado (no lleva etiqueta de plan, solo se distingue por
+// el trazo/fondo de .evi-plus), pero con miniatura de flyer de 44×44 en vez del ícono de categoría.
+// La miniatura es un recorte del flyer completo que el organizador elige arrastrando en Publicar evento
+// (ver #flyer-crop-stage); si no cargó flyer, cae al ícono de categoría como los otros niveles.
 function rEviPlus(e){
+  var badge=!e.precio?'<span class="bfree">Gratis</span>':'';
+  var tipo=CATS[e.cat]?CATS[e.cat].nom:'';
+  var miniatura=e.flyer
+    ?'<div class="evi-plus-thumb"><img src="'+e.flyer.img+'" alt="" style="object-position:'+(e.flyer.pos||'50% 50%')+'"></div>'
+    :'<div class="eico" style="background:'+e.ibg+'"><i class="ti '+e.ico+'" style="color:'+e.ic+'"></i></div>';
   return '<div class="evi-plus" onclick="ir(\'evento\')">'
-    +'<div class="evi-plus-img" style="background:'+e.ibg+'"><i class="ti '+e.ico+'" style="font-size:34px;color:'+e.ic+'"></i><span class="evi-plus-tag">'+e.d+' '+e.m+'</span><span class="bpro" style="position:absolute;top:8px;right:8px"><i class="ti ti-crown"></i>Destacado Plus</span></div>'
-    +'<div class="evi-plus-body">'
-    +'<div class="evi-plus-tit">'+e.nom+'</div>'
-    +'<div class="evi-plus-meta"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'
-    +precioLinea(e)
-    +'</div></div>';
+    +'<div class="efc"><div class="efd">'+e.d+'</div><div class="efm">'+e.m+'</div></div>'
+    +miniatura
+    +'<div class="einf"><div class="etipo" style="color:'+e.ic+'">'+tipo+'</div><div class="enom-row"><div class="enom">'+e.nom+'</div>'+badge+'</div><div class="elug"><i class="ti ti-map-pin"></i>'+e.lug+'</div>'+precioLinea(e)+'</div>'
+    +'</div>';
 }
 function pintarEv(e){return e.plan==='pro'?rEviPlus(e):rEvi(e);}
 
@@ -1670,12 +1898,10 @@ function compartirSitio(){
 }
 function compartirEvento(){
   var tit=document.querySelector('#s-evento .ev-tit').textContent;
-  var mv=document.querySelectorAll('#s-evento .mi-v');
-  var partes=[tit];
-  if(mv[0])partes.push(mv[0].textContent);
-  if(mv[1])partes.push(mv[1].textContent);
-  if(mv[2])partes.push(mv[2].textContent);
-  var msg=partes.join(' · ')+'. ¡Organicemos para ir! Lo vi en seSALE: '+location.href;
+  var fecha=document.getElementById('ev-fecha-v').textContent;
+  var desde=document.getElementById('ev-desde-v').textContent;
+  var lugar=document.getElementById('ev-lugar-v').textContent;
+  var msg=tit+' · '+fecha+' · '+desde+' · '+lugar+'. ¡Organicemos para ir! Lo vi en seSALE: '+location.href;
   if(navigator.share){
     navigator.share({title:tit,text:msg,url:location.href}).catch(function(){});
   } else {
@@ -1683,9 +1909,38 @@ function compartirEvento(){
   }
 }
 
-// ── FLYER — lightbox sin salir del sitio
-function abrirFlyer(){document.getElementById('lightbox').classList.add('open');}
-function cerrarFlyer(){document.getElementById('lightbox').classList.remove('open');}
+// ── RECORDATORIO — el usuario elige por qué canal quiere que le avisemos
+function togRecordar(){
+  document.getElementById('recordar-panel').classList.toggle('open');
+}
+function selCanal(el,tipo){
+  document.querySelectorAll('.chan-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  document.getElementById('rp-inp').placeholder=tipo==='wa'?'Tu WhatsApp (con código de área)':'Tu email';
+  document.getElementById('rp-err').style.display='none';
+}
+function confirmarRecordar(){
+  var inp=document.getElementById('rp-inp');
+  var err=document.getElementById('rp-err');
+  var btn=document.getElementById('rp-confirm-btn');
+  if(!inp.value.trim()){err.style.display='block';return;}
+  err.style.display='none';
+  btn.textContent='Listo, te avisamos ✓';
+}
+
+// ── LIGHTBOX — amplía cualquier imagen in-page (flyer de evento, foto de Destacado Plus en
+// Gastronomía, etc.) reutilizando el mismo modal. IMPORTANTE: esto es a propósito un <div> que
+// se muestra/oculta con una clase CSS, y NO un window.open() ni una pestaña nueva. Los
+// navegadores bloquean ventanas nuevas que no se abren como respuesta directa e inmediata a un
+// clic; un modal in-page como este nunca dispara ese bloqueo.
+function abrirLightbox(bg,ico,icoColor,icoSize){
+  var img=document.getElementById('lightbox-img');
+  img.style.background=bg;
+  img.innerHTML='<i class="ti '+ico+'" style="font-size:'+(icoSize||120)+'px;color:'+icoColor+'"></i>';
+  document.getElementById('lightbox').classList.add('open');
+}
+function cerrarLightbox(){document.getElementById('lightbox').classList.remove('open');}
+function abrirFlyer(){abrirLightbox('linear-gradient(135deg,#1a0a1a,#2d0d2d)','ti-music','#7F77DD');}
 
 // ── MAPA — abre la dirección en Google Maps
 function abrirMapa(direccion){
@@ -1778,7 +2033,7 @@ function verCat(key){
   while(slots.length<2)slots.push([]);
   document.getElementById('cat-bans-list').innerHTML=registerAndRenderSlots('cat-'+key,slots);
   document.querySelectorAll('#s-cat-det .fils .fil').forEach(function(b){b.classList.remove('on');});
-  document.getElementById('cat-det-lista').innerHTML=rAdsGrid(ADS_GRID_CAT[key]);
+  document.getElementById('cat-det-lista').innerHTML=rAdsGrid('cat-grid-'+key,ADS_GRID_CAT[key]);
   ir('cat-det');
 }
 
@@ -1907,7 +2162,101 @@ function selET(el,t){
   document.getElementById('ent-extra').classList.toggle('show',t!=='gratis');
   document.getElementById('campo-anticipo').style.display=t==='anticipo'?'block':'none';
 }
-function selPlan(el){document.querySelectorAll('.plan-o').forEach(function(b){b.classList.remove('on');});el.classList.add('on');}
+// ── DAR DE BAJA un aviso ya publicado (p. ej. porque el evento se canceló)
+function togBajaAviso(){
+  document.getElementById('baja-panel').classList.toggle('open');
+}
+function confirmarBaja(){
+  document.getElementById('aviso-activo-box').innerHTML='<div class="verified"><i class="ti ti-circle-check"></i>Diste de baja tu aviso. Ya no aparece en la agenda pública.</div>';
+}
+// ── PLAN ELEGIDO: si es gratis, se publica directo (sin pantalla de pago); si es pago,
+// el botón lleva a Pagar plan y desde ahí sí o sí hay que pasar por un método de pago.
+var planSeleccionado={nombre:'Destacado',precio:document.getElementById('precio-dest-pub')?document.getElementById('precio-dest-pub').textContent:'$X.XXX/mes',gratis:false};
+function selPlan(el,esPlus){
+  document.querySelectorAll('.plan-o').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  document.getElementById('flyer-upload-sec').style.display=esPlus?'block':'none';
+  var esGratis=el.dataset.tipo==='gratis';
+  var nombre=el.querySelector('.po-n').textContent.trim();
+  var precio=el.querySelector('.po-p').textContent.trim();
+  planSeleccionado={nombre:nombre,precio:precio,gratis:esGratis};
+  var btn=document.getElementById('btn-continuar-pub');
+  if(esGratis){
+    btn.innerHTML='<i class="ti ti-check"></i>Publicar evento';
+    btn.setAttribute('onclick','irExito(true)');
+  } else {
+    btn.innerHTML='<i class="ti ti-arrow-right"></i>Continuar al pago';
+    btn.setAttribute('onclick','irPago()');
+  }
+}
+function irPago(){
+  document.getElementById('pago-plan-nombre').textContent=planSeleccionado.nombre;
+  document.getElementById('pago-total').textContent=planSeleccionado.precio;
+  ir('pago');
+}
+function irExito(gratis){
+  var t=document.getElementById('exito-t');
+  var sub=document.getElementById('exito-sub');
+  var planBox=document.getElementById('exito-plan-box');
+  if(gratis){
+    t.textContent='¡Evento publicado!';
+    sub.innerHTML='Tu evento gratuito ya está visible en la agenda.<br>Podés publicar otro cuando quieras.';
+    planBox.style.display='none';
+  } else {
+    t.textContent='¡Pago confirmado!';
+    sub.innerHTML='Tu plan fue activado automáticamente.<br>Ya podés publicar eventos ilimitados.';
+    planBox.style.display='block';
+    document.getElementById('exito-plan-v').textContent=planSeleccionado.nombre+' · '+planSeleccionado.precio;
+  }
+  ir('exito');
+}
+
+// ── FLYER Destacado Plus: subida + selector de recorte para la miniatura de 44×44 de la lista.
+// El flyer completo (sin recortar) es el que se ve ampliado dentro del evento; acá solo se elige
+// qué franja de esa misma imagen se usa como miniatura.
+var cropOffsetY=0,cropDragging=false,cropStartY=0,cropStartOffset=0,cropMinTop=0;
+function cargarFlyer(inp){
+  var file=inp.files&&inp.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=document.getElementById('crop-img');
+    var thumb=document.getElementById('crop-thumb-img');
+    img.src=e.target.result;
+    thumb.src=e.target.result;
+    img.onload=function(){
+      var escala=150/img.naturalWidth;
+      var altoEscalado=img.naturalHeight*escala;
+      cropMinTop=-(altoEscalado-200);
+      cropOffsetY=Math.max(cropMinTop,Math.min(0,-(altoEscalado-200)/2));
+      aplicarRecorte();
+    };
+    document.getElementById('flyer-crop-wrap').style.display='flex';
+    document.getElementById('flyer-drop').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+function aplicarRecorte(){
+  document.getElementById('crop-img').style.top=cropOffsetY+'px';
+  document.getElementById('crop-thumb-img').style.top=(cropOffsetY-78)+'px';
+  document.getElementById('crop-thumb-img').style.left='-53px';
+}
+(function(){
+  var stage=document.getElementById('crop-stage');
+  if(!stage)return;
+  stage.addEventListener('pointerdown',function(e){
+    cropDragging=true;cropStartY=e.clientY;cropStartOffset=cropOffsetY;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove',function(e){
+    if(!cropDragging)return;
+    var delta=e.clientY-cropStartY;
+    cropOffsetY=Math.max(cropMinTop,Math.min(0,cropStartOffset+delta));
+    aplicarRecorte();
+  });
+  stage.addEventListener('pointerup',function(){cropDragging=false;});
+  stage.addEventListener('pointerleave',function(){cropDragging=false;});
+})();
 var cl=document.getElementById('chk-link');
 if(cl)cl.addEventListener('change',function(){document.getElementById('campo-link').style.display=this.checked?'block':'none';});
 var cig=document.getElementById('chk-ig');
@@ -1944,6 +2293,7 @@ function envSug(){
 function setTipo(btn,tipo){
   document.querySelectorAll('#s-lugares .chip').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');
   document.getElementById('lugares-bans').innerHTML=rLugBans(tipo);
+  document.getElementById('lugares-ban-lbl').textContent=tipo==='todos'?'GASTRONOMÍA · 3 slots':'GASTRONOMÍA · '+btn.textContent.trim()+' · 2 slots';
 }
 
 // ── ADMIN PANEL
@@ -1964,7 +2314,6 @@ function aSv(id,valId){
 }
 function aCx(id){var ef=document.getElementById('ef-'+id);if(ef)ef.style.display='none';}
 function togA(el){el.classList.toggle('on');el.classList.toggle('off');}
-
 // ── ACCESO ADMIN (triple clic en logo)
 var logoClicks=0,logoTimer=null;
 document.querySelector('.logo').addEventListener('click',function(){
@@ -1976,7 +2325,7 @@ document.querySelector('.logo').addEventListener('click',function(){
 
 // ── INIT
 rCal();
-document.getElementById('ev-lista').innerHTML=rAdsGrid(ADS_GRID_HOME);
+document.getElementById('ev-lista').innerHTML=rAdsGrid('home-grid',ADS_GRID_HOME);
 document.getElementById('home-bans').innerHTML=registerAndRenderSlots('home',BANS_HOME);
 document.getElementById('categorias-bans').innerHTML=registerAndRenderSlots('categorias',BANS_CATEGORIAS);
 document.getElementById('lugares-bans').innerHTML=rLugBans('todos');

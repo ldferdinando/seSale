@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_current_user_optional, get_session, require_admin
-from app.core.expiry import run_expire_overdue_subscriptions_task
+from app.core.expiry import run_expire_overdue_ad_items_task, run_expire_overdue_subscriptions_task
 from app.core.limiter import limiter
 from app.core.storage import InvalidFlyerFileError
 from app.models.event import EventStatus
@@ -58,6 +58,8 @@ async def get_events(
     # de enviada la respuesta, sin agregar latencia al listado. Ver
     # app/core/expiry.py.
     background_tasks.add_task(run_expire_overdue_subscriptions_task)
+    # Etapa 8d-pre: mismo patrón para el vencimiento lazy de banners (AdItem).
+    background_tasks.add_task(run_expire_overdue_ad_items_task)
     return list_public_events(
         session,
         city_id=city_id,

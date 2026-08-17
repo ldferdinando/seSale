@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.routers import (
     admin,
+    ads,
     auth,
     cities,
     events,
@@ -46,6 +47,7 @@ app.include_router(admin.router)
 app.include_router(plans.router)
 app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
+app.include_router(ads.router)
 
 # Etapa 8b — sirve los flyers subidos en development sin Supabase configurado
 # (ver app/core/storage.py, fallback a disco local). En producción con

@@ -4,7 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
-import { AdSlots } from "@/features/events/components/AdSlots";
+import { AdSlots, AdSlotsGrid } from "@/features/events/components/AdSlots";
 import { CategoryChips } from "@/features/events/components/CategoryChips";
 import { EventFilters } from "@/features/events/components/EventFilters";
 import { EventList } from "@/features/events/components/EventList";
@@ -91,6 +91,7 @@ export default function HomePage() {
               <EventFilters filters={filters} onChange={setFilters} />
               <EventList filters={effectiveFilters} enabled={!isDetecting} />
             </div>
+            <AdSlotsGrid />
             <ShareBanner />
           </>
         ) : isDetecting || mapEvents.isLoading || !activeCity ? (

@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { MyEventsView } from "@/features/events/components/MyEventsView";
 import { MySubscriptionsSection } from "@/features/subscriptions/components/MySubscriptionsSection";
 import { AccountProfile, AccountProfileSkeleton } from "@/features/users/components/AccountProfile";
+import { MyBannersSection } from "@/features/users/components/MyBannersSection";
 
 export default function MiCuentaPage() {
   const { data: currentUser, isLoading } = useCurrentUser();
@@ -43,6 +44,13 @@ export default function MiCuentaPage() {
         <h2 className="px-1 text-lg font-bold text-foreground">Mis eventos</h2>
         <MyEventsView />
       </section>
+
+      {currentUser && (
+        <section className="flex flex-col gap-4">
+          <h2 className="px-1 text-lg font-bold text-foreground">Mis banners</h2>
+          <MyBannersSection />
+        </section>
+      )}
     </main>
   );
 }

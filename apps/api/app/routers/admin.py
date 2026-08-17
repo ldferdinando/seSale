@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -9,10 +9,20 @@ from app.core.deps import get_current_user, get_session, require_admin
 from app.core.email import send_subscription_approved_email, send_subscription_rejected_email
 from app.core.expiry import expire_overdue_subscriptions
 from app.core.limiter import limiter
+from app.core.storage import InvalidFlyerFileError
 from app.models.event import Event, EventStatus
 from app.models.plan import PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
+from app.schemas.ad_slot import (
+    AdItemAdminRead,
+    AdItemCreate,
+    AdItemReorderRequest,
+    AdItemStatusUpdate,
+    AdItemUpdate,
+    AdSection,
+    AdSlotAdminRead,
+)
 from app.schemas.city import CityAdminRead, CitySortOrderUpdate
 from app.schemas.event import AdminEventRead, EventRead
 from app.schemas.location import (
@@ -29,6 +39,16 @@ from app.schemas.subscription import (
     SubscriptionReviewRequest,
 )
 from app.schemas.user import AdminUserCreate, UserRead
+from app.services.ad_service import (
+    create_ad_item,
+    delete_ad_item,
+    list_admin_ad_items,
+    list_admin_ad_slots,
+    reorder_ad_items,
+    toggle_ad_item_status,
+    update_ad_item,
+    upload_ad_item_image,
+)
 from app.services.city_service import (
     count_active_future_events,
     list_all_cities_with_active_event_counts,
@@ -387,3 +407,119 @@ async def patch_admin_city_sort_order(
 
     count = count_active_future_events(session, city.id)
     return CityAdminRead(**city.model_dump(), active_events_count=count)
+
+
+# ── Etapa 8d — banners (ad-slots / ad-items) ──────────────────────────────
+
+
+@router.get("/ad-slots", response_model=list[AdSlotAdminRead])
+async def get_admin_ad_slots(
+    city_id: UUID = Query(...),
+    section: AdSection | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[AdSlotAdminRead]:
+    return list_admin_ad_slots(session, city_id=city_id, section=section)
+
+
+@router.get("/ad-items", response_model=list[AdItemAdminRead])
+async def get_admin_ad_items(
+    city_id: UUID | None = Query(default=None),
+    section: AdSection | None = Query(default=None),
+    status: str | None = Query(default=None),
+    user_id: UUID | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[AdItemAdminRead]:
+    return list_admin_ad_items(
+        session,
+        city_id=city_id,
+        section=section,
+        status=status,
+        user_id=user_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.post("/ad-items", response_model=AdItemAdminRead, status_code=status.HTTP_201_CREATED)
+async def post_admin_ad_item(
+    payload: AdItemCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AdItemAdminRead:
+    try:
+        return create_ad_item(session, payload, created_by=current_user.id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.put("/ad-items/{ad_item_id}", response_model=AdItemAdminRead)
+async def put_admin_ad_item(
+    ad_item_id: UUID,
+    payload: AdItemUpdate,
+    session: Session = Depends(get_session),
+) -> AdItemAdminRead:
+    try:
+        return update_ad_item(session, ad_item_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/ad-items/{ad_item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_admin_ad_item(
+    ad_item_id: UUID,
+    session: Session = Depends(get_session),
+) -> None:
+    try:
+        delete_ad_item(session, ad_item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/ad-items/{ad_item_id}/status", response_model=AdItemAdminRead)
+async def patch_admin_ad_item_status(
+    ad_item_id: UUID,
+    payload: AdItemStatusUpdate,
+    session: Session = Depends(get_session),
+) -> AdItemAdminRead:
+    try:
+        return toggle_ad_item_status(session, ad_item_id, payload.status)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/ad-items/{ad_item_id}/image", response_model=AdItemAdminRead)
+async def post_admin_ad_item_image(
+    ad_item_id: UUID,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+) -> AdItemAdminRead:
+    content = await file.read()
+    try:
+        return await upload_ad_item_image(
+            session,
+            ad_item_id,
+            file_content=content,
+            filename=file.filename or "banner",
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidFlyerFileError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.patch("/ad-items/reorder", response_model=list[AdItemAdminRead])
+async def patch_admin_ad_items_reorder(
+    payload: AdItemReorderRequest,
+    session: Session = Depends(get_session),
+) -> list[AdItemAdminRead]:
+    try:
+        return reorder_ad_items(session, payload.slot_id, payload.ordered_ids)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

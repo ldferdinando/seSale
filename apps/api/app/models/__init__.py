@@ -1,3 +1,4 @@
+from app.models.ad_item import AdItem
 from app.models.ad_slot import AdSlot
 from app.models.category import EventCategory
 from app.models.city import City
@@ -10,6 +11,7 @@ from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 
 __all__ = [
+    "AdItem",
     "AdSlot",
     "City",
     "Event",

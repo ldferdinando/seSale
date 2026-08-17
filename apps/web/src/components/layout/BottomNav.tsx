@@ -32,7 +32,7 @@ export function BottomNav() {
   const TABS: NavTab[] = [
     ...BASE_TABS,
     currentUser
-      ? { href: "/mis-eventos", label: "Mi cuenta", icon: User }
+      ? { href: "/mi-cuenta", label: "Mi cuenta", icon: User }
       : { href: "/login", label: "Ingresar", icon: User },
   ];
 

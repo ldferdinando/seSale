@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 
+import type { AdItemAdmin, AdSlot, AdSlotAdmin, MyAdItem } from "@/features/ads/types";
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 import type { AdminCity } from "@/features/cities/types";
@@ -208,7 +209,87 @@ export function makeAdminReport(overrides: Partial<AdminReport> = {}): AdminRepo
   };
 }
 
+export function makeAdSlot(overrides: Partial<AdSlot> = {}): AdSlot {
+  return {
+    id: "aaaaaaa1-aaaa-4aaa-aaaa-aaaaaaaaaaa1",
+    city_id: "22222222-2222-2222-2222-222222222222",
+    section: "eventos",
+    slot_position: 0,
+    rotation_mode: "sequential",
+    rotation_interval_seconds: 3,
+    is_active: true,
+    items: [],
+    ...overrides,
+  };
+}
+
+export function makeAdItemAdmin(overrides: Partial<AdItemAdmin> = {}): AdItemAdmin {
+  return {
+    id: "bbbbbbb1-bbbb-4bbb-bbbb-bbbbbbbbbbb1",
+    img_url: "https://example.com/banner.jpg",
+    link_url: null,
+    alt_text: null,
+    display_order: 0,
+    advertiser_name: "El Tinglado Bar",
+    user_id: "44444444-4444-4444-4444-444444444444",
+    user_public_name: "El Tinglado Bar",
+    starts_at: "2099-01-01",
+    ends_at: null,
+    status: "active",
+    created_by: "55555555-5555-5555-5555-555555555555",
+    created_at: "2099-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function makeAdSlotAdmin(overrides: Partial<AdSlotAdmin> = {}): AdSlotAdmin {
+  return { ...makeAdSlot(), ...overrides } as AdSlotAdmin;
+}
+
+export function makeMyAdItem(overrides: Partial<MyAdItem> = {}): MyAdItem {
+  return { ...makeAdItemAdmin(), section: "eventos", slot_position: 0, ...overrides };
+}
+
 export const handlers = [
+  http.get(`${API_URL}/api/ads`, ({ request }) => {
+    const url = new URL(request.url);
+    const section = (url.searchParams.get("section") ?? "eventos") as AdSlot["section"];
+    const positions = section === "eventos-grid" ? [0, 1] : [0, 1, 2];
+    return HttpResponse.json(
+      positions.map((slot_position) => makeAdSlot({ section, slot_position, id: `${section}-slot-${slot_position}` })),
+    );
+  }),
+  http.get(`${API_URL}/api/admin/ad-slots`, () => {
+    return HttpResponse.json([makeAdSlotAdmin()]);
+  }),
+  http.get(`${API_URL}/api/admin/ad-items`, () => {
+    return HttpResponse.json([makeAdItemAdmin()]);
+  }),
+  http.post(`${API_URL}/api/admin/ad-items`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdItemAdmin({ ...body } as Partial<AdItemAdmin>), { status: 201 });
+  }),
+  http.put(`${API_URL}/api/admin/ad-items/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdItemAdmin({ id: params.id as string, ...body } as Partial<AdItemAdmin>));
+  }),
+  http.delete(`${API_URL}/api/admin/ad-items/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.patch(`${API_URL}/api/admin/ad-items/:id/status`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdItemAdmin({ id: params.id as string, status: body.status as AdItemAdmin["status"] }));
+  }),
+  http.post(`${API_URL}/api/admin/ad-items/:id/image`, () => {
+    return HttpResponse.json(makeAdItemAdmin({ img_url: "https://example.com/uploaded.jpg" }));
+  }),
+  http.patch(`${API_URL}/api/admin/ad-items/reorder`, () => {
+    return HttpResponse.json([makeAdItemAdmin()]);
+  }),
+  http.get(`${API_URL}/api/users/me/banners`, () => {
+    return HttpResponse.json([]);
+  }),
+
   http.get(`${API_URL}/api/events`, () => {
     return HttpResponse.json([makeEvent()]);
   }),
