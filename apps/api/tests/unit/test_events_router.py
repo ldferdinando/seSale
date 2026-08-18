@@ -61,6 +61,23 @@ async def test_get_events_filters_by_category(client: AsyncClient, session: Sess
     assert body[0]["title"] == "teatro-event"
 
 
+async def test_get_events_filters_by_location_id(client: AsyncClient, session: Session, city, organizer, location):
+    other_location = Location(name="Otro lugar", address="Calle Falsa 123", city_id=city.id)
+    session.add(other_location)
+    session.commit()
+    session.refresh(other_location)
+
+    _make_event(session, city=city, organizer=organizer, location=location, title="en-location", date=date(2099, 1, 1))
+    _make_event(session, city=city, organizer=organizer, location=other_location, title="en-otro-lugar", date=date(2099, 1, 1))
+
+    response = await client.get("/api/events", params={"location_id": str(location.id)})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["title"] == "en-location"
+
+
 async def test_get_events_filters_by_city_id(client: AsyncClient, session: Session, organizer, location):
     city_a = City(name="General Roca", province="Río Negro", is_active=True)
     city_b = City(name="Cipolletti", province="Río Negro", is_active=True)

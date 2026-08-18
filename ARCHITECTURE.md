@@ -446,6 +446,10 @@ class Location(SQLModel, table=True):
     __tablename__ = "locations"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Etapa 8e — hueco encontrado al planificar (ver a_revisar.md):
+    # LocationGastroAdminRead necesitaba un timestamp de creación y
+    # Location no tenía ninguno. Agregado con default "ahora".
     name: str = Field(max_length=255)              # "El Tinglado Bar"
     address: str = Field(max_length=500)           # "Av. Roca 1240"
     city_id: UUID = Field(foreign_key="cities.id")
@@ -461,6 +465,13 @@ class Location(SQLModel, table=True):
     # formulario de evento). False = ubicación automática creada por un
     # organizador con dirección libre — no aparece en el selector.
     is_public: bool = Field(default=False)
+
+    # Etapa 8e — otro hueco encontrado al planificar: el pedido de
+    # gastronomía necesita poder "deshabilitar" un lugar sin borrarlo
+    # (oculto de GET /api/gastro, sigue existiendo para editar/reactivar) y
+    # Location no tenía ningún campo así. default=True — no cambia el
+    # comportamiento de los Location existentes (lugares de eventos).
+    is_active: bool = Field(default=True)
 
     # ── Etapa 8e-pre — Gastronomía ────────────────────────────────────
     # Gastronomía usa la misma tabla Location que los lugares de eventos —
@@ -1108,7 +1119,10 @@ GET    /api/events                     Listar eventos aprobados y activos      �
                                                 moment (diurno|nocturno, JOIN
                                                 con event_moments — un evento
                                                 dual aparece en ambos),
-                                                date_from, date_to, plan, search
+                                                date_from, date_to, plan, search,
+                                                location_id (Etapa 8e — eventos
+                                                de un lugar puntual, usado por
+                                                el detalle de gastronomía)
                                        category ahora es multi-valor por
                                        evento (event_categories); el filtro
                                        sigue devolviendo eventos con AL MENOS
@@ -1313,6 +1327,89 @@ DELETE /api/admin/locations/{id}       409 si tiene eventos asociados (mensaje
                                        físicamente
 ```
 
+### Gastronomía (`/api/gastro`) ✓ Etapa 8e
+
+Reusa la tabla `Location` (`is_gastro=True`) — no hay tabla nueva. Ver
+sección 3 (`locations`/`location_gastro_types`).
+
+```
+GET    /api/gastro                     Público. Requiere city_id. Filtros:
+                                       gastro_type (OR contra
+                                       location_gastro_types), search
+                                       (name/description), has_delivery,
+                                       has_reservations, price_range.
+                                       Solo is_gastro=True AND is_active=True
+                                       AND is_public=True. Orden: plan
+                                       pro→dest→gratis, luego name ASC (sin
+                                       paginación). Dispara el vencimiento
+                                       lazy de planes de gastronomía en
+                                       background (ver expire_overdue_gastro_plans
+                                       más abajo), mismo patrón que
+                                       GET /api/events
+GET    /api/gastro/{id}                Público. 404 si no es gastronómico,
+                                       no está activo o no es público.
+                                       event_count: eventos aprobados y
+                                       futuros con location_id=este lugar
+```
+
+### Gastronomía — administración (`/api/admin`) ✓ Etapa 8e
+
+Todas requieren rol `admin` (401 sin auth, 403 para `user`).
+
+```
+GET    /api/admin/gastro               Todos los lugares gastronómicos
+                                       (incluye is_active=False e
+                                       is_public=False). Filtros: city_id,
+                                       gastro_type, is_active, is_public,
+                                       is_verified, plan, search. Orden:
+                                       plan pro→dest→gratis, luego name ASC
+POST   /api/admin/gastro               Crea un lugar gastronómico. Fuerza
+                                       is_gastro=True, plan="gratis",
+                                       is_public=True, is_active=True.
+                                       Body: LocationGastroCreate —
+                                       gastro_types (1-5, validados contra
+                                       GASTRO_TYPES), opening_hours (dict
+                                       por día o null), price_range
+                                       ("$"/"$$"/"$$$"/null), contacto,
+                                       delivery/reservas, etc.
+PUT    /api/admin/gastro/{id}          Edita cualquier campo salvo
+                                       is_gastro. gastro_types, si viene,
+                                       reemplaza la lista completa (replace
+                                       total, igual que event_categories).
+                                       is_active también se edita acá — no
+                                       hay un endpoint PATCH dedicado (ver
+                                       a_revisar.md)
+DELETE /api/admin/gastro/{id}          409 si tiene eventos futuros
+                                       asociados (Event.location_id=este
+                                       lugar AND date >= hoy); si no,
+                                       elimina físicamente (incluye
+                                       location_gastro_types y el
+                                       cover_img_url en Storage)
+PATCH  /api/admin/gastro/{id}/verify   Alterna is_verified. Body:
+                                       { is_verified: bool }
+PATCH  /api/admin/gastro/{id}/plan     Cambia el plan. Body:
+                                       { plan: "gratis"|"dest"|"pro" }.
+                                       dest/pro → featured_until = ahora +
+                                       30 días (UTC). gratis →
+                                       featured_until = null
+POST   /api/admin/gastro/{id}/cover    Sube/reemplaza cover_img_url
+                                       (multipart/form-data, campo "file").
+                                       JPG/PNG/WEBP, máx. 5MB — mismo
+                                       patrón y límites que el flyer de
+                                       eventos (app/core/storage.py:
+                                       upload_cover/delete_cover)
+DELETE /api/admin/gastro/{id}/cover    Elimina cover_img_url y el archivo
+                                       del storage
+```
+
+**Vencimiento automático de planes de gastronomía**
+(`app/core/expiry.py:expire_overdue_gastro_plans`, mismo patrón que
+`expire_overdue_subscriptions`/`expire_overdue_ad_items`): revierte a
+`plan="gratis"`/`featured_until=None` los `Location` gastronómicos con
+`plan != "gratis"` y `featured_until` vencido. Idempotente. Se dispara lazy
+como `BackgroundTask` en `GET /api/gastro`
+(`run_expire_overdue_gastro_plans_task`).
+
 ### Estadísticas (`/api/stats`)
 ```
 GET    /api/stats                      Estadísticas agregadas (público)         ✓ Etapa 4.5
@@ -1496,6 +1593,7 @@ GET    /api/users/me/banners             Usuario autenticado. Sus propios
 | **8d (fixes post-QA)** | Correcciones encontradas probando la 8d apenas cerrada: imágenes de banner subidas como archivo no se veían, y los tiles del grid quedaban pegados a los carruseles wide en vez de ir después del listado de eventos. | ✓ Completa: `img_url` se resuelve con `resolveMediaUrl()` (mismo bug que el flyer en la Etapa 8b, ver `lib/media.ts`) en todos los `<img>` que la renderizan (`BannerSlot.tsx`, `AdSlotCard.tsx`, `MyBannersSection.tsx`, preview de `AdItemFormModal.tsx`) — el dato guardado en la DB ya era correcto, solo faltaba resolverlo al mostrar, así que los banners existentes no necesitan volver a subirse; `AdSlots.tsx` se separó en `AdSlots` (3 carruseles wide, misma posición) y `AdSlotsGrid` (tiles), este último movido en `app/page.tsx` a después de `<EventList />` |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots`/`ad_items` desde admin, render en frontend. | ✓ Completa — ver 8d-pre y 8d arriba |
 | **8e-pre** | Extensión del modelo Location para Gastronomía: campos gastronómicos, horarios estructurados, tabla location_gastro_types con tipos múltiples | ✓ Completa: Gastronomía reusa `locations` (no es tabla nueva) — `is_gastro`/`plan`/`featured_until` (mismo sistema de planes que `Event`), `opening_hours` (JSON por día, convive con `hours` texto libre), contacto (`gastro_whatsapp`/`gastro_instagram`/`gastro_web`/`gastro_email`), características (`has_delivery`/`has_reservations`/`price_range`), `cover_img_url`; tabla nueva `location_gastro_types` (PK compuesta `location_id`+`gastro_type`, igual patrón que `event_categories`, filtro OR); migración `0014`; seed con 5 lugares gastro de prueba en General Roca ("El Tinglado Bar" existente se actualiza in-place, no se duplica). Solo modelo/migración/seed — sin endpoints ni frontend, ver `a_revisar.md` |
+| **8e** | Gastronomía completa: endpoints públicos/admin, vista pública (`/lugares`, `/lugares/{id}`), ABM admin, vencimiento automático de planes. | ✓ Completa: `GET /api/gastro`/`GET /api/gastro/{id}` (público); `GET/POST/PUT/DELETE /api/admin/gastro`, `PATCH .../verify`, `PATCH .../plan`, `POST`/`DELETE .../cover`; `expire_overdue_gastro_plans` + disparo lazy en `GET /api/gastro`; filtro `location_id` nuevo en `GET /api/events`; migración `0015` (`Location.is_active`/`created_at`, huecos encontrados al planificar, ver `a_revisar.md`); frontend: `features/gastro/` completo (types/services/hooks/componentes), `useGastroPlaces.ts`, `/lugares` reemplaza el placeholder de la 8b (buscador, chips de tipo scrolleables, banners ya conectados, `GastroPlaceCard.tsx`), `/lugares/{id}` (`GastroDetailView.tsx`: horarios completos con día actual destacado, mapa, contacto, "Eventos en este lugar", compartir, SEO), `AdminGastroPanel.tsx`/`GastroForm.tsx` en el panel admin; `components/FlyerUpload.tsx` (Etapa 8b) generalizado a `components/MediaUpload.tsx` (prop `type: "flyer" \| "cover"`) para no duplicar código con la subida de portada |
 | **9** | App mobile (Expo) — consume la misma API. | |
 
 ---

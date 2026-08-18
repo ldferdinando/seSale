@@ -25,6 +25,7 @@ MAX_BANNER_SIZE_BYTES = 2 * 1024 * 1024  # 2MB
 
 _UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "flyers"
 _BANNER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "banners"
+_COVER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "covers"
 
 
 class InvalidFlyerFileError(ValueError):
@@ -189,6 +190,85 @@ def _delete_banner_from_local_disk(ad_item_id: UUID) -> None:
             f.unlink()
     try:
         item_dir.rmdir()
+    except OSError:
+        pass
+
+
+async def upload_cover(
+    file_content: bytes,
+    filename: str,
+    content_type: str,
+    location_id: UUID,
+) -> str:
+    """Sube la foto de portada de un lugar gastronómico (Location.cover_img_url).
+    Mismo patrón que upload_flyer: Supabase Storage en producción (bucket
+    `SUPABASE_COVER_BUCKET`, path `{location_id}/{filename}`) o disco local
+    en development (`apps/api/uploads/covers/{location_id}/`). Mismos
+    formatos/tamaño que el flyer de eventos (JPG/PNG/WEBP, máx. 5MB) — no
+    hay un límite distinto pedido para covers, a diferencia de los banners.
+
+    Si el lugar ya tenía cover, el caller (`location_service.upload_gastro_cover`)
+    es responsable de llamar a `delete_cover` antes.
+    """
+    validate_flyer_file(content_type, len(file_content))
+    object_name = f"{location_id}{_extension_for(content_type, filename)}"
+
+    if _supabase_configured():
+        return _upload_cover_to_supabase(file_content, object_name, content_type, location_id)
+    return _upload_cover_to_local_disk(file_content, object_name, location_id)
+
+
+def _upload_cover_to_supabase(
+    file_content: bytes, object_name: str, content_type: str, location_id: UUID
+) -> str:
+    from supabase import create_client  # import diferido — opcional en dev sin Supabase
+
+    client = create_client(settings.supabase_url, settings.supabase_service_key)
+    bucket = client.storage.from_(settings.supabase_cover_bucket)
+    path = f"{location_id}/{object_name}"
+    bucket.upload(path, file_content, {"content-type": content_type, "upsert": "true"})
+    return bucket.get_public_url(path)
+
+
+def _upload_cover_to_local_disk(file_content: bytes, object_name: str, location_id: UUID) -> str:
+    location_dir = _COVER_UPLOADS_DIR / str(location_id)
+    location_dir.mkdir(parents=True, exist_ok=True)
+    for old_file in location_dir.iterdir():
+        if old_file.is_file():
+            old_file.unlink()
+    (location_dir / object_name).write_bytes(file_content)
+    # Ruta relativa a propósito — misma razón que _upload_to_local_disk (ver
+    # arriba): la resuelve el frontend contra NEXT_PUBLIC_API_URL.
+    return f"/uploads/covers/{location_id}/{object_name}"
+
+
+def delete_cover(cover_img_url: str, location_id: UUID) -> None:
+    """Elimina la foto de portada existente del storage correspondiente
+    (Supabase o disco local)."""
+    if _supabase_configured():
+        _delete_cover_from_supabase(cover_img_url, location_id)
+    else:
+        _delete_cover_from_local_disk(location_id)
+
+
+def _delete_cover_from_supabase(cover_img_url: str, location_id: UUID) -> None:
+    from supabase import create_client
+
+    client = create_client(settings.supabase_url, settings.supabase_service_key)
+    bucket = client.storage.from_(settings.supabase_cover_bucket)
+    filename = cover_img_url.rstrip("/").split("/")[-1]
+    bucket.remove([f"{location_id}/{filename}"])
+
+
+def _delete_cover_from_local_disk(location_id: UUID) -> None:
+    location_dir = _COVER_UPLOADS_DIR / str(location_id)
+    if not location_dir.exists():
+        return
+    for f in location_dir.iterdir():
+        if f.is_file():
+            f.unlink()
+    try:
+        location_dir.rmdir()
     except OSError:
         pass
 

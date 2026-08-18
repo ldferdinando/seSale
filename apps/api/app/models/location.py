@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, JSON
@@ -9,6 +9,10 @@ class Location(SQLModel, table=True):
     __tablename__ = "locations"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Etapa 8e — mismo hueco que is_active (ver más abajo): Location no
+    # tenía timestamp de creación, pero LocationGastroAdminRead lo necesita
+    # para el panel admin. Agregado con default "ahora" — retrocompatible.
     name: str = Field(max_length=255)
     address: str = Field(max_length=500)
     city_id: UUID = Field(foreign_key="cities.id")
@@ -24,6 +28,13 @@ class Location(SQLModel, table=True):
     # formulario de evento. False: creado automáticamente cuando un
     # organizador escribió una dirección libre — no aparece en el selector.
     is_public: bool = Field(default=False)
+
+    # Etapa 8e — hueco encontrado al planificar: el pedido de gastronomía
+    # necesita poder "deshabilitar" un lugar sin borrarlo (oculto de las
+    # vistas públicas, sigue existiendo para el admin). No existía ningún
+    # campo así para Location — se agrega acá, con default True para no
+    # afectar los lugares de eventos ya cargados. Ver a_revisar.md.
+    is_active: bool = Field(default=True)
 
     # ── Etapa 8e-pre — Gastronomía ───────────────────────────────────────
 

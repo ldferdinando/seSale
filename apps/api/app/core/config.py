@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # Supabase que los flyers, bucket propio.
     supabase_banner_bucket: str = "banners"
 
+    # Etapa 8e — foto de portada de lugares gastronómicos (Location.cover_img_url).
+    # Mismas credenciales de Supabase, bucket propio.
+    supabase_cover_bucket: str = "covers"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

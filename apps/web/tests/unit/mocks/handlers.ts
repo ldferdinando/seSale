@@ -4,6 +4,7 @@ import type { AdItemAdmin, AdSlot, AdSlotAdmin, MyAdItem } from "@/features/ads/
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 import type { AdminCity } from "@/features/cities/types";
+import type { AdminGastroPlace, GastroPlace } from "@/features/gastro/types";
 import type { AdminLocation, Location } from "@/features/locations/types";
 import type { Plan } from "@/features/plans/types";
 import type { AdminReport } from "@/features/reports/types";
@@ -250,6 +251,55 @@ export function makeMyAdItem(overrides: Partial<MyAdItem> = {}): MyAdItem {
   return { ...makeAdItemAdmin(), section: "eventos", slot_position: 0, ...overrides };
 }
 
+export function makeGastroPlace(overrides: Partial<GastroPlace> = {}): GastroPlace {
+  return {
+    id: "55555555-5555-5555-5555-555555555555",
+    name: "El Tinglado Bar",
+    address: "Av. Roca 1240",
+    city_id: "22222222-2222-2222-2222-222222222222",
+    city_name: "General Roca",
+    latitude: -39.0333,
+    longitude: -67.5833,
+    description: "Un bar con música en vivo",
+    hours: null,
+    opening_hours: {
+      lunes: null,
+      martes: { open: "20:00", close: "02:00" },
+      miercoles: { open: "20:00", close: "02:00" },
+      jueves: { open: "20:00", close: "02:00" },
+      viernes: { open: "20:00", close: "03:00" },
+      sabado: { open: "20:00", close: "03:00" },
+      domingo: null,
+    },
+    gastro_types: ["bar", "cerveceria"],
+    gastro_whatsapp: "5492984000001",
+    gastro_instagram: "eltingladobar",
+    gastro_web: null,
+    gastro_email: null,
+    has_delivery: false,
+    has_reservations: true,
+    price_range: "$$",
+    cover_img_url: null,
+    plan: "dest",
+    is_verified: true,
+    event_count: 2,
+    ...overrides,
+  };
+}
+
+export function makeAdminGastroPlace(overrides: Partial<AdminGastroPlace> = {}): AdminGastroPlace {
+  return {
+    ...makeGastroPlace(),
+    is_active: true,
+    is_gastro: true,
+    is_public: true,
+    featured_until: null,
+    place_type: null,
+    created_at: "2099-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
 export const handlers = [
   http.get(`${API_URL}/api/ads`, ({ request }) => {
     const url = new URL(request.url);
@@ -486,5 +536,48 @@ export const handlers = [
   http.patch(`${API_URL}/api/admin/reports/:id/status`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(makeAdminReport({ status: body.status as AdminReport["status"] }));
+  }),
+
+  // ── Etapa 8e — Gastronomía ────────────────────────────────────────────
+  http.get(`${API_URL}/api/gastro`, ({ request }) => {
+    const url = new URL(request.url);
+    const gastroType = url.searchParams.get("gastro_type");
+    const places = [
+      makeGastroPlace(),
+      makeGastroPlace({ id: "66666666-6666-6666-6666-666666666666", name: "La Toscana", gastro_types: ["cafe"], plan: "gratis" }),
+    ];
+    const filtered = gastroType ? places.filter((p) => p.gastro_types.includes(gastroType)) : places;
+    return HttpResponse.json(filtered);
+  }),
+  http.get(`${API_URL}/api/gastro/:id`, ({ params }) => {
+    return HttpResponse.json(makeGastroPlace({ id: params.id as string }));
+  }),
+  http.get(`${API_URL}/api/admin/gastro`, () => {
+    return HttpResponse.json([makeAdminGastroPlace()]);
+  }),
+  http.post(`${API_URL}/api/admin/gastro`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminGastroPlace({ ...body } as Partial<AdminGastroPlace>), { status: 201 });
+  }),
+  http.put(`${API_URL}/api/admin/gastro/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, ...body } as Partial<AdminGastroPlace>));
+  }),
+  http.delete(`${API_URL}/api/admin/gastro/:id`, () => {
+    return HttpResponse.json({ detail: "Lugar gastronómico eliminado" });
+  }),
+  http.patch(`${API_URL}/api/admin/gastro/:id/verify`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, is_verified: body.is_verified as boolean }));
+  }),
+  http.patch(`${API_URL}/api/admin/gastro/:id/plan`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, plan: body.plan as AdminGastroPlace["plan"] }));
+  }),
+  http.post(`${API_URL}/api/admin/gastro/:id/cover`, () => {
+    return HttpResponse.json({ cover_img_url: "https://storage.example.com/cover.jpg" });
+  }),
+  http.delete(`${API_URL}/api/admin/gastro/:id/cover`, () => {
+    return HttpResponse.json({ cover_img_url: null });
   }),
 ];

@@ -14,6 +14,7 @@ from app.routers import (
     auth,
     cities,
     events,
+    gastro,
     locations,
     plans,
     reports,
@@ -48,6 +49,7 @@ app.include_router(plans.router)
 app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
 app.include_router(ads.router)
+app.include_router(gastro.router)
 
 # Etapa 8b — sirve los flyers subidos en development sin Supabase configurado
 # (ver app/core/storage.py, fallback a disco local). En producción con

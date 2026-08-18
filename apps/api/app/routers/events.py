@@ -52,6 +52,7 @@ async def get_events(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     search: str | None = Query(default=None),
+    location_id: UUID | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> list[EventRead]:
     # Etapa 8c: vencimiento lazy de destacados — corre en background, después
@@ -68,6 +69,7 @@ async def get_events(
         date_from=date_from,
         date_to=date_to,
         search=search,
+        location_id=location_id,
     )
 
 

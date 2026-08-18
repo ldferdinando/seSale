@@ -10,6 +10,7 @@ import { AdminAdsPanel } from "@/features/admin/components/AdminAdsPanel";
 import { AdminCitiesPanel } from "@/features/admin/components/AdminCitiesPanel";
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
 import { AdminFeaturedPanel } from "@/features/admin/components/AdminFeaturedPanel";
+import { AdminGastroPanel } from "@/features/admin/components/AdminGastroPanel";
 import { AdminLocationsPanel } from "@/features/admin/components/AdminLocationsPanel";
 import { AdminReportsPanel } from "@/features/admin/components/AdminReportsPanel";
 import { AdminSubscriptionsPanel } from "@/features/admin/components/AdminSubscriptionsPanel";
@@ -19,6 +20,7 @@ const ADMIN_TABS = [
   { value: "destacados", label: "Destacados" },
   { value: "eventos", label: "Eventos" },
   { value: "lugares", label: "Lugares" },
+  { value: "gastronomia", label: "Gastronomía" },
   { value: "banners", label: "Banners" },
   { value: "ciudades", label: "Ciudades" },
   { value: "usuarios", label: "Usuarios" },
@@ -61,6 +63,7 @@ export default function AdminPage() {
           {tab === "destacados" && <AdminFeaturedPanel />}
           {tab === "eventos" && <AdminEventsPanel />}
           {tab === "lugares" && <AdminLocationsPanel />}
+          {tab === "gastronomia" && <AdminGastroPanel />}
           {tab === "banners" && <AdminAdsPanel />}
           {tab === "ciudades" && <AdminCitiesPanel />}
           {tab === "usuarios" && <AdminUsersPanel />}

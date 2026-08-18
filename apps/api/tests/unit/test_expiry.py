@@ -9,7 +9,7 @@ from unittest.mock import patch
 from httpx import AsyncClient
 from sqlmodel import Session
 
-from app.core.expiry import expire_overdue_subscriptions
+from app.core.expiry import expire_overdue_gastro_plans, expire_overdue_subscriptions
 from app.models.city import City
 from app.models.event import Event, EventStatus
 from app.models.location import Location
@@ -157,4 +157,87 @@ async def test_get_events_triggers_expire_overdue_subscriptions_in_background(cl
         response = await client.get("/api/events")
 
     assert response.status_code == 200
+
+
+# ── Etapa 8e — vencimiento de planes de gastronomía (Location) ───────────
+
+
+def test_expire_overdue_gastro_plans_reverts_to_gratis(session: Session, city: City):
+    location = Location(
+        name="El Tinglado Bar",
+        address="Av. Roca 1240",
+        city_id=city.id,
+        is_gastro=True,
+        plan="dest",
+        featured_until=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    session.add(location)
+    session.commit()
+
+    expired = expire_overdue_gastro_plans(session)
+
+    assert len(expired) == 1
+    session.refresh(location)
+    assert location.plan == "gratis"
+    assert location.featured_until is None
+
+
+def test_expire_overdue_gastro_plans_ignores_not_yet_expired(session: Session, city: City):
+    location = Location(
+        name="La Toscana",
+        address="Belgrano 543",
+        city_id=city.id,
+        is_gastro=True,
+        plan="pro",
+        featured_until=datetime.now(timezone.utc) + timedelta(days=10),
+    )
+    session.add(location)
+    session.commit()
+
+    expired = expire_overdue_gastro_plans(session)
+
+    assert expired == []
+    session.refresh(location)
+    assert location.plan == "pro"
+
+
+def test_expire_overdue_gastro_plans_ignores_gratis_and_no_featured_until(session: Session, city: City):
+    location = Location(
+        name="Café del Centro", address="Isidro Lobo 234", city_id=city.id, is_gastro=True, plan="gratis"
+    )
+    session.add(location)
+    session.commit()
+
+    expired = expire_overdue_gastro_plans(session)
+
+    assert expired == []
+
+
+def test_expire_overdue_gastro_plans_is_idempotent(session: Session, city: City):
+    location = Location(
+        name="Don Asado Parrilla",
+        address="San Martín 850",
+        city_id=city.id,
+        is_gastro=True,
+        plan="dest",
+        featured_until=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    session.add(location)
+    session.commit()
+
+    first = expire_overdue_gastro_plans(session)
+    second = expire_overdue_gastro_plans(session)
+
+    assert len(first) == 1
+    assert second == []
+
+
+async def test_get_gastro_triggers_expire_overdue_gastro_plans_in_background(
+    client: AsyncClient, city: City
+):
+    with patch("app.routers.gastro.run_expire_overdue_gastro_plans_task") as mock_task:
+        response = await client.get("/api/gastro", params={"city_id": str(city.id)})
+
+    assert response.status_code == 200
+    mock_task.assert_called_once()
     mock_task.assert_called_once()

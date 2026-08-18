@@ -1,14 +1,15 @@
-"""Vencimiento automático de planes pagos (Subscription → Event) y de
-banners (AdItem).
+"""Vencimiento automático de planes pagos (Subscription → Event), de
+banners (AdItem) y de planes de gastronomía (Location).
 
 Dos formas de disparar el mismo procesamiento:
 - Manual: `POST /api/admin/subscriptions/expire` (admin) llama
   `expire_overdue_subscriptions` con la sesión del request.
 - Lazy: `GET /api/events` agenda `run_expire_overdue_subscriptions_task` y
-  `run_expire_overdue_ad_items_task` como BackgroundTask (Etapa 8c/8d-pre) —
-  corren después de que la respuesta ya se envió, cada una con su propia
-  sesión de DB, y nunca propagan errores (el cliente ya recibió su
-  respuesta).
+  `run_expire_overdue_ad_items_task` como BackgroundTask (Etapa 8c/8d-pre);
+  `GET /api/gastro` agenda `run_expire_overdue_gastro_plans_task` (Etapa
+  8e) — todas corren después de que la respuesta ya se envió, cada una con
+  su propia sesión de DB, y nunca propagan errores (el cliente ya recibió
+  su respuesta).
 """
 
 import logging
@@ -19,6 +20,7 @@ from sqlmodel import Session, select
 from app.core.deps import engine
 from app.models.ad_item import AdItem
 from app.models.event import Event, PlanType
+from app.models.location import Location
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
 
@@ -126,3 +128,43 @@ def run_expire_overdue_ad_items_task() -> None:
             expire_overdue_ad_items(session)
     except Exception:
         logger.exception("Fallo al procesar el vencimiento lazy de banners (AdItem)")
+
+
+def expire_overdue_gastro_plans(session: Session) -> list[Location]:
+    """Vuelve a "gratis" los Location gastronómicos cuyo plan pago
+    (dest/pro) venció. `featured_until=None` (gratis, o plan activado a
+    mano sin fecha) nunca se toca.
+
+    Idempotente: solo toca Location con is_gastro=True, plan != "gratis" y
+    featured_until < ahora — los ya procesados quedaron con plan="gratis" y
+    featured_until=None, no vuelven a matchear.
+    """
+    now = datetime.now(timezone.utc)
+    stmt = (
+        select(Location)
+        .where(Location.is_gastro == True)  # noqa: E712
+        .where(Location.plan != "gratis")
+        .where(Location.featured_until.is_not(None))
+        .where(Location.featured_until < now)
+    )
+    expired = list(session.exec(stmt).all())
+
+    for location in expired:
+        location.plan = "gratis"
+        location.featured_until = None
+        session.add(location)
+
+    session.commit()
+    for location in expired:
+        session.refresh(location)
+    return expired
+
+
+def run_expire_overdue_gastro_plans_task() -> None:
+    """Entry point para BackgroundTasks, mismo patrón que las otras dos:
+    sesión propia, nunca propaga excepciones."""
+    try:
+        with Session(engine) as session:
+            expire_overdue_gastro_plans(session)
+    except Exception:
+        logger.exception("Fallo al procesar el vencimiento lazy de planes de gastronomía")

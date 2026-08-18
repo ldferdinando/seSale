@@ -62,6 +62,7 @@ def list_public_events(
     date_from: date | None = None,
     date_to: date | None = None,
     search: str | None = None,
+    location_id: UUID | None = None,
     today: date | None = None,
 ) -> list[Event]:
     """Eventos visibles al público: approved, activos y no vencidos.
@@ -78,6 +79,8 @@ def list_public_events(
     `categories`: OR entre los valores dados (evento con AL MENOS UNA).
     `moment`: eventos que tengan ese momento entre los suyos (un evento con
     horario dual aparece en ambos filtros).
+    `location_id`: Etapa 8e — eventos de un lugar puntual (usado por el
+    detalle de un lugar gastronómico, "Eventos en este lugar").
     """
     if today is None:
         today = argentina_today()
@@ -92,6 +95,8 @@ def list_public_events(
 
     if city_id is not None:
         stmt = stmt.where(Event.city_id == city_id)
+    if location_id is not None:
+        stmt = stmt.where(Event.location_id == location_id)
     if categories:
         cat_subq = select(EventCategory.event_id).where(
             EventCategory.event_id == Event.id, EventCategory.category.in_(categories)

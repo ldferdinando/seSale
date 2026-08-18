@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { FlyerUpload } from "@/components/FlyerUpload";
+import { MediaUpload } from "@/components/MediaUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { EventForm } from "@/features/events/components/EventForm";
@@ -112,9 +112,10 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
           pasa a plan="pro" cuando se confirma el pago. */}
       {event.plan === "pro" && (
         <div className="rounded-2xl border border-border bg-card p-4">
-          <FlyerUpload
-            eventId={eventId}
-            currentFlyerUrl={event.flyer_url}
+          <MediaUpload
+            type="flyer"
+            entityId={eventId}
+            currentUrl={event.flyer_url}
             onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
             onDeleteSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
           />

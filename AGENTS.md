@@ -127,7 +127,7 @@ root/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
 │   │   │   ├── components/         # Componentes reutilizables globales
 │   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
-│   │   │   │   ├── FlyerUpload.tsx    # Subir/cambiar/eliminar flyer — solo plan pro — Etapa 8b
+│   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar flyer o portada — prop type:"flyer"|"cover" — Etapa 8b, generalizado en Etapa 8e
 │   │   │   │   ├── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
 │   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d
@@ -138,17 +138,21 @@ root/
 │   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a;
 │   │   │   │   │                  #   types/services/hooks admin (toggle, sort-order) — Etapa 8a
 │   │   │   │   ├── locations/      # Lugares precargados: selector, ABM admin — Etapa 7b
+│   │   │   │   ├── gastro/         # Gastronomía: types/services/hooks + GastroPlaceCard.tsx/GastroTypeChips.tsx/
+│   │   │   │   │                  #   GastroDetailView.tsx/GastroDetailPage.tsx + lib (gastroTypeStyles, openingHours) — Etapa 8e
 │   │   │   │   ├── ads/            # Banners: types/services/hooks/schemas + AdItemFormModal.tsx/AdSlotCard.tsx (admin) — Etapa 8d
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
-│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b, ciudades — Etapa 8a, banners — Etapa 8d)
+│   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b,
+│   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
 │   │   │   │   ├── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
-│   │   │   │   └── media.ts           # resolveMediaUrl() — resuelve flyer_url relativo contra NEXT_PUBLIC_API_URL — Etapa 8b
+│   │   │   │   └── media.ts           # resolveMediaUrl() — resuelve flyer_url/cover_img_url relativo contra NEXT_PUBLIC_API_URL — Etapa 8b
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   │   ├── useActiveCity.ts   # Consume ActiveCityContext — Etapa 7a
-│   │   │   │   └── useBannerSlots.ts  # Fetch de AdSlot por ciudad/sección (TanStack Query) — Etapa 8d
+│   │   │   │   ├── useBannerSlots.ts  # Fetch de AdSlot por ciudad/sección (TanStack Query) — Etapa 8d
+│   │   │   │   └── useGastroPlaces.ts # Fetch de lugares gastronómicos por ciudad/filtros (TanStack Query) — Etapa 8e
 │   │   │   └── types/              # Tipos TypeScript globales
 │   │   ├── public/
 │   │   ├── tests/                  # Tests del frontend
@@ -176,8 +180,10 @@ root/
 │       │   │   ├── moment.py       # calculate_moments() — Etapa 6.5
 │       │   │   ├── timezone.py     # argentina_today(), utc_time_to_argentina() — Etapa 6.5
 │       │   │   ├── email.py        # send_report_email() (Resend) — Etapa 6.5
-│       │   │   ├── storage.py      # upload_flyer()/delete_flyer() (Supabase Storage / disco local) — Etapa 8b
-│       │   │   └── expiry.py       # expire_overdue_subscriptions()/expire_overdue_ad_items() + disparo lazy en BackgroundTask — Etapa 8c/8d-pre
+│       │   │   ├── storage.py      # upload_flyer()/delete_flyer(), upload_banner()/delete_banner_if_owned() — Etapa 8b/8d;
+│       │   │   │                  #   upload_cover()/delete_cover() (portada de gastronomía) — Etapa 8e
+│       │   │   └── expiry.py       # expire_overdue_subscriptions()/expire_overdue_ad_items()/expire_overdue_gastro_plans()
+│       │   │                      #   + disparo lazy en BackgroundTask — Etapa 8c/8d-pre/8e
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py
 │       │   │   ├── user.py
@@ -185,26 +191,29 @@ root/
 │       │   │   ├── category.py     # EventCategory (event_categories) — Etapa 6.5
 │       │   │   ├── moment.py       # EventMoment (event_moments) — Etapa 6.5
 │       │   │   ├── report.py       # Report — Etapa 6.5
-│       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b; +campos gastronómicos/opening_hours — Etapa 8e-pre
+│       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b; +campos gastronómicos/opening_hours — Etapa 8e-pre;
+│       │   │   │                  #   +is_active/created_at — Etapa 8e (huecos encontrados al planificar, ver a_revisar.md)
 │       │   │   ├── location_gastro_type.py  # LocationGastroType (location_gastro_types) + GASTRO_TYPES — Etapa 8e-pre
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre
 │       │   │   └── ad_item.py      # AdItem (pieza publicitaria) — Etapa 8d-pre
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
-│       │   │   ├── location.py     # Etapa 7b
+│       │   │   ├── location.py     # Etapa 7b; +LocationGastroRead/AdminRead/Create/Update — Etapa 8e
 │       │   │   ├── plan.py         # Etapa 6
 │       │   │   ├── subscription.py # Etapa 6
 │       │   │   ├── report.py       # Etapa 6.5
 │       │   │   └── ad_slot.py      # AdSlotRead/AdItemPublicRead/AdItemAdminRead/AdItemCreate/AdItemUpdate — Etapa 8d
 │       │   ├── routers/            # Endpoints organizados por recurso
-│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5, ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d
+│       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5,
+│       │   │   │                  #   ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d, ABM gastro — Etapa 8e
 │       │   │   ├── auth.py
-│       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b
+│       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b; + filtro location_id en GET /api/events — Etapa 8e
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d
 │       │   │   ├── cities.py
 │       │   │   ├── locations.py    # GET /api/locations (+ filtros), GET /api/locations/{id} — Etapa 7b
+│       │   │   ├── gastro.py       # GET /api/gastro (+ filtros), GET /api/gastro/{id} — público, Etapa 8e
 │       │   │   ├── plans.py        # Etapa 6
 │       │   │   ├── subscriptions.py
 │       │   │   ├── ads.py          # GET /api/ads, público — Etapa 8d
@@ -212,7 +221,7 @@ root/
 │       │   │   └── webhooks.py
 │       │   └── services/           # Lógica de negocio desacoplada
 │       │       ├── event_service.py
-│       │       ├── location_service.py  # Etapa 7b
+│       │       ├── location_service.py  # Etapa 7b; + funciones de gastronomía (list/get/create/update/delete/verify/set_plan/cover) — Etapa 8e
 │       │       ├── user_service.py
 │       │       ├── city_service.py
 │       │       ├── payment_service.py

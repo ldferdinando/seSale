@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { deleteEventFlyer, uploadEventFlyer } from "@/features/events/services/events-api";
+import { deleteGastroCover, uploadGastroCover } from "@/features/gastro/services/gastro-api";
 import { ApiError } from "@/lib/api-client";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -13,21 +14,70 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp";
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
-interface FlyerUploadProps {
-  eventId: string;
-  currentFlyerUrl: string | null;
+export type MediaUploadType = "flyer" | "cover";
+
+/** Config por tipo — Etapa 8e: FlyerUpload.tsx (Etapa 8b) generalizado a
+ * MediaUpload.tsx para no duplicar código entre el flyer de eventos y la
+ * portada de lugares gastronómicos. Mismos límites/formatos en ambos casos,
+ * solo cambian el endpoint, el texto y el aspect-ratio de la preview. */
+const MEDIA_CONFIG: Record<
+  MediaUploadType,
+  {
+    label: string;
+    dropZoneLabel: string;
+    imageAlt: string;
+    aspectClassName: string;
+    upload: (id: string, file: File) => Promise<{ url: string | null }>;
+    remove: (id: string) => Promise<{ url: string | null }>;
+  }
+> = {
+  flyer: {
+    label: "Flyer del evento",
+    dropZoneLabel: "Subir flyer (JPG, PNG o WEBP, máx. 5MB)",
+    imageAlt: "Flyer del evento",
+    aspectClassName: "aspect-[3/4] w-full max-w-[220px]",
+    upload: async (id, file) => {
+      const res = await uploadEventFlyer(id, file);
+      return { url: res.flyer_url };
+    },
+    remove: async (id) => {
+      const res = await deleteEventFlyer(id);
+      return { url: res.flyer_url };
+    },
+  },
+  cover: {
+    label: "Foto de portada",
+    dropZoneLabel: "Subir portada (JPG, PNG o WEBP, máx. 5MB)",
+    imageAlt: "Foto de portada del lugar",
+    aspectClassName: "aspect-[16/9] w-full",
+    upload: async (id, file) => {
+      const res = await uploadGastroCover(id, file);
+      return { url: res.cover_img_url };
+    },
+    remove: async (id) => {
+      const res = await deleteGastroCover(id);
+      return { url: res.cover_img_url };
+    },
+  },
+};
+
+interface MediaUploadProps {
+  type: MediaUploadType;
+  entityId: string;
+  currentUrl: string | null;
   onUploadSuccess: (url: string) => void;
   onDeleteSuccess: () => void;
 }
 
 /**
- * Flyer del evento — exclusivo del plan Destacado Plus (ver a_revisar.md,
- * Etapa 8b: la regla de negocio sigue seSALE_primario.html, que solo
- * muestra la subida con Destacado Plus, nunca con Destacado). El caller
- * (EditarEventoClient) es responsable de no renderizar este componente si
- * event.plan !== "pro".
+ * Subir/cambiar/eliminar una imagen (flyer de evento o portada de lugar
+ * gastronómico) — mismo patrón visual y de storage para los dos casos, ver
+ * MEDIA_CONFIG arriba. El caller decide cuándo renderizarlo (ej.
+ * FlyerUpload solo se mostraba con event.plan === "pro" — esa regla sigue
+ * viviendo en el caller, no acá).
  */
-export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDeleteSuccess }: FlyerUploadProps) {
+export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDeleteSuccess }: MediaUploadProps) {
+  const config = MEDIA_CONFIG[type];
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -75,13 +125,15 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
     setIsUploading(true);
     setUploadError(null);
     try {
-      const response = await uploadEventFlyer(eventId, selectedFile);
-      setSuccessMessage("Flyer subido correctamente.");
+      const { url } = await config.upload(entityId, selectedFile);
+      setSuccessMessage(type === "flyer" ? "Flyer subido correctamente." : "Portada subida correctamente.");
       setSelectedFile(null);
       setPreviewUrl(null);
-      if (response.flyer_url) onUploadSuccess(response.flyer_url);
+      if (url) onUploadSuccess(url);
     } catch (error) {
-      setUploadError(error instanceof ApiError ? error.message : "No pudimos subir el flyer. Intentá de nuevo.");
+      setUploadError(
+        error instanceof ApiError ? error.message : "No pudimos subir la imagen. Intentá de nuevo.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -91,11 +143,13 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await deleteEventFlyer(eventId);
+      await config.remove(entityId);
       setConfirmingDelete(false);
       onDeleteSuccess();
     } catch (error) {
-      setDeleteError(error instanceof ApiError ? error.message : "No pudimos eliminar el flyer. Intentá de nuevo.");
+      setDeleteError(
+        error instanceof ApiError ? error.message : "No pudimos eliminar la imagen. Intentá de nuevo.",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -108,13 +162,13 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const showExistingFlyer = currentFlyerUrl && !previewUrl;
+  const showExisting = currentUrl && !previewUrl;
 
   return (
     <div className="flex flex-col gap-3">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-3">
         <ImagePlus className="h-3.5 w-3.5 text-primary" aria-hidden />
-        Flyer del evento
+        {config.label}
       </p>
 
       <input
@@ -123,16 +177,16 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
         accept={ACCEPTED_EXTENSIONS}
         className="hidden"
         onChange={handleFileChange}
-        data-testid="flyer-file-input"
+        data-testid="media-file-input"
       />
 
-      {showExistingFlyer && (
-        <div className="flex flex-col gap-3" data-testid="flyer-current-preview">
+      {showExisting && (
+        <div className="flex flex-col gap-3" data-testid="media-current-preview">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={resolveMediaUrl(currentFlyerUrl) ?? undefined}
-            alt="Flyer actual del evento"
-            className="aspect-[3/4] w-full max-w-[220px] rounded-xl border border-border object-cover"
+            src={resolveMediaUrl(currentUrl) ?? undefined}
+            alt={config.imageAlt}
+            className={`rounded-xl border border-border object-cover ${config.aspectClassName}`}
           />
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
@@ -157,25 +211,25 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
         </div>
       )}
 
-      {!showExistingFlyer && !previewUrl && (
+      {!showExisting && !previewUrl && (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          data-testid="flyer-drop-zone"
+          data-testid="media-drop-zone"
           className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-surface-4 bg-surface-2 px-4 py-8 text-center text-ink-3 transition-colors hover:border-primary/60 hover:text-foreground"
         >
           <Upload className="h-6 w-6 text-primary" aria-hidden />
-          <span className="text-xs font-bold">Subir flyer (JPG, PNG o WEBP, máx. 5MB)</span>
+          <span className="text-xs font-bold">{config.dropZoneLabel}</span>
         </button>
       )}
 
       {previewUrl && (
-        <div className="flex flex-col gap-3" data-testid="flyer-new-preview">
+        <div className="flex flex-col gap-3" data-testid="media-new-preview">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
-            alt="Vista previa del flyer a subir"
-            className="aspect-[3/4] w-full max-w-[220px] rounded-xl border border-border object-cover"
+            alt={`Vista previa: ${config.imageAlt.toLowerCase()}`}
+            className={`rounded-xl border border-border object-cover ${config.aspectClassName}`}
           />
           <div className="flex gap-2">
             <Button type="button" onClick={handleUpload} disabled={isUploading}>
@@ -185,7 +239,7 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
                   Subiendo...
                 </>
               ) : (
-                "Subir flyer"
+                "Subir"
               )}
             </Button>
             <Button type="button" variant="ghost" onClick={handleCancelPreview} disabled={isUploading}>
@@ -217,8 +271,8 @@ export function FlyerUpload({ eventId, currentFlyerUrl, onUploadSuccess, onDelet
 
       {confirmingDelete && (
         <ConfirmDialog
-          title="¿Eliminar el flyer?"
-          description="Esta acción borra la imagen del evento. Vas a poder subir otra cuando quieras."
+          title={type === "flyer" ? "¿Eliminar el flyer?" : "¿Eliminar la portada?"}
+          description="Esta acción borra la imagen. Vas a poder subir otra cuando quieras."
           confirmLabel="Sí, eliminar"
           isConfirming={isDeleting}
           onConfirm={handleDelete}
