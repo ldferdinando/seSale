@@ -462,10 +462,76 @@ class Location(SQLModel, table=True):
     # organizador con dirección libre — no aparece en el selector.
     is_public: bool = Field(default=False)
 
+    # ── Etapa 8e-pre — Gastronomía ────────────────────────────────────
+    # Gastronomía usa la misma tabla Location que los lugares de eventos —
+    # no es una tabla nueva. Un lugar puede tener is_gastro=True Y aparecer
+    # también como ubicación de un evento al mismo tiempo.
+    is_gastro: bool = Field(default=False)
+    # True = aparece en la sección Gastronomía. False = solo se usa como
+    # ubicación de eventos.
+
+    plan: str = Field(default="gratis")  # "gratis" | "dest" | "pro" — mismo sistema que Event.plan, solo relevante si is_gastro=True
+    featured_until: datetime | None = Field(default=None)  # vencimiento del plan pago de gastronomía; None = sin fecha (gratis, o pago activado a mano)
+
+    opening_hours: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    # Horarios estructurados por día de la semana. Estructura:
+    # {"lunes": {"open": "09:00", "close": "22:00"}, ..., "domingo": null}
+    # null en un día = cerrado ese día. `hours` (arriba, texto libre) sigue
+    # existiendo en paralelo para notas complementarias como "Cerrado los
+    # feriados" o "Solo con reserva" — no son redundantes.
+
+    gastro_whatsapp: str | None = Field(default=None, max_length=50)
+    gastro_instagram: str | None = Field(default=None, max_length=100)
+    gastro_web: str | None = Field(default=None, max_length=500)
+    gastro_email: str | None = Field(default=None, max_length=255)
+
+    has_delivery: bool = Field(default=False)
+    has_reservations: bool = Field(default=False)
+    price_range: str | None = Field(default=None, max_length=5)  # "$" | "$$" | "$$$" | None (no especificado)
+
+    cover_img_url: str | None = Field(default=None, max_length=500)
+    # Foto del local (distinta al flyer de eventos). Mismo patrón de
+    # almacenamiento que flyer_url: Supabase Storage en prod, disco local en dev.
+
     # Relaciones
     city: "City" = Relationship(back_populates="locations")
     events: list["Event"] = Relationship(back_populates="location")
+    gastro_types: list["LocationGastroType"] = Relationship(back_populates="location")
 ```
+
+`is_gastro=True` + al menos un `LocationGastroType` asociado es lo que hace
+que un lugar aparezca en la sección Gastronomía (Etapa 8e).
+
+#### `location_gastro_types` (Etapa 8e-pre)
+
+Tabla intermedia — mismo patrón que `event_categories`: permite que un lugar
+tenga múltiples tipos gastronómicos (ej: un café que también es bar). El
+filtro por tipo en la Etapa 8e es OR: un lugar aparece si tiene al menos uno
+de los tipos filtrados.
+
+```python
+class LocationGastroType(SQLModel, table=True):
+    __tablename__ = "location_gastro_types"
+
+    location_id: UUID = Field(foreign_key="locations.id", primary_key=True)
+    gastro_type: str = Field(primary_key=True, max_length=50)
+
+    location: "Location" = Relationship(back_populates="gastro_types")
+```
+
+`gastro_type` es un string libre — validado en el schema Pydantic (Etapa 8e)
+contra la constante `GASTRO_TYPES` de `app/models/location_gastro_type.py`,
+sin tabla maestra de tipos todavía:
+
+```python
+GASTRO_TYPES = [
+    "cerveceria", "restaurante", "parrilla", "bar", "cafe",
+    "pizzeria", "heladeria", "rotiseria", "vinoteca", "otro",
+]
+```
+
+Cuando el admin pueda cargar tipos nuevos (etapa futura), se agrega una
+tabla maestra y esta validación se relaja — ver `a_revisar.md`.
 
 #### `plans`
 
@@ -1429,6 +1495,7 @@ GET    /api/users/me/banners             Usuario autenticado. Sus propios
 | **8d** | Banners completos: endpoints públicos/admin, ABM de banners en el panel admin, carruseles reales en el home/gastronomía, "Mis banners" en Mi cuenta. | ✓ Completa: `GET /api/ads` (público); `GET /api/admin/ad-slots`, `GET/POST/PUT/DELETE /api/admin/ad-items`, `PATCH .../status`, `POST .../image` (Supabase/disco local, GIF permitido, 2MB), `PATCH .../reorder`; `GET /api/users/me/banners`; schemas Pydantic con `Literal` para `section`/`rotation_mode`/`status` (resuelve el pendiente de 8d-pre); `components/BannerSlot.tsx` (rotación sequential/random, estado vacío punteado, click abre `link_url`), `hooks/useBannerSlots.ts` (TanStack Query), `features/ads/` (types/services/hooks/schemas/componentes admin), `AdSlots.tsx` con datos reales (antes placeholder), banners de gastronomía en `/lugares`, tab "Banners" en `/admin` (`AdminAdsPanel.tsx`, drag-and-drop nativo HTML5 para reordenar slots secuenciales), sección "Mis banners" en `/mi-cuenta` (solo lectura). Ver `a_revisar.md` por el gap encontrado (`AdItemWithSlotRead`, section/slot_position no estaban en `AdItemAdminRead`) |
 | **8d (fixes post-QA)** | Correcciones encontradas probando la 8d apenas cerrada: imágenes de banner subidas como archivo no se veían, y los tiles del grid quedaban pegados a los carruseles wide en vez de ir después del listado de eventos. | ✓ Completa: `img_url` se resuelve con `resolveMediaUrl()` (mismo bug que el flyer en la Etapa 8b, ver `lib/media.ts`) en todos los `<img>` que la renderizan (`BannerSlot.tsx`, `AdSlotCard.tsx`, `MyBannersSection.tsx`, preview de `AdItemFormModal.tsx`) — el dato guardado en la DB ya era correcto, solo faltaba resolverlo al mostrar, así que los banners existentes no necesitan volver a subirse; `AdSlots.tsx` se separó en `AdSlots` (3 carruseles wide, misma posición) y `AdSlotsGrid` (tiles), este último movido en `app/page.tsx` a después de `<EventList />` |
 | **8** | Espacios publicitarios (banners): CRUD de `ad_slots`/`ad_items` desde admin, render en frontend. | ✓ Completa — ver 8d-pre y 8d arriba |
+| **8e-pre** | Extensión del modelo Location para Gastronomía: campos gastronómicos, horarios estructurados, tabla location_gastro_types con tipos múltiples | ✓ Completa: Gastronomía reusa `locations` (no es tabla nueva) — `is_gastro`/`plan`/`featured_until` (mismo sistema de planes que `Event`), `opening_hours` (JSON por día, convive con `hours` texto libre), contacto (`gastro_whatsapp`/`gastro_instagram`/`gastro_web`/`gastro_email`), características (`has_delivery`/`has_reservations`/`price_range`), `cover_img_url`; tabla nueva `location_gastro_types` (PK compuesta `location_id`+`gastro_type`, igual patrón que `event_categories`, filtro OR); migración `0014`; seed con 5 lugares gastro de prueba en General Roca ("El Tinglado Bar" existente se actualiza in-place, no se duplica). Solo modelo/migración/seed — sin endpoints ni frontend, ver `a_revisar.md` |
 | **9** | App mobile (Expo) — consume la misma API. | |
 
 ---

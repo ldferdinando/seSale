@@ -4,6 +4,7 @@ from app.models.category import EventCategory
 from app.models.city import City
 from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
+from app.models.location_gastro_type import GASTRO_TYPES, LocationGastroType
 from app.models.moment import EventMoment
 from app.models.plan import Plan, PlanPrice, PlanType, PricingType
 from app.models.report import Report
@@ -19,7 +20,9 @@ __all__ = [
     "EventMoment",
     "EventStatus",
     "TicketType",
+    "GASTRO_TYPES",
     "Location",
+    "LocationGastroType",
     "Plan",
     "PlanPrice",
     "PlanType",

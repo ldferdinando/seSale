@@ -20,6 +20,7 @@ from app.models import (
     EventMoment,
     EventStatus,
     Location,
+    LocationGastroType,
     Plan,
     PlanPrice,
     PlanType,
@@ -34,7 +35,7 @@ SEED_PASSWORD = "Password123!"
 
 
 def _wipe(session: Session) -> None:
-    for model in (Subscription, PlanPrice, Plan, Report, EventCategory, EventMoment, Event, AdItem, AdSlot, Location, User, City):
+    for model in (Subscription, PlanPrice, Plan, Report, EventCategory, EventMoment, Event, AdItem, AdSlot, LocationGastroType, Location, User, City):
         session.exec(delete(model))
     session.commit()
 
@@ -54,6 +55,137 @@ def _ad_slots_for_city(city_id: UUID) -> list[AdSlot]:
         AdSlot(city_id=city_id, section="gastronomia", slot_position=0, rotation_mode="sequential"),
         AdSlot(city_id=city_id, section="gastronomia", slot_position=1, rotation_mode="sequential"),
         AdSlot(city_id=city_id, section="gastronomia", slot_position=2, rotation_mode="sequential"),
+    ]
+
+
+def _gastro_locations_for_city(city_id: UUID) -> list[dict]:
+    """Datos de prueba de lugares gastronómicos para General Roca — Etapa
+    8e-pre. Devuelve dicts (no instancias de Location) para poder testearse
+    sin sesión de DB, mismo patrón que `_ad_slots_for_city`. Cada dict trae
+    los campos de `Location` más `gastro_types` (lista de strings, se
+    materializa en `LocationGastroType` aparte porque es una tabla
+    intermedia, no un campo de `Location`).
+    """
+    return [
+        {
+            "name": "El Tinglado Bar",
+            "address": "Av. Julio A. Roca 1240, General Roca",
+            "city_id": city_id,
+            "is_public": True,
+            "is_verified": True,
+            "is_gastro": True,
+            "gastro_types": ["bar", "cerveceria"],
+            "plan": "dest",
+            "description": "Bar cultural con shows en vivo",
+            "gastro_whatsapp": "5492984000001",
+            "gastro_instagram": "eltingladobar",
+            "has_delivery": False,
+            "has_reservations": True,
+            "price_range": "$$",
+            "opening_hours": {
+                "lunes": None,
+                "martes": {"open": "20:00", "close": "02:00"},
+                "miercoles": {"open": "20:00", "close": "02:00"},
+                "jueves": {"open": "20:00", "close": "02:00"},
+                "viernes": {"open": "20:00", "close": "03:00"},
+                "sabado": {"open": "20:00", "close": "03:00"},
+                "domingo": None,
+            },
+        },
+        {
+            "name": "La Toscana",
+            "address": "Belgrano 543, General Roca",
+            "city_id": city_id,
+            "is_public": True,
+            "is_verified": True,
+            "is_gastro": True,
+            "gastro_types": ["restaurante", "pizzeria"],
+            "plan": "gratis",
+            "description": "Cocina italiana y pizzas al horno de barro",
+            "gastro_instagram": "latoscanaroca",
+            "has_delivery": True,
+            "has_reservations": True,
+            "price_range": "$$",
+            "opening_hours": {
+                "lunes": None,
+                "martes": {"open": "12:00", "close": "15:00"},
+                "miercoles": {"open": "12:00", "close": "15:00"},
+                "jueves": {"open": "12:00", "close": "15:00"},
+                "viernes": {"open": "12:00", "close": "15:00"},
+                "sabado": {"open": "12:00", "close": "15:00"},
+                "domingo": {"open": "12:00", "close": "15:00"},
+            },
+        },
+        {
+            "name": "Cervecería del Valle",
+            "address": "San Martín 890, General Roca",
+            "city_id": city_id,
+            "is_public": True,
+            "is_verified": False,
+            "is_gastro": True,
+            "gastro_types": ["cerveceria", "bar"],
+            "plan": "pro",
+            "featured_until": datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
+            "description": "Cervezas artesanales del Alto Valle",
+            "has_delivery": False,
+            "has_reservations": False,
+            "price_range": "$$",
+            "opening_hours": {
+                "lunes": None,
+                "martes": None,
+                "miercoles": {"open": "18:00", "close": "01:00"},
+                "jueves": {"open": "18:00", "close": "01:00"},
+                "viernes": {"open": "18:00", "close": "02:00"},
+                "sabado": {"open": "15:00", "close": "02:00"},
+                "domingo": {"open": "15:00", "close": "23:00"},
+            },
+        },
+        {
+            "name": "Café del Centro",
+            "address": "Isidro Lobo 234, General Roca",
+            "city_id": city_id,
+            "is_public": True,
+            "is_verified": True,
+            "is_gastro": True,
+            "gastro_types": ["cafe"],
+            "plan": "gratis",
+            "description": "Café de especialidad y desayunos",
+            "has_delivery": True,
+            "has_reservations": False,
+            "price_range": "$",
+            "opening_hours": {
+                "lunes": {"open": "07:30", "close": "20:00"},
+                "martes": {"open": "07:30", "close": "20:00"},
+                "miercoles": {"open": "07:30", "close": "20:00"},
+                "jueves": {"open": "07:30", "close": "20:00"},
+                "viernes": {"open": "07:30", "close": "20:00"},
+                "sabado": {"open": "08:00", "close": "13:00"},
+                "domingo": None,
+            },
+        },
+        {
+            "name": "Don Asado Parrilla",
+            "address": "Tucumán 1560, General Roca",
+            "city_id": city_id,
+            "is_public": True,
+            "is_verified": True,
+            "is_gastro": True,
+            "gastro_types": ["parrilla", "restaurante"],
+            "plan": "dest",
+            "description": "Parrilla tradicional patagónica",
+            "has_delivery": False,
+            "has_reservations": True,
+            "price_range": "$$$",
+            "opening_hours": {
+                "lunes": None,
+                "martes": {"open": "12:00", "close": "15:00"},
+                "miercoles": {"open": "12:00", "close": "15:00"},
+                "jueves": {"open": "12:00", "close": "15:00"},
+                "viernes": {"open": "12:00", "close": "15:00"},
+                "sabado": {"open": "12:00", "close": "15:30"},
+                "domingo": {"open": "12:00", "close": "15:30"},
+            },
+        },
     ]
 
 
@@ -223,6 +355,36 @@ def seed() -> None:
             session.add(loc)
         session.commit()
 
+        # Etapa 8e-pre — lugares gastronómicos de prueba (General Roca). "El
+        # Tinglado Bar" ya existe como lugar precargado (arriba, is_public
+        # is_verified) — se actualiza in-place en vez de duplicarse.
+        for data in _gastro_locations_for_city(general_roca.id):
+            gastro_types = data.pop("gastro_types")
+            existing = next(
+                (
+                    loc
+                    for loc in preloaded_locations
+                    if loc.name == data["name"] and loc.city_id == data["city_id"]
+                ),
+                None,
+            )
+            if existing is not None:
+                for field, value in data.items():
+                    if field in ("name", "address", "city_id"):
+                        continue
+                    setattr(existing, field, value)
+                session.add(existing)
+                location = existing
+            else:
+                location = Location(**data)
+                session.add(location)
+            session.commit()
+            session.refresh(location)
+
+            for gastro_type in gastro_types:
+                session.add(LocationGastroType(location_id=location.id, gastro_type=gastro_type))
+        session.commit()
+
         organizer = User(
             email="organizador@sesale.com.ar",
             hashed_password=hash_password(SEED_PASSWORD),
@@ -313,8 +475,9 @@ def seed() -> None:
 
         session.commit()
         print(
-            "Seed completo: 6 ciudades, 10 ubicaciones (3 automáticas + 7 lugares precargados), "
-            "8 eventos, 2 usuarios, 16 ad slots (8 por ciudad, General Roca y Cipolletti), 4 planes."
+            "Seed completo: 6 ciudades, 10 ubicaciones (3 automáticas + 7 lugares precargados, "
+            "5 con datos gastronómicos), 8 eventos, 2 usuarios, 16 ad slots (8 por ciudad, "
+            "General Roca y Cipolletti), 4 planes."
         )
         print(f"  Login organizador: organizador@sesale.com.ar / {SEED_PASSWORD}")
         print(f"  Login admin:       admin@sesale.com.ar / {SEED_PASSWORD}")

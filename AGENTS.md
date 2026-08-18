@@ -185,7 +185,8 @@ root/
 │       │   │   ├── category.py     # EventCategory (event_categories) — Etapa 6.5
 │       │   │   ├── moment.py       # EventMoment (event_moments) — Etapa 6.5
 │       │   │   ├── report.py       # Report — Etapa 6.5
-│       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b
+│       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b; +campos gastronómicos/opening_hours — Etapa 8e-pre
+│       │   │   ├── location_gastro_type.py  # LocationGastroType (location_gastro_types) + GASTRO_TYPES — Etapa 8e-pre
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre
