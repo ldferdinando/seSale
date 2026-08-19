@@ -91,6 +91,15 @@ class OrganizerPublicRead(BaseModel):
     public_whatsapp: str | None
     city: str | None
 
+    # Etapa 9a — banner "Organizador verificado" con datos reales. Privacidad:
+    # solo se exponen señales booleanas y el mes/año de alta, nunca el dato
+    # verificado en sí (doc_type/doc_number/phone/full_name/email siguen sin
+    # exponerse acá).
+    is_verified: bool
+    phone_verified: bool
+    email_verified: bool
+    member_since: date  # solo fecha (derivado de User.created_at, sin hora)
+
     model_config = ConfigDict(from_attributes=True)
 
 

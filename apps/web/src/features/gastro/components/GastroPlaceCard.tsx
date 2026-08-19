@@ -133,9 +133,12 @@ export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
             </div>
 
             {place.event_count > 0 && (
-              <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-ink-4">
-                <Calendar className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
-                {place.event_count} evento{place.event_count === 1 ? "" : "s"}
+              // Toda la card ya es un Link a /lugares/{id} (no se puede anidar
+              // otro <a> adentro) — la sección "Eventos en este lugar" del
+              // detalle usa useLocationEvents con datos reales. Etapa 9a.
+              <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-primary underline underline-offset-2">
+                <Calendar className="h-3 w-3 flex-shrink-0" aria-hidden />
+                Ver {place.event_count} evento{place.event_count === 1 ? "" : "s"}
               </p>
             )}
           </div>

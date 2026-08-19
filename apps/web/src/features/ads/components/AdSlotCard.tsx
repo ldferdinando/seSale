@@ -30,7 +30,7 @@ const STATUS_VARIANT: Record<AdItemAdmin["status"], "default" | "muted" | "pro">
   expired: "muted",
 };
 
-function AdItemRow({
+export function AdItemRow({
   item,
   draggable,
   onEdit,

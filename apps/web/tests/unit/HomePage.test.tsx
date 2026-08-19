@@ -47,13 +47,19 @@ describe("HomePage", () => {
   it("renders the eventos-grid tiles after the events list, not next to the wide carousels", async () => {
     renderWithActiveCity(<HomePage />);
 
-    await waitFor(() => expect(screen.getAllByTestId("banner-slot")).toHaveLength(5));
+    await waitFor(() => expect(screen.getAllByTestId("banner-slot")).toHaveLength(3));
     const eventCard = await screen.findByTestId("event-card");
 
-    // Los banner-slot del grid (eventos-grid) deben venir después del
-    // listado de eventos, nunca pegados a los carruseles wide de arriba.
-    const banners = screen.getAllByTestId("banner-slot");
-    const lastBanner = banners[banners.length - 1];
-    expect(eventCard.compareDocumentPosition(lastBanner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // El pool de eventos-grid (2 columnas: ad-grid-tile o ad-grid-tile-empty)
+    // debe venir después del listado de eventos, nunca pegado a los
+    // carruseles wide de arriba.
+    const gridTiles = await waitFor(() => {
+      const found = [...screen.queryAllByTestId("ad-grid-tile"), ...screen.queryAllByTestId("ad-grid-tile-empty")];
+      expect(found).toHaveLength(2);
+      return found;
+    });
+    for (const tile of gridTiles) {
+      expect(eventCard.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 });

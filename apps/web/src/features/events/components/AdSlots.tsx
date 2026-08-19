@@ -1,7 +1,9 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
+import { useMemo } from "react";
 
+import { AdGridPool } from "@/components/AdGridPool";
 import { BannerSlot } from "@/components/BannerSlot";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBannerSlots } from "@/hooks/useBannerSlots";
@@ -40,13 +42,19 @@ export function AdSlots() {
   );
 }
 
-/** Tiles cuadrados de la sección "eventos-grid", en grilla de 2 columnas —
- * van después del listado de eventos (feedback de QA manual, Etapa 8d). */
+/** Tiles cuadrados de la sección "eventos-grid" — van después del listado de
+ * eventos (feedback de QA manual, Etapa 8d). Todos los AdItems de TODOS los
+ * slots de "eventos-grid" (puede haber más de uno en la DB, ver seed.py)
+ * forman un pool único; siempre se muestran 2 al azar, rotando el par cada
+ * rotation_interval_seconds — ver AdGridPool. */
 export function AdSlotsGrid() {
   const { activeCity } = useActiveCity();
   const cityId = activeCity?.id ?? null;
 
   const grid = useBannerSlots({ cityId, section: "eventos-grid" });
+
+  const pool = useMemo(() => grid.slots.flatMap((slot) => slot.items), [grid.slots]);
+  const rotationIntervalSeconds = grid.slots[0]?.rotation_interval_seconds ?? 5;
 
   return (
     <div className="px-4 pb-3.5">
@@ -56,11 +64,7 @@ export function AdSlotsGrid() {
           <Skeleton className="aspect-square w-full rounded-xl md:aspect-[6/5]" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5">
-          {grid.slots.map((slot) => (
-            <BannerSlot key={slot.id} slot={slot} />
-          ))}
-        </div>
+        <AdGridPool items={pool} rotationIntervalSeconds={rotationIntervalSeconds} />
       )}
     </div>
   );

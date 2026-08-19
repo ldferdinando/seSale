@@ -120,7 +120,7 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
         <h2 className="text-base font-bold text-foreground">{isEditing ? "Editar banner" : "Agregar banner"}</h2>
 
         <p className="text-xs text-ink-4">
-          Slot: Carrusel {slot.slot_position + 1} ·{" "}
+          Slot: {slot.section === "eventos-grid" ? "Banners grilla" : `Carrusel ${slot.slot_position + 1}`} ·{" "}
           {slot.rotation_mode === "random" ? "Rotación aleatoria" : "Rotación secuencial"}
         </p>
 

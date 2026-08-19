@@ -214,3 +214,46 @@ async def test_get_event_not_found_returns_404(client: AsyncClient):
     response = await client.get(f"/api/events/{uuid4()}")
 
     assert response.status_code == 404
+
+
+# Etapa 9a — banner "Organizador verificado" con datos reales (ver a_revisar.md).
+
+
+async def test_get_event_organizer_verified_exposes_verification_fields(
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location
+):
+    organizer.is_verified = True
+    organizer.phone_verified = True
+    organizer.email_verified = True
+    session.add(organizer)
+    session.commit()
+    session.refresh(organizer)
+
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.get(f"/api/events/{event.id}")
+
+    assert response.status_code == 200
+    body = response.json()["organizer"]
+    assert body["is_verified"] is True
+    assert body["phone_verified"] is True
+    assert body["email_verified"] is True
+    assert body["member_since"] == organizer.created_at.date().isoformat()
+
+
+async def test_get_event_organizer_not_verified_exposes_false_without_leaking_private_data(
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location
+):
+    # El fixture `organizer` ya nace con is_verified/phone_verified/email_verified=False.
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.get(f"/api/events/{event.id}")
+
+    assert response.status_code == 200
+    body = response.json()["organizer"]
+    assert body["is_verified"] is False
+    assert body["phone_verified"] is False
+    assert body["email_verified"] is False
+    assert "member_since" in body
+    for private_field in ("doc_type", "doc_number", "phone", "full_name", "email"):
+        assert private_field not in body

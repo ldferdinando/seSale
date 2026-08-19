@@ -361,4 +361,125 @@ describe("EventDetailView", () => {
       expect(screen.queryByText("Tu plan destacado venció")).not.toBeInTheDocument();
     });
   });
+
+  // Etapa 9a — banner "Organizador verificado" con datos reales del
+  // organizador (ver a_revisar.md).
+  describe("organizer verification banner", () => {
+    it("shows the banner when organizer.is_verified is true", () => {
+      const event = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: true,
+          email_verified: true,
+          member_since: "2024-03-01",
+        },
+      });
+
+      renderWithClient(event);
+
+      expect(screen.getByText("Organizador verificado por seSALE")).toBeInTheDocument();
+      expect(screen.getByText("Documento verificado")).toBeInTheDocument();
+    });
+
+    it("does not show the banner when organizer.is_verified is false", () => {
+      const event = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: false,
+          phone_verified: false,
+          email_verified: false,
+          member_since: "2024-03-01",
+        },
+      });
+
+      renderWithClient(event);
+
+      expect(screen.queryByText("Organizador verificado por seSALE")).not.toBeInTheDocument();
+    });
+
+    it('shows "Celular verificado" only when phone_verified is true', () => {
+      const verified = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: true,
+          email_verified: false,
+          member_since: "2024-03-01",
+        },
+      });
+      const { unmount } = renderWithClient(verified);
+      expect(screen.getByText("Celular verificado")).toBeInTheDocument();
+      unmount();
+
+      const notVerified = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: false,
+          email_verified: false,
+          member_since: "2024-03-01",
+        },
+      });
+      renderWithClient(notVerified);
+      expect(screen.queryByText("Celular verificado")).not.toBeInTheDocument();
+    });
+
+    it('shows "Email verificado" only when email_verified is true', () => {
+      const verified = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: false,
+          email_verified: true,
+          member_since: "2024-03-01",
+        },
+      });
+      const { unmount } = renderWithClient(verified);
+      expect(screen.getByText("Email verificado")).toBeInTheDocument();
+      unmount();
+
+      const notVerified = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: false,
+          email_verified: false,
+          member_since: "2024-03-01",
+        },
+      });
+      renderWithClient(notVerified);
+      expect(screen.queryByText("Email verificado")).not.toBeInTheDocument();
+    });
+
+    it('shows "Miembro desde" with month and year in Spanish', () => {
+      const event = makeEventDetail({
+        organizer: {
+          public_name: "El Tinglado Bar",
+          public_whatsapp: null,
+          city: null,
+          is_verified: true,
+          phone_verified: true,
+          email_verified: true,
+          member_since: "2024-03-15",
+        },
+      });
+
+      renderWithClient(event);
+
+      expect(screen.getByText("Miembro desde marzo 2024")).toBeInTheDocument();
+    });
+  });
 });

@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { useAdminAdSlots } from "@/features/ads/hooks/useAdminAds";
 import { AdSlotCard } from "@/features/ads/components/AdSlotCard";
+import { AdGridPoolCard } from "@/features/ads/components/AdGridPoolCard";
 import { AD_SECTION_LABELS, type AdSection } from "@/features/ads/types";
 
 const SECTIONS: AdSection[] = ["eventos", "eventos-grid", "gastronomia"];
@@ -72,11 +73,13 @@ export function AdminAdsPanel() {
 
       {cityId && slots && (
         <div className="flex flex-col gap-4">
-          {slots
-            .sort((a, b) => a.slot_position - b.slot_position)
-            .map((slot) => (
-              <AdSlotCard key={slot.id} slot={slot} />
-            ))}
+          {section === "eventos-grid" ? (
+            slots.length > 0 && <AdGridPoolCard slots={slots} />
+          ) : (
+            slots
+              .sort((a, b) => a.slot_position - b.slot_position)
+              .map((slot) => <AdSlotCard key={slot.id} slot={slot} />)
+          )}
         </div>
       )}
     </section>

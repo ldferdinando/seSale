@@ -67,6 +67,13 @@ export interface EventOrganizerPublic {
   public_name: string;
   public_whatsapp: string | null;
   city: string | null;
+  // Etapa 9a — banner "Organizador verificado" con datos reales. Ver
+  // OrganizerPublicRead (apps/api/app/schemas/event.py) por qué no se
+  // exponen doc_type/doc_number/phone/full_name/email acá.
+  is_verified: boolean;
+  phone_verified: boolean;
+  email_verified: boolean;
+  member_since: string; // fecha ISO (YYYY-MM-DD), se formatea al mostrar
 }
 
 /**

@@ -395,15 +395,40 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           <span>{event.organizer.public_name} es un espacio cultural con shows en vivo.</span>
         </div>
 
-        {/* Placeholder visual: banner de organizador verificado.
-            Requiere exponer is_verified/phone_verified/email_verified públicamente — ver a_revisar.md */}
-        <div className="flex items-start gap-3 rounded-xl border border-[#1D9E7544] bg-[#0d2a1a] p-3">
-          <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#5DCAA5]" aria-hidden />
-          <div>
-            <p className="text-sm font-bold text-[#5DCAA5]">Organizador verificado por seSALE</p>
-            <p className="text-xs text-ink-4">Identidad confirmada. Datos personales confidenciales.</p>
+        {/* Banner de organizador verificado con datos reales — Etapa 9a.
+            Solo se muestra si el admin verificó la identidad del organizador
+            (is_verified); no mostrar nada si no está verificado, para no
+            generar desconfianza innecesaria. */}
+        {event.organizer.is_verified && (
+          <div className="flex items-start gap-3 rounded-xl border border-[#1D9E7544] bg-[#0d2a1a] p-3">
+            <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#5DCAA5]" aria-hidden />
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm font-bold text-[#5DCAA5]">Organizador verificado por seSALE</p>
+              <p className="text-xs text-ink-4">Identidad confirmada. Datos personales confidenciales.</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="muted" className="gap-1">
+                  <ShieldCheck className="h-3 w-3" aria-hidden />
+                  Documento verificado
+                </Badge>
+                {event.organizer.phone_verified && (
+                  <Badge variant="muted" className="gap-1">
+                    <MessageCircle className="h-3 w-3" aria-hidden />
+                    Celular verificado
+                  </Badge>
+                )}
+                {event.organizer.email_verified && (
+                  <Badge variant="muted" className="gap-1">
+                    <Mail className="h-3 w-3" aria-hidden />
+                    Email verificado
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-ink-4">
+                Miembro desde {format(parseISO(event.organizer.member_since), "MMMM yyyy", { locale: es })}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
           <p className="text-sm font-bold text-foreground">{event.organizer.public_name}</p>

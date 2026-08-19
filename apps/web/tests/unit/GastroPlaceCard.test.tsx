@@ -70,4 +70,31 @@ describe("GastroPlaceCard", () => {
 
     expect(screen.getByTestId("gastro-verified-icon")).toBeInTheDocument();
   });
+
+  // Etapa 9a — "Ver N evento(s)" navega al detalle del lugar (la card entera
+  // ya es un Link a /lugares/{id}, ver a_revisar.md).
+  it('shows "Ver N evento(s)" inside the link to /lugares/{id} when event_count > 0', () => {
+    const place = makeGastroPlace({ event_count: 3 });
+
+    render(<GastroPlaceCard place={place} />);
+
+    const text = screen.getByText("Ver 3 eventos");
+    expect(text.closest("a")).toHaveAttribute("href", `/lugares/${place.id}`);
+  });
+
+  it('shows singular "Ver 1 evento" when event_count is 1', () => {
+    const place = makeGastroPlace({ event_count: 1 });
+
+    render(<GastroPlaceCard place={place} />);
+
+    expect(screen.getByText("Ver 1 evento")).toBeInTheDocument();
+  });
+
+  it("does not show any event count text when event_count is 0", () => {
+    const place = makeGastroPlace({ event_count: 0 });
+
+    render(<GastroPlaceCard place={place} />);
+
+    expect(screen.queryByText(/evento/)).not.toBeInTheDocument();
+  });
 });

@@ -166,6 +166,10 @@ async def get_event(
             public_name=event.organizer.public_name,
             public_whatsapp=event.organizer.public_whatsapp,
             city=event.organizer.city.name if event.organizer.city else None,
+            is_verified=event.organizer.is_verified,
+            phone_verified=event.organizer.phone_verified,
+            email_verified=event.organizer.email_verified,
+            member_since=event.organizer.created_at.date(),
         ),
         organizer_subscription=organizer_subscription,
     )

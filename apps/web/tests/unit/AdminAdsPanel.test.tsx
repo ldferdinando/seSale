@@ -46,6 +46,30 @@ describe("AdminAdsPanel", () => {
     expect(screen.getByText("Carrusel 3")).toBeInTheDocument();
   });
 
+  it("shows a single 'Banners grilla' pool card for eventos-grid, not Tile 1/Tile 2", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/ad-slots`, ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("section") !== "eventos-grid") return HttpResponse.json([makeAdSlotAdmin()]);
+        return HttpResponse.json([
+          makeAdSlotAdmin({ id: "g0", section: "eventos-grid", slot_position: 0 }),
+          makeAdSlotAdmin({ id: "g1", section: "eventos-grid", slot_position: 1 }),
+        ]);
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(screen.getByRole("combobox", { name: "Ciudad" }));
+    await user.click(await screen.findByRole("option", { name: /General Roca/ }));
+    await user.click(screen.getByRole("combobox", { name: "Sección" }));
+    await user.click(await screen.findByRole("option", { name: "Eventos (grilla)" }));
+
+    expect(await screen.findByText("Banners grilla")).toBeInTheDocument();
+    expect(screen.queryByText("Tile 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tile 2")).not.toBeInTheDocument();
+  });
+
   it("the create modal validates required fields before saving", async () => {
     server.use(
       http.get(`${API_URL}/api/admin/ad-slots`, () => HttpResponse.json([makeAdSlotAdmin({ id: "s0" })])),
