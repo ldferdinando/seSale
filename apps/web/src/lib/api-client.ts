@@ -18,9 +18,27 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-let refreshPromise: Promise<boolean> | null = null;
+// Cookie liviana (no HttpOnly) que el backend setea junto al refresh_token
+// real en login/refresh (ver auth.py::_set_refresh_cookie). Si no está
+// presente, no puede haber una sesión válida que refrescar: evitamos el
+// POST /api/auth/refresh que de otro modo daría 401 de forma esperada pero
+// ruidosa en la consola cada vez que se monta la app sin sesión iniciada.
+export function hasSessionCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split("; ").some((entry) => entry.startsWith("has_session="));
+}
 
-async function trySilentRefresh(): Promise<boolean> {
+// Único punto de entrada para refrescar la sesión: tanto el restore inicial
+// de AuthProvider como el reintento automático de fetchWithAuthRetry ante un
+// 401 pasan por acá y comparten la misma promesa en vuelo. Es necesario
+// porque el backend ROTA el refresh_token en cada uso (ver
+// rotate_refresh_token en auth_service.py): dos POST /api/auth/refresh
+// concurrentes con la cookie vieja hacen que el segundo en llegar reciba
+// siempre 401, aunque la sesión sea válida.
+let refreshPromise: Promise<TokenResponse | null> | null = null;
+
+async function doRefresh(): Promise<TokenResponse | null> {
+  if (!hasSessionCookie()) return null;
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
@@ -31,14 +49,14 @@ async function trySilentRefresh(): Promise<boolean> {
       });
       if (!response.ok) {
         clearToken();
-        return false;
+        return null;
       }
       const body = (await response.json()) as TokenResponse;
       setToken(body.access_token);
-      return true;
+      return body;
     } catch {
       clearToken();
-      return false;
+      return null;
     }
   })();
 
@@ -47,6 +65,19 @@ async function trySilentRefresh(): Promise<boolean> {
   } finally {
     refreshPromise = null;
   }
+}
+
+async function trySilentRefresh(): Promise<boolean> {
+  return (await doRefresh()) !== null;
+}
+
+// Usado por AuthProvider para restaurar la sesión al montar la app.
+export async function restoreSession(): Promise<TokenResponse> {
+  const body = await doRefresh();
+  if (!body) {
+    throw new Error("No hay sesión activa");
+  }
+  return body;
 }
 
 function isAuthEndpoint(path: string): boolean {

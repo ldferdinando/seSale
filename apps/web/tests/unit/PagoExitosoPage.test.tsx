@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import PagoExitosoPage from "@/app/planes/pago-exitoso/page";
+import { setToken } from "@/features/auth/lib/token-store";
 import { makeSubscription, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
@@ -26,6 +27,7 @@ describe("PagoExitosoPage", () => {
         HttpResponse.json([makeSubscription({ plan_name: "Destacado", status: "active" })]),
       ),
     );
+    setToken("test-token");
 
     renderWithClient();
 

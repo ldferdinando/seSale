@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { usePathnameMock } = vi.hoisted(() => ({
   usePathnameMock: vi.fn(() => "/"),
@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { BottomNav } from "@/components/layout/BottomNav";
+import { clearToken, setToken } from "@/features/auth/lib/token-store";
 import { makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
@@ -27,8 +28,13 @@ function renderWithClient() {
 }
 
 describe("BottomNav", () => {
+  afterEach(() => {
+    clearToken();
+  });
+
   it('links "Mi cuenta" to /mi-cuenta when there is an active session', async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
+    setToken("test-token");
 
     renderWithClient();
 

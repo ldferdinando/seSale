@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { Navbar } from "@/components/layout/Navbar";
+import { clearToken, setToken } from "@/features/auth/lib/token-store";
 import { makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 import { renderWithActiveCity as renderWithClient } from "./test-utils";
@@ -18,6 +19,7 @@ const API_URL = "http://localhost:8000";
 describe("Navbar", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    clearToken();
   });
 
   it("shows 'Ingresar' and 'Registrarse' when there is no active session", async () => {
@@ -35,6 +37,7 @@ describe("Navbar", () => {
 
   it("shows public_name, 'Publicar evento' and 'Cerrar sesión' for a logged in user", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user" }))));
+    setToken("test-token");
     renderWithClient(<Navbar />);
 
     const accountLink = await screen.findByRole("link", { name: /El Tinglado Bar/ });
@@ -53,6 +56,7 @@ describe("Navbar", () => {
     server.use(
       http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user", public_name: "" }))),
     );
+    setToken("test-token");
     renderWithClient(<Navbar />);
 
     const accountLink = await screen.findByRole("link", { name: /organizador@sesale\.com\.ar/ });
@@ -61,6 +65,7 @@ describe("Navbar", () => {
 
   it("shows 'Panel admin' only for admins", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "admin" }))));
+    setToken("test-token");
     renderWithClient(<Navbar />);
 
     const adminLink = await screen.findByRole("link", { name: /Panel admin/ });
@@ -69,6 +74,7 @@ describe("Navbar", () => {
 
   it("logs out and redirects to home on 'Cerrar sesión'", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user" }))));
+    setToken("test-token");
     const user = userEvent.setup();
     renderWithClient(<Navbar />);
 

@@ -5,6 +5,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { MyEventsView } from "@/features/events/components/MyEventsView";
+import { clearToken, setToken } from "@/features/auth/lib/token-store";
 import { makeEvent, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
@@ -21,11 +22,13 @@ function renderWithClient() {
 
 function mockLoggedIn() {
   server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
+  setToken("test-token");
 }
 
 describe("MyEventsView", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    clearToken();
   });
 
   it("prompts to log in when there is no active session", async () => {

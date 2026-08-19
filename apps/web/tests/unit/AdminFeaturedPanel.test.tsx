@@ -5,6 +5,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AdminFeaturedPanel } from "@/features/admin/components/AdminFeaturedPanel";
+import { clearToken, setToken } from "@/features/auth/lib/token-store";
 import { makeEvent, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
@@ -21,11 +22,13 @@ function renderWithClient() {
 
 function mockLoggedInAdmin() {
   server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "admin" }))));
+  setToken("test-token");
 }
 
 describe("AdminFeaturedPanel", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    clearToken();
   });
 
   it("prompts to log in when there is no active session", async () => {
@@ -36,6 +39,7 @@ describe("AdminFeaturedPanel", () => {
 
   it("denies access to non-admin users", async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ role: "user" }))));
+    setToken("test-token");
     renderWithClient();
 
     expect(await screen.findByText(/No tenés permiso para ver esta sección/i)).toBeInTheDocument();

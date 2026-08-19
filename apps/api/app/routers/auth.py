@@ -17,6 +17,12 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/auth"
+# Cookie liviana (no HttpOnly) que solo indica "hay una sesión posible", para
+# que el frontend evite llamar a /api/auth/refresh cuando ya sabe que no hay
+# nada que refrescar (ver api-client.ts::trySilentRefresh). No participa de
+# ninguna validación de seguridad: esa sigue dependiendo exclusivamente de
+# refresh_token (HttpOnly) y su hash en User.refresh_token_hash.
+HAS_SESSION_COOKIE_NAME = "has_session"
 
 
 def _refresh_cookie_kwargs() -> dict:
@@ -30,11 +36,22 @@ def _refresh_cookie_kwargs() -> dict:
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    max_age = settings.refresh_token_expire_days * 24 * 3600
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
-        max_age=settings.refresh_token_expire_days * 24 * 3600,
+        max_age=max_age,
         **_refresh_cookie_kwargs(),
+    )
+    is_dev = settings.environment == "development"
+    response.set_cookie(
+        key=HAS_SESSION_COOKIE_NAME,
+        value="1",
+        max_age=max_age,
+        httponly=False,
+        secure=not is_dev,
+        samesite="lax" if is_dev else "strict",
+        path="/",
     )
 
 
@@ -94,3 +111,4 @@ async def logout(
 ) -> None:
     revoke_session(session, current_user)
     response.delete_cookie(key=REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
+    response.delete_cookie(key=HAS_SESSION_COOKIE_NAME, path="/")

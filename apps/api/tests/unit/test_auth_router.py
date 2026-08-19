@@ -57,6 +57,15 @@ async def test_login_success_returns_access_token_and_sets_cookie(client: AsyncC
     assert "refresh_token" in response.cookies
 
 
+async def test_login_success_sets_has_session_marker_cookie(client: AsyncClient, organizer: User):
+    response = await client.post(
+        "/api/auth/login", json={"email": organizer.email, "password": "Password123!"}
+    )
+
+    assert response.status_code == 200
+    assert response.cookies.get("has_session") == "1"
+
+
 async def test_login_wrong_password_returns_401(client: AsyncClient, organizer: User):
     response = await client.post("/api/auth/login", json={"email": organizer.email, "password": "wrong-password"})
 
@@ -85,6 +94,18 @@ async def test_refresh_rotates_token(client: AsyncClient, organizer: User):
     new_cookie = refresh_response.cookies.get("refresh_token")
     assert new_cookie is not None
     assert new_cookie != old_cookie
+
+
+async def test_refresh_rotates_has_session_marker_cookie(client: AsyncClient, organizer: User):
+    login_response = await client.post(
+        "/api/auth/login", json={"email": organizer.email, "password": "Password123!"}
+    )
+    client.cookies.set("refresh_token", login_response.cookies["refresh_token"])
+
+    refresh_response = await client.post("/api/auth/refresh")
+
+    assert refresh_response.status_code == 200
+    assert refresh_response.cookies.get("has_session") == "1"
 
 
 async def test_refresh_without_cookie_returns_401(client: AsyncClient):
@@ -120,6 +141,23 @@ async def test_logout_clears_session_and_invalidates_refresh(client: AsyncClient
     client.cookies.set("refresh_token", refresh_cookie)
     refresh_after_logout = await client.post("/api/auth/refresh")
     assert refresh_after_logout.status_code == 401
+
+
+async def test_logout_clears_has_session_marker_cookie(client: AsyncClient, organizer: User):
+    login_response = await client.post(
+        "/api/auth/login", json={"email": organizer.email, "password": "Password123!"}
+    )
+    access_token = login_response.json()["access_token"]
+
+    logout_response = await client.post(
+        "/api/auth/logout", headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert logout_response.status_code == 204
+    has_session_header = next(
+        header for header in logout_response.headers.get_list("set-cookie") if header.startswith("has_session=")
+    )
+    assert "Max-Age=0" in has_session_header
 
 
 async def test_logout_without_token_returns_401(client: AsyncClient):

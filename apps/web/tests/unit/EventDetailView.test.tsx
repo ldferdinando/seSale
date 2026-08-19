@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EventDetailView } from "@/features/events/components/EventDetailView";
+import { clearToken, setToken } from "@/features/auth/lib/token-store";
 import { makeEventDetail, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
@@ -20,11 +21,13 @@ function renderWithClient(event = makeEventDetail()) {
 
 function mockLoggedInAs(user: ReturnType<typeof makeUser>) {
   server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(user)));
+  setToken("test-token");
 }
 
 describe("EventDetailView", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    clearToken();
   });
 
   it("renders all the main fields", () => {
