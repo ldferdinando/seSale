@@ -53,7 +53,7 @@ export default function HomePage() {
             Alto Valle · Patagonia
           </p>
           <h1 className="mb-2.5 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
-            Todo lo que pasa en <em className="text-primary not-italic">General Roca</em>,
+            Todo lo que pasa en <em className="text-primary not-italic">{activeCity?.name ?? "tu ciudad"}</em>,
             <br />
             en un lugar.
           </h1>

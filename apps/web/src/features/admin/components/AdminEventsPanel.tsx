@@ -4,7 +4,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,10 +143,16 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
   );
 }
 
-export function AdminEventsPanel() {
-  const [filters, setFilters] = useState<AdminEventFilters>({});
+export function AdminEventsPanel({ initialOrganizerId }: { initialOrganizerId?: string }) {
+  const [filters, setFilters] = useState<AdminEventFilters>({ organizer_id: initialOrganizerId });
   const { data: events, isLoading, isError } = useAdminEvents(filters);
   const { data: cities } = useCities();
+
+  // Etapa 9b: "Ver eventos del usuario" (panel de Usuarios) cambia de tab y
+  // manda un organizer_id nuevo mientras este panel ya está montado.
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, organizer_id: initialOrganizerId }));
+  }, [initialOrganizerId]);
 
   function updateFilter<K extends keyof AdminEventFilters>(key: K, value: AdminEventFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value || undefined }));
@@ -155,6 +161,15 @@ export function AdminEventsPanel() {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="px-1 text-lg font-bold text-foreground">Eventos</h2>
+
+      {filters.organizer_id && (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-ink-3">
+          <span>Mostrando solo los eventos de este organizador.</span>
+          <Button type="button" size="sm" variant="ghost" onClick={() => updateFilter("organizer_id", undefined)}>
+            Quitar filtro
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Select

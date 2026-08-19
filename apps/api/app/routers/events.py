@@ -102,6 +102,7 @@ async def post_event(
             contact_web=payload.contact_web,
             contact_email=payload.contact_email,
             organizer_id=payload.organizer_id,
+            plan=payload.plan,
             is_admin=current_user.role == "admin",
             city_id=payload.city_id,
         )

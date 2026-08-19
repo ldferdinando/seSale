@@ -208,6 +208,7 @@ def create_event(
     organizer_id: UUID | None = None,
     is_admin: bool = False,
     city_id: UUID | None = None,
+    plan: PlanType = PlanType.gratis,
 ) -> Event:
     """Crea un evento en estado pending para el organizador dado.
 
@@ -224,8 +225,15 @@ def create_event(
     `contact_whatsapp`: si no se manda explícito, se completa con el
     `public_whatsapp` del perfil del organizador (Etapa 8a) — no es un
     campo que el organizador carga por evento.
+
+    `plan` (Etapa 9b): protección server-side — hoy no hay confirmación
+    de pago inmediata al crear, así que cualquier valor distinto de
+    "gratis" se ignora y el evento nace igual en "gratis". El plan real
+    se asigna recién cuando se confirma el pago (webhook de MP o revisión
+    de transferencia), vía `update_event_plan`.
     """
     effective_organizer_id = organizer_id if (is_admin and organizer_id is not None) else user_id
+    effective_plan = plan if plan == PlanType.gratis else PlanType.gratis
 
     organizer = session.get(User, effective_organizer_id)
     if organizer is None:
@@ -252,6 +260,7 @@ def create_event(
         time=event_time,
         time_end=time_end,
         status=EventStatus.pending,
+        plan=effective_plan,
         ticket_type=ticket_type,
         price_at_door=price_at_door,
         price_advance=price_advance,
@@ -533,11 +542,16 @@ def list_admin_events(
     search: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    organizer_id: UUID | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Event]:
     """Listado completo de eventos para el panel admin: todos los status y
-    activos/inactivos. Orden: pending primero, luego created_at DESC."""
+    activos/inactivos. Orden: pending primero, luego created_at DESC.
+
+    `organizer_id` (Etapa 9b) — filtra los eventos de un organizador
+    puntual, usado por el link "Ver eventos del usuario" del panel admin
+    de usuarios."""
     stmt = select(Event).options(
         selectinload(Event.location),
         selectinload(Event.organizer),
@@ -548,6 +562,8 @@ def list_admin_events(
         stmt = stmt.where(Event.status == status)
     if city_id is not None:
         stmt = stmt.where(Event.city_id == city_id)
+    if organizer_id is not None:
+        stmt = stmt.where(Event.organizer_id == organizer_id)
     if category is not None:
         cat_subq = select(EventCategory.event_id).where(
             EventCategory.event_id == Event.id, EventCategory.category == category

@@ -30,8 +30,16 @@ const ADMIN_TABS = [
 
 export default function AdminPage() {
   const [tab, setTab] = useState("destacados");
+  // Etapa 9b: "Ver eventos del usuario" (panel Usuarios) cambia a la tab
+  // Eventos con este filtro ya aplicado.
+  const [eventsOrganizerFilter, setEventsOrganizerFilter] = useState<string | undefined>(undefined);
   const { data: currentUser, isLoading } = useCurrentUser();
   const isAdmin = currentUser?.role === "admin";
+
+  function handleViewUserEvents(organizerId: string) {
+    setEventsOrganizerFilter(organizerId);
+    setTab("eventos");
+  }
 
   return (
     <main className="container mx-auto flex max-w-2xl flex-col gap-6 py-6">
@@ -61,12 +69,12 @@ export default function AdminPage() {
           <Tabs tabs={ADMIN_TABS} value={tab} onChange={setTab} />
 
           {tab === "destacados" && <AdminFeaturedPanel />}
-          {tab === "eventos" && <AdminEventsPanel />}
+          {tab === "eventos" && <AdminEventsPanel initialOrganizerId={eventsOrganizerFilter} />}
           {tab === "lugares" && <AdminLocationsPanel />}
           {tab === "gastronomia" && <AdminGastroPanel />}
           {tab === "banners" && <AdminAdsPanel />}
           {tab === "ciudades" && <AdminCitiesPanel />}
-          {tab === "usuarios" && <AdminUsersPanel />}
+          {tab === "usuarios" && <AdminUsersPanel onViewUserEvents={handleViewUserEvents} />}
           {tab === "suscripciones" && <AdminSubscriptionsPanel />}
           {tab === "reportes" && <AdminReportsPanel />}
         </>

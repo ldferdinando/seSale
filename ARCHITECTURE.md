@@ -903,6 +903,17 @@ Usuario completa formulario de publicación
 > Banner (`activate_subscription_manually`), que no es un upgrade de un
 > evento puntual.
 
+> **Segundo punto de entrada (Etapa 9b):** además de `/eventos/{id}` (evento
+> ya publicado), `EventPlanChooser.tsx` en el resumen del alta
+> (`EventSummaryView.tsx`, Paso 2 de `PublishFlow.tsx`) ofrece las mismas
+> tres opciones (gratis/dest/pro) **antes** de publicar. Ahí el evento
+> todavía no existe — "Contratar Destacado/Plus" primero llama
+> `POST /api/events` (siempre nace `plan="gratis"`, ver `EventCreate.plan`
+> más arriba) para obtener un `event_id`, y recién con eso reusa
+> exactamente el mismo `POST /api/subscriptions/checkout`/
+> `/planes/transferencia` que se describe abajo — no hay un flujo de pago
+> paralelo, solo un segundo lugar desde el que se dispara el mismo.
+
 ```
 Usuario ve /eventos/{id} (dueño, plan="gratis") → botón "Elegir plan"
         │
@@ -1166,6 +1177,18 @@ POST   /api/events                     Crear evento (user autenticado → pendin
                                        payload (o viene vacío), se completa
                                        automáticamente con el public_whatsapp
                                        del perfil del organizador ✓ Etapa 8a
+                                       plan: "gratis"|"dest"|"pro" opcional     ✓ Etapa 9b
+                                       (default "gratis"). Se elige en el
+                                       resumen (EventPlanChooser), no en el
+                                       formulario. Protección server-side: sin
+                                       confirmación de pago inmediata al crear,
+                                       cualquier valor ≠ "gratis" se normaliza a
+                                       "gratis" en create_event — el plan real
+                                       se asigna recién cuando se confirma el
+                                       pago (ver flujo de pago de plan más
+                                       abajo). No admite "banner" (422): no es
+                                       un plan de evento, es un espacio
+                                       publicitario aparte
 PUT    /api/events/{id}                Editar evento propio (user) o cualquiera  ✓ Etapa 4
                                        (admin). Si edita el organizador, status
                                        vuelve a pending; si edita el admin, no
@@ -1235,8 +1258,10 @@ PUT    /api/users/me                   Actualizar perfil propio                 
 GET    /api/users                      Listar usuarios (admin)                    ✓ Etapa 3
 GET    /api/users/{id}                 Ver usuario (admin)                        ✓ Etapa 3
 PATCH  /api/users/{id}/verify          Marcar como verificado (admin)             ✓ Etapa 3
-PATCH  /api/users/{id}/role            Cambiar rol (admin)                        planificado
-DELETE /api/users/{id}                 Desactivar usuario (admin)                 planificado
+PATCH  /api/users/{id}/role            Cambiar rol (admin). Body: { role:         ✓ Etapa 9b
+                                       "user"|"admin" }. 404 si no existe
+PATCH  /api/users/{id}                 Activar/desactivar usuario (admin). Body:  ✓ Etapa 9b
+                                       { is_active: bool }. 404 si no existe
 ```
 
 ### Admin (`/api/admin`)
@@ -1248,9 +1273,24 @@ GET    /api/admin/events               Todos los eventos, sin filtrar por status
                                        ni is_active. Incluye organizer_id y
                                        organizer_public_name (join con User).
                                        Filtros: status, city_id, category, plan,
-                                       search, date_from, date_to. Paginación:
-                                       limit (default 50) / offset. Orden: pending
+                                       search, date_from, date_to, organizer_id  ✓ Etapa 9b
+                                       (usado por "Ver eventos del usuario" del
+                                       panel de Usuarios). Paginación: limit
+                                       (default 50) / offset. Orden: pending
                                        primero, luego created_at DESC
+GET    /api/admin/users                Todos los usuarios, sin excepción de rol   ✓ Etapa 9b
+                                       ni is_active — a diferencia de GET
+                                       /api/users (mismo alcance de datos, pero
+                                       sin los campos calculados de acá).
+                                       Filtros opcionales: search (email/
+                                       full_name/public_name), role, is_active,
+                                       city_id. Sin paginación (cantidad de
+                                       usuarios manejable en desarrollo). Orden:
+                                       created_at DESC. Response: UserAdminRead
+                                       (= UserRead + city_name calculado +
+                                       event_count calculado, cantidad de
+                                       eventos creados por el usuario sin
+                                       filtrar por status/is_active)
 POST   /api/admin/users                Crea una cuenta en nombre de un cliente     ✓ Etapa 5.6
                                        (ej. de banner). Guarda created_by = id
                                        del admin autenticado. Body: email,
@@ -1602,6 +1642,7 @@ GET    /api/users/me/banners             Usuario autenticado. Sus propios
 | **8e-pre** | Extensión del modelo Location para Gastronomía: campos gastronómicos, horarios estructurados, tabla location_gastro_types con tipos múltiples | ✓ Completa: Gastronomía reusa `locations` (no es tabla nueva) — `is_gastro`/`plan`/`featured_until` (mismo sistema de planes que `Event`), `opening_hours` (JSON por día, convive con `hours` texto libre), contacto (`gastro_whatsapp`/`gastro_instagram`/`gastro_web`/`gastro_email`), características (`has_delivery`/`has_reservations`/`price_range`), `cover_img_url`; tabla nueva `location_gastro_types` (PK compuesta `location_id`+`gastro_type`, igual patrón que `event_categories`, filtro OR); migración `0014`; seed con 5 lugares gastro de prueba en General Roca ("El Tinglado Bar" existente se actualiza in-place, no se duplica). Solo modelo/migración/seed — sin endpoints ni frontend, ver `a_revisar.md` |
 | **8e** | Gastronomía completa: endpoints públicos/admin, vista pública (`/lugares`, `/lugares/{id}`), ABM admin, vencimiento automático de planes. | ✓ Completa: `GET /api/gastro`/`GET /api/gastro/{id}` (público); `GET/POST/PUT/DELETE /api/admin/gastro`, `PATCH .../verify`, `PATCH .../plan`, `POST`/`DELETE .../cover`; `expire_overdue_gastro_plans` + disparo lazy en `GET /api/gastro`; filtro `location_id` nuevo en `GET /api/events`; migración `0015` (`Location.is_active`/`created_at`, huecos encontrados al planificar, ver `a_revisar.md`); frontend: `features/gastro/` completo (types/services/hooks/componentes), `useGastroPlaces.ts`, `/lugares` reemplaza el placeholder de la 8b (buscador, chips de tipo scrolleables, banners ya conectados, `GastroPlaceCard.tsx`), `/lugares/{id}` (`GastroDetailView.tsx`: horarios completos con día actual destacado, mapa, contacto, "Eventos en este lugar", compartir, SEO), `AdminGastroPanel.tsx`/`GastroForm.tsx` en el panel admin; `components/FlyerUpload.tsx` (Etapa 8b) generalizado a `components/MediaUpload.tsx` (prop `type: "flyer" \| "cover"`) para no duplicar código con la subida de portada |
 | **9a** | Fixes de UX pendientes de `a_revisar.md`: tab gastronomía habilitado, estadísticas reales, link de eventos en gastronomía, badge de organizador verificado con datos reales. | ✓ Completa: `BottomNav.tsx` — el tab Gastronomía ya apuntaba a `/lugares` sin `disabled` desde la Etapa 8e (hallazgo: la nota y el comentario del código habían quedado desactualizados), se le agregó `activeMatch` para que quede activo también en `/lugares/{id}`; estadísticas del home confirmadas sin cambios de código (`organizer_id` en `EventRead` y `GET /api/stats` ya funcionaban desde la Etapa 4.5); `GastroPlaceCard.tsx` — "Ver N evento(s)" navega a `/lugares/{id}` (la card entera ya es un `Link`, no se anida otro `<a>`); `OrganizerPublicRead` expone `is_verified`/`phone_verified`/`email_verified`/`member_since` (sin datos privados), `EventDetailView.tsx` muestra el banner de verificación solo si `is_verified=true`, con badges condicionados a cada flag. Sin cambios de modelo ni migraciones. |
+| **9b** | Panel admin listado completo de usuarios, flujo de planes rediseñado en resumen de evento, corrección selector de ciudades | ✓ Completa: `GET /api/admin/users` (todos los usuarios, filtros search/role/is_active/city_id, `UserAdminRead` con `city_name`/`event_count` calculados), `PATCH /api/users/{id}/role`, `PATCH /api/users/{id}` (is_active); `AdminUsersTable.tsx`/`UserDetailModal.tsx` en el panel admin (listado, filtros, ver detalle con datos privados, cambiar rol, activar/desactivar, "Ver eventos del usuario" → filtro `organizer_id` nuevo en `GET /api/admin/events`); `EventCreate.plan` opcional (default "gratis", protegido server-side — ver sección de API); selector de plan eliminado de `EventForm.tsx`, `EventPlanChooser.tsx` nuevo en el resumen del alta (`EventSummaryView.tsx`) con las tres opciones de visibilidad, precios reales desde `GET /api/plans`, y el mismo flujo de pago que ya existía en `/planes` (checkout de MercadoPago / transferencia). Selector de ciudades: dos bugs reales encontrados recién al abrir la app en el navegador (el diagnóstico estático inicial no los detectó) — (1) el `<h1>` del Home tenía "General Roca" hardcodeado en vez de `activeCity.name`; (2) el dropdown de `CitySelector` (`Navbar.tsx`) quedaba recortado casi por completo por un `overflow-hidden` en un contenedor ancestro pensado solo para el fondo decorativo del header — visible en el DOM/accesibilidad pero invisible para la usuaria. Ambos corregidos y verificados en vivo (estilos computados + `getBoundingClientRect()`, no solo el árbol de accesibilidad) — ver `a_revisar.md` |
 | **9** | App mobile (Expo) — consume la misma API. | |
 
 ---

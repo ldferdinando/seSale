@@ -91,3 +91,55 @@ async def test_verify_user_as_non_admin_returns_403(
     response = await client.patch(f"/api/users/{organizer.id}/verify", headers=user_token_headers)
 
     assert response.status_code == 403
+
+
+async def test_update_user_role_as_admin(
+    client: AsyncClient, organizer: User, admin_token_headers: dict[str, str]
+):
+    response = await client.patch(
+        f"/api/users/{organizer.id}/role", json={"role": "admin"}, headers=admin_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+
+
+async def test_update_user_role_rejects_invalid_role(
+    client: AsyncClient, organizer: User, admin_token_headers: dict[str, str]
+):
+    response = await client.patch(
+        f"/api/users/{organizer.id}/role", json={"role": "superadmin"}, headers=admin_token_headers
+    )
+
+    assert response.status_code == 422
+
+
+async def test_update_user_role_as_non_admin_returns_403(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    response = await client.patch(
+        f"/api/users/{organizer.id}/role", json={"role": "admin"}, headers=user_token_headers
+    )
+
+    assert response.status_code == 403
+
+
+async def test_update_user_active_as_admin(
+    client: AsyncClient, organizer: User, admin_token_headers: dict[str, str]
+):
+    response = await client.patch(
+        f"/api/users/{organizer.id}", json={"is_active": False}, headers=admin_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+
+async def test_update_user_active_as_non_admin_returns_403(
+    client: AsyncClient, organizer: User, user_token_headers: dict[str, str]
+):
+    response = await client.patch(
+        f"/api/users/{organizer.id}", json={"is_active": False}, headers=user_token_headers
+    )
+
+    assert response.status_code == 403

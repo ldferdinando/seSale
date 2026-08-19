@@ -6,19 +6,15 @@ import { useState } from "react";
 import { EventForm } from "@/features/events/components/EventForm";
 import { EventSummaryView } from "@/features/events/components/EventSummaryView";
 import { payloadToFormValues } from "@/features/events/lib/eventPayload";
-import type { PublishPlan } from "@/features/events/lib/publishPlans";
 import type { EventCreateInput } from "@/features/events/types";
 
-type Step =
-  | { name: "form"; payload?: EventCreateInput; plan?: PublishPlan }
-  | { name: "resumen"; payload: EventCreateInput; plan: PublishPlan };
+type Step = { name: "form"; payload?: EventCreateInput } | { name: "resumen"; payload: EventCreateInput };
 
 /**
- * Orquesta el alta de un evento: formulario → resumen → publicar.
- * El evento siempre nace en plan gratis/pending, sin importar el plan de
- * visibilidad elegido en el formulario — para contratar un plan pago el
- * organizador usa el botón "Elegir plan" desde el evento ya publicado
- * (ver EventDetailView) o la sección de planes en Mi cuenta (Etapa 6).
+ * Orquesta el alta de un evento: formulario → resumen → elegir visibilidad
+ * → publicar (Etapa 9b). El plan (gratis/dest/pro) se elige en el resumen
+ * (EventPlanChooser), no en el formulario — este solo junta los datos del
+ * evento.
  */
 export function PublishFlow() {
   const router = useRouter();
@@ -28,8 +24,7 @@ export function PublishFlow() {
     return (
       <EventSummaryView
         payload={step.payload}
-        plan={step.plan}
-        onBack={() => setStep({ name: "form", payload: step.payload, plan: step.plan })}
+        onBack={() => setStep({ name: "form", payload: step.payload })}
         onPublished={() => router.push("/mis-eventos?published=1")}
       />
     );
@@ -39,8 +34,7 @@ export function PublishFlow() {
     <EventForm
       mode="create"
       initialValues={step.payload ? payloadToFormValues(step.payload) : undefined}
-      initialPlan={step.plan}
-      onContinue={(payload, plan) => setStep({ name: "resumen", payload, plan })}
+      onContinue={(payload) => setStep({ name: "resumen", payload })}
     />
   );
 }

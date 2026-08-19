@@ -391,3 +391,49 @@ async def test_create_event_respects_explicit_contact_whatsapp(
 
     assert response.status_code == 201
     assert response.json()["contact_whatsapp"] == "5491199999999"
+
+
+async def test_create_event_with_plan_gratis_is_saved_as_gratis(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["plan"] = "gratis"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["plan"] == "gratis"
+
+
+async def test_create_event_with_paid_plan_is_forced_to_gratis(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """Etapa 9b — protección server-side: sin pago confirmado, el evento
+    siempre nace en plan gratis, sin importar lo que mande el frontend."""
+    payload = _valid_payload(str(location.id))
+    payload["plan"] = "dest"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["plan"] == "gratis"
+
+
+async def test_create_event_without_plan_defaults_to_gratis(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["plan"] == "gratis"
+
+
+async def test_create_event_with_banner_plan_returns_422(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["plan"] = "banner"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422

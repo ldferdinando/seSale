@@ -38,6 +38,12 @@ describe("HomePage", () => {
     expect(eventListRequest).toContain("city_id=22222222-2222-2222-2222-222222222222");
   });
 
+  it("shows the active city's name in the hero title, not hardcoded (Etapa 9b, bug real reportado)", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    expect(await screen.findByText("General Roca")).toBeInTheDocument();
+  });
+
   it("shows the 3 eventos banner slots once the city is detected", async () => {
     renderWithActiveCity(<HomePage />);
 

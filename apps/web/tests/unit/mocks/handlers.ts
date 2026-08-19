@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import type { AdItemAdmin, AdSlot, AdSlotAdmin, MyAdItem } from "@/features/ads/types";
 import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
+import type { UserAdmin } from "@/features/users/types";
 import type { AdminCity } from "@/features/cities/types";
 import type { AdminGastroPlace, GastroPlace } from "@/features/gastro/types";
 import type { AdminLocation, Location } from "@/features/locations/types";
@@ -100,6 +101,15 @@ export function makeUser(overrides: Partial<User> = {}): User {
     is_verified: false,
     created_at: "2024-03-01T00:00:00Z",
     created_by: null,
+    ...overrides,
+  };
+}
+
+export function makeAdminUser(overrides: Partial<UserAdmin> = {}): UserAdmin {
+  return {
+    ...makeUser(),
+    city_name: "General Roca",
+    event_count: 0,
     ...overrides,
   };
 }
@@ -381,6 +391,17 @@ export const handlers = [
   }),
   http.get(`${API_URL}/api/users`, () => {
     return HttpResponse.json([makeUser()]);
+  }),
+  http.get(`${API_URL}/api/admin/users`, () => {
+    return HttpResponse.json([makeAdminUser()]);
+  }),
+  http.patch(`${API_URL}/api/users/:id/role`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeUser({ role: body.role as "user" | "admin" }));
+  }),
+  http.patch(`${API_URL}/api/users/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeUser({ is_active: body.is_active as boolean }));
   }),
   http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;

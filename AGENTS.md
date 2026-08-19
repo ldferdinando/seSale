@@ -132,9 +132,10 @@ root/
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
 │   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
-│   │   │   │   ├── events/
+│   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b
 │   │   │   │   ├── auth/
-│   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d
+│   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d;
+│   │   │   │   │                  #   hooks useAdminUsers/useUpdateUserRole/useUpdateUserActive — Etapa 9b
 │   │   │   │   ├── cities/         # ActiveCityContext (ciudad activa global) — Etapa 7a;
 │   │   │   │   │                  #   types/services/hooks admin (toggle, sort-order) — Etapa 8a
 │   │   │   │   ├── locations/      # Lugares precargados: selector, ABM admin — Etapa 7b
@@ -144,7 +145,8 @@ root/
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b,
-│   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e)
+│   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e;
+│   │   │   │                      #   listado de usuarios — AdminUsersTable.tsx/UserDetailModal.tsx — Etapa 9b)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
 │   │   │   │   ├── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b

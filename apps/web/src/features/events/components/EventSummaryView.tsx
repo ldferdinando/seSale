@@ -19,11 +19,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
-import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
+import { EventPlanChooser } from "@/features/events/components/EventPlanChooser";
 import { EVENT_CATEGORIES, TICKET_TYPE_OPTIONS, type Event, type EventCreateInput } from "@/features/events/types";
 import { useLocation } from "@/features/locations/hooks/useLocation";
-import { ApiError } from "@/lib/api-client";
 
 interface SummaryRowProps {
   icon: LucideIcon;
@@ -50,13 +48,11 @@ function formatPrice(value: number | undefined): string {
 
 interface EventSummaryViewProps {
   payload: EventCreateInput;
-  plan: PublishPlan;
   onBack: () => void;
   onPublished: (event: Event) => void;
 }
 
-export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSummaryViewProps) {
-  const createEvent = useCreateEvent();
+export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryViewProps) {
   const { data: pickedLocation } = useLocation(payload.location_id);
   const locationName = payload.location_id ? (pickedLocation?.name ?? "...") : (payload.location_data?.name || payload.location_data?.address || "");
   const locationAddress = payload.location_id ? (pickedLocation?.address ?? "...") : (payload.location_data?.address ?? "");
@@ -65,17 +61,7 @@ export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSu
     .map((value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value)
     .join(", ");
   const ticketTypeLabel = TICKET_TYPE_OPTIONS.find((t) => t.value === payload.ticket_type)?.label ?? payload.ticket_type;
-  const planOption = PUBLISH_PLAN_OPTIONS.find((p) => p.value === plan);
   const eventDate = parseISO(payload.date);
-
-  async function handlePublish() {
-    try {
-      const event = await createEvent.mutateAsync(payload);
-      onPublished(event);
-    } catch {
-      // el error se muestra abajo, ver createEvent.isError
-    }
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -137,38 +123,15 @@ export function EventSummaryView({ payload, plan, onBack, onPublished }: EventSu
             )}
           </div>
 
-          {planOption && (
-            <div className="flex items-center justify-between rounded-lg border border-border bg-surface-4 px-3 py-2">
-              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                <planOption.icon className="h-3.5 w-3.5 text-primary" aria-hidden />
-                Plan {planOption.label}
-              </span>
-              <span className="text-sm font-bold text-primary">{planOption.price}</span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {createEvent.isError && (
-        <p role="alert" className="text-sm text-destructive">
-          {createEvent.error instanceof ApiError ? createEvent.error.message : "No pudimos publicar el evento."}
-        </p>
-      )}
+      <EventPlanChooser payload={payload} onPublished={onPublished} />
 
-      <div className="flex flex-col gap-2">
-        <Button
-          type="button"
-          onClick={handlePublish}
-          disabled={createEvent.isPending}
-          className="h-12 w-full rounded-xl text-base"
-        >
-          {createEvent.isPending ? "Publicando..." : "Publicar"}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onBack} className="flex items-center gap-2">
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-          Editar datos
-        </Button>
-      </div>
+      <Button type="button" variant="ghost" onClick={onBack} className="flex items-center gap-2 self-start">
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+        Editar datos
+      </Button>
     </div>
   );
 }

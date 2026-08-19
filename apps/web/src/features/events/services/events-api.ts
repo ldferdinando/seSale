@@ -103,5 +103,6 @@ export async function fetchAdminEvents(filters: AdminEventFilters): Promise<Admi
     search: filters.search,
     date_from: filters.date_from,
     date_to: filters.date_to,
+    organizer_id: filters.organizer_id,
   });
 }

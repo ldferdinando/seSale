@@ -13,7 +13,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  Crown,
   DollarSign,
   FileText,
   Globe,
@@ -43,7 +42,6 @@ import { EventLocationField } from "@/features/events/components/EventLocationFi
 import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
 import { TimePicker } from "@/features/events/components/TimePicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
-import { PUBLISH_PLAN_OPTIONS, type PublishPlan } from "@/features/events/lib/publishPlans";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
 import type { Event, EventCreateInput, TicketType } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
@@ -141,18 +139,16 @@ interface EventFormProps {
   mode?: "create" | "edit";
   eventId?: string;
   initialValues?: Partial<EventFormValues>;
-  /** Plan de publicación con el que arranca el formulario (ej. al volver desde el resumen). */
-  initialPlan?: PublishPlan;
   onSuccess?: (event: Event) => void;
-  /** Modo create: en vez de publicar, pasa los datos cargados + plan elegido al resumen. */
-  onContinue?: (payload: EventCreateInput, plan: PublishPlan) => void;
+  /** Modo create: pasa los datos cargados al resumen — la visibilidad
+   * (plan) se elige ahí, no en este formulario (Etapa 9b). */
+  onContinue?: (payload: EventCreateInput) => void;
 }
 
 export function EventForm({
   mode = "create",
   eventId,
   initialValues,
-  initialPlan,
   onSuccess,
   onContinue,
 }: EventFormProps) {
@@ -161,7 +157,6 @@ export function EventForm({
   const { data: cities } = useCities();
   const { activeCity } = useActiveCity();
 
-  const [plan, setPlan] = useState<PublishPlan>(initialPlan ?? "dest");
   const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
   const [showCalendar, setShowCalendar] = useState(false);
   const [acquisition, setAcquisition] = useState({
@@ -269,9 +264,10 @@ export function EventForm({
       return;
     }
 
-    // El evento todavía no se publica acá — el resumen decide si va directo
-    // a /api/events (plan gratis) o a la pantalla de pago (plan pago).
-    onContinue?.(payload, plan);
+    // El evento todavía no se publica acá — el resumen (EventPlanChooser)
+    // es donde el organizador elige la visibilidad y recién ahí se llama a
+    // POST /api/events (Etapa 9b).
+    onContinue?.(payload);
   }
 
   return (
@@ -511,35 +507,6 @@ export function EventForm({
           </div>
         </div>
       )}
-
-      {/* Plan de publicación: aún no existe en el modelo/EventCreate, ver informe de campos faltantes */}
-      <div className="flex flex-col gap-2">
-        <FieldLabel icon={Crown}>Elegí tu plan</FieldLabel>
-        <div className="grid grid-cols-2 gap-2">
-          {PUBLISH_PLAN_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const on = plan === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPlan(option.value)}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-colors",
-                  on ? "border-primary bg-brand-pinkBg" : "border-border bg-card hover:border-primary/40",
-                )}
-              >
-                <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                  <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
-                  {option.label}
-                </span>
-                <span className="text-xs font-bold text-primary">{option.price}</span>
-                <span className="text-[11px] leading-snug text-ink-4">{option.desc}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {mode === "edit" && updateEvent.isError && (
         <p className="text-sm text-destructive">

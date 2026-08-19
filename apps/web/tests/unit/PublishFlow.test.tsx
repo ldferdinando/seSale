@@ -50,31 +50,35 @@ describe("PublishFlow", () => {
     window.localStorage.clear();
   });
 
-  it("Continuar navega al resumen y con plan gratuito Publicar redirige a /mis-eventos", async () => {
+  it("el formulario no tiene selector de plan", async () => {
     const user = userEvent.setup();
     renderWithClient();
 
     await fillRequiredFields(user);
-    await user.click(screen.getByRole("button", { name: /Gratuito/ }));
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByText("Mi evento de prueba")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Publicar/ }));
-
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/mis-eventos?published=1"));
+    expect(screen.queryByText("Elegí tu plan")).not.toBeInTheDocument();
   });
 
-  it("con un plan pago, Publicar en el resumen igual publica el evento (queda pending)", async () => {
+  it("Continuar navega al resumen, que muestra 'Elegir visibilidad'", async () => {
     const user = userEvent.setup();
     renderWithClient();
 
     await fillRequiredFields(user);
-    // "Destacado" ya viene seleccionado por defecto.
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Mi evento de prueba")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Publicar/ }));
+    expect(screen.getByText("Elegí visibilidad")).toBeInTheDocument();
+  });
+
+  it("'Publicar gratis' publica el evento y redirige a /mis-eventos", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("Mi evento de prueba")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Publicar gratis" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/mis-eventos?published=1"));
   });

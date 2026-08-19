@@ -179,6 +179,20 @@ class EventCreate(BaseModel):
     contact_web: str | None = None
     contact_email: str | None = None
 
+    # Etapa 9b: el organizador elige la visibilidad en el resumen (Paso 2),
+    # no en este formulario. gratis (default) publica directo; dest/pro se
+    # ignoran acá si no hay pago confirmado — ver create_event/a_revisar.md.
+    # No admite "banner" (no es un plan de evento, es un espacio publicitario
+    # aparte).
+    plan: PlanType = PlanType.gratis
+
+    @field_validator("plan")
+    @classmethod
+    def validate_plan(cls, value: PlanType) -> PlanType:
+        if value == PlanType.banner:
+            raise ValueError("El plan 'banner' no es válido para un evento")
+        return value
+
     @field_validator("categories")
     @classmethod
     def validate_categories(cls, value: list[str]) -> list[str]:

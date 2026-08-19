@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCities } from "@/features/auth/hooks/useCities";
+import { AdminUsersTable } from "@/features/admin/components/AdminUsersTable";
 import { useCreateUser } from "@/features/users/hooks/useCreateUser";
 import type { AdminUserCreateInput } from "@/features/users/types";
 import { ApiError } from "@/lib/api-client";
@@ -127,7 +128,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-export function AdminUsersPanel() {
+export function AdminUsersPanel({ onViewUserEvents }: { onViewUserEvents: (organizerId: string) => void }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
@@ -146,6 +147,8 @@ export function AdminUsersPanel() {
       </div>
 
       {showForm && <CreateUserForm onCreated={() => setShowForm(false)} />}
+
+      <AdminUsersTable onViewUserEvents={onViewUserEvents} />
     </section>
   );
 }

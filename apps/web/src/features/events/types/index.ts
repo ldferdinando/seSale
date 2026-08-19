@@ -133,6 +133,12 @@ export interface EventCreateInput {
   contact_email?: string;
   /** Solo tiene efecto si quien publica es admin: crea el evento en nombre de este organizador. */
   organizer_id?: string;
+  /**
+   * Etapa 9b: elegido en el resumen (EventPlanChooser), no en el
+   * formulario. El backend siempre fuerza "gratis" si no hay pago
+   * confirmado — ver create_event/a_revisar.md.
+   */
+  plan?: EventPlan;
 }
 
 export type EventUpdateInput = Partial<EventCreateInput>;
@@ -162,6 +168,7 @@ export interface AdminEventFilters {
   search?: string;
   date_from?: string;
   date_to?: string;
+  organizer_id?: string;
 }
 
 export const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [

@@ -6,9 +6,16 @@ from sqlmodel import Session
 from app.core.deps import get_current_user, get_session, require_admin
 from app.models.user import User
 from app.schemas.ad_slot import AdItemWithSlotRead
-from app.schemas.user import UserRead, UserUpdate
+from app.schemas.user import UserActiveUpdate, UserRead, UserRoleUpdate, UserUpdate
 from app.services.ad_service import list_user_banners
-from app.services.user_service import get_user, list_users, update_user, verify_user
+from app.services.user_service import (
+    get_user,
+    list_users,
+    update_user,
+    update_user_active,
+    update_user_role,
+    verify_user,
+)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -58,5 +65,27 @@ async def get_user_by_id(user_id: UUID, session: Session = Depends(get_session))
 async def verify_user_by_id(user_id: UUID, session: Session = Depends(get_session)) -> User:
     try:
         return verify_user(session, user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{user_id}/role", response_model=UserRead, dependencies=[Depends(require_admin)])
+async def update_user_role_by_id(
+    user_id: UUID, payload: UserRoleUpdate, session: Session = Depends(get_session)
+) -> User:
+    """Etapa 9b — cambiar el rol de un usuario desde el panel admin."""
+    try:
+        return update_user_role(session, user_id, payload.role)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{user_id}", response_model=UserRead, dependencies=[Depends(require_admin)])
+async def update_user_active_by_id(
+    user_id: UUID, payload: UserActiveUpdate, session: Session = Depends(get_session)
+) -> User:
+    """Etapa 9b — activar/desactivar un usuario desde el panel admin."""
+    try:
+        return update_user_active(session, user_id, payload.is_active)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

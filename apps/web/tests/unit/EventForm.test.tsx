@@ -91,7 +91,7 @@ describe("EventForm", () => {
     expect(screen.getByText("Elegí un lugar de la lista")).toBeInTheDocument();
   });
 
-  it("does not call the API — Continuar pasa los datos cargados y el plan elegido a onContinue", async () => {
+  it("does not call the API — Continuar pasa los datos cargados a onContinue", async () => {
     const user = userEvent.setup();
     const onContinue = renderWithClient();
 
@@ -106,7 +106,7 @@ describe("EventForm", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(onContinue).toHaveBeenCalledTimes(1);
-    const [payload, plan] = onContinue.mock.calls[0];
+    const [payload] = onContinue.mock.calls[0];
     expect(payload).toMatchObject({
       title: "Mi evento de prueba",
       date: expectedDate,
@@ -117,7 +117,13 @@ describe("EventForm", () => {
       }),
       categories: ["musica"],
     });
-    expect(plan).toBe("dest");
+  });
+
+  it("no tiene selector de plan — la visibilidad se elige en el resumen (Etapa 9b)", async () => {
+    renderWithClient();
+
+    expect(screen.queryByText("Elegí tu plan")).not.toBeInTheDocument();
+    expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
   });
 
   it("limits category selection to 3 and disables the rest", async () => {

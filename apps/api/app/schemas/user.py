@@ -57,6 +57,54 @@ class UserUpdate(BaseModel):
     city_id: UUID | None = None
 
 
+class UserAdminRead(BaseModel):
+    """Etapa 9b — listado completo de usuarios para el panel admin.
+
+    Extiende UserRead con datos calculados que no viven en el modelo
+    `User`: `city_name` (join con `City`) y `event_count` (cantidad de
+    eventos creados por este usuario, sin filtrar por status/is_active).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    role: str
+    is_active: bool
+
+    full_name: str
+    doc_type: str | None
+    doc_number: str | None
+    phone: str | None
+    phone_verified: bool
+    email_verified: bool
+
+    public_name: str
+    public_whatsapp: str | None
+    city_id: UUID | None
+    city_name: str | None
+    is_verified: bool
+
+    created_at: datetime
+    created_by: UUID | None
+    event_count: int
+
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        if value not in ("user", "admin"):
+            raise ValueError("El rol debe ser 'user' o 'admin'")
+        return value
+
+
+class UserActiveUpdate(BaseModel):
+    is_active: bool
+
+
 class AdminUserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)

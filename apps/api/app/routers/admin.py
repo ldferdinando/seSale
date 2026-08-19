@@ -43,7 +43,7 @@ from app.schemas.subscription import (
     SubscriptionActivateRequest,
     SubscriptionReviewRequest,
 )
-from app.schemas.user import AdminUserCreate, UserRead
+from app.schemas.user import AdminUserCreate, UserAdminRead, UserRead
 from app.services.ad_service import (
     create_ad_item,
     delete_ad_item,
@@ -81,7 +81,7 @@ from app.services.payment_service import (
     review_subscription,
 )
 from app.services.report_service import list_admin_reports, update_report_status
-from app.services.user_service import create_user_by_admin
+from app.services.user_service import create_user_by_admin, list_users_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -136,6 +136,7 @@ async def get_admin_events(
     search: str | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    organizer_id: UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
@@ -149,6 +150,7 @@ async def get_admin_events(
         search=search,
         date_from=date_from,
         date_to=date_to,
+        organizer_id=organizer_id,
         limit=limit,
         offset=offset,
     )
@@ -162,6 +164,21 @@ async def get_admin_events(
         )
         for event in events
     ]
+
+
+@router.get("/users", response_model=list[UserAdminRead])
+async def get_admin_users(
+    search: str | None = Query(default=None),
+    role: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    city_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[UserAdminRead]:
+    """Etapa 9b — listado completo de usuarios para el panel admin, sin
+    excepción de rol ni de is_active (a diferencia de GET /api/users, que
+    devuelve UserRead sin los campos calculados city_name/event_count).
+    Sin paginación a propósito — ver a_revisar.md."""
+    return list_users_admin(session, search=search, role=role, is_active=is_active, city_id=city_id)
 
 
 @router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)

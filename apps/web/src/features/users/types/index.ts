@@ -1,3 +1,19 @@
+import type { User } from "@/features/auth/types";
+
+/** Etapa 9b — listado admin: extiende User con datos calculados por el
+ * backend (no viven en el modelo User) para el panel de usuarios. */
+export interface UserAdmin extends User {
+  city_name: string | null;
+  event_count: number;
+}
+
+export interface UserAdminFilters {
+  search?: string;
+  role?: "user" | "admin";
+  is_active?: boolean;
+  city_id?: string;
+}
+
 export interface ProfileUpdateInput {
   full_name?: string;
   phone?: string;

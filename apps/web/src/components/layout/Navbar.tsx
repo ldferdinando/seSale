@@ -103,7 +103,19 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
-      <div className="relative min-h-[72px] overflow-hidden">
+      {/* Bug real reportado por la usuaria (Etapa 9b): este contenedor tenía
+          overflow-hidden pensado solo para contener el fondo de puntos y la
+          línea de degradé de abajo (ambos ya están pineados con inset-0 /
+          inset-x-0 bottom-0, no necesitan overflow-hidden para no
+          desbordar) — pero de paso clipeaba el dropdown de CitySelector
+          (absolute, ~200px de alto) contra los ~72px de este contenedor,
+          dejando visible solo una tira de ~40px del menú. El mecanismo del
+          selector (abrir/elegir/persistir/refiltrar eventos) funcionaba
+          bien — el problema era 100% visual, invisible en el árbol de
+          accesibilidad (por eso el diagnóstico anterior, hecho sin abrir el
+          navegador de verdad, no lo detectó). No agregar overflow-hidden
+          acá de nuevo sin envolver únicamente los dos divs decorativos. */}
+      <div className="relative min-h-[72px]">
         <div
           className="pointer-events-none absolute inset-0"
           style={{
