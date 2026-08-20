@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.core.deps import get_session
+from app.core.deps import get_client_ip, get_session
+from app.core.limiter import limiter
 from app.services.payment_service import (
     fetch_payment_from_mp,
     handle_approved_payment,
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
 @router.post("/mercadopago")
+@limiter.limit("60/minute", key_func=get_client_ip)
 async def post_mercadopago_webhook(request: Request, session: Session = Depends(get_session)) -> dict[str, str]:
     x_signature = request.headers.get("x-signature")
     x_request_id = request.headers.get("x-request-id")

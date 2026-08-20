@@ -7,10 +7,21 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.deps import get_session
+from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models import City, Location, Plan, PlanPrice, PlanType, User
 from app.models.plan import PricingType
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    # Etapa 9c — login/register/webhook ahora tienen rate limiting (slowapi).
+    # Sin este reset, tests que llaman esos endpoints varias veces en la
+    # misma corrida comparten la misma IP de test (ASGITransport) y el
+    # contador de slowapi persiste entre tests, haciendo que tests
+    # posteriores fallen con 429 sin relación con lo que están probando.
+    limiter.reset()
 
 
 @pytest.fixture(name="session")

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.core.deps import get_current_user, get_session
+from app.core.deps import get_client_ip, get_current_user, get_session
+from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.user import Token, UserLogin, UserRead, UserRegister
 from app.services.auth_service import (
@@ -56,7 +57,8 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserRegister, session: Session = Depends(get_session)) -> User:
+@limiter.limit("10/hour", key_func=get_client_ip)
+async def register(request: Request, payload: UserRegister, session: Session = Depends(get_session)) -> User:
     try:
         return register_user(
             session,
@@ -75,7 +77,10 @@ async def register(payload: UserRegister, session: Session = Depends(get_session
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: UserLogin, response: Response, session: Session = Depends(get_session)) -> Token:
+@limiter.limit("5/minute", key_func=get_client_ip)
+async def login(
+    request: Request, payload: UserLogin, response: Response, session: Session = Depends(get_session)
+) -> Token:
     try:
         user = authenticate_user(session, email=payload.email, password=payload.password)
     except ValueError as exc:

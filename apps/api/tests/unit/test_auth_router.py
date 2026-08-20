@@ -164,3 +164,30 @@ async def test_logout_without_token_returns_401(client: AsyncClient):
     response = await client.post("/api/auth/logout")
 
     assert response.status_code == 401
+
+
+async def test_login_rate_limited_after_5_attempts_per_minute(client: AsyncClient, organizer: User):
+    # Etapa 9c — rate limiting contra fuerza bruta de contraseñas.
+    payload = {"email": organizer.email, "password": "wrong-password"}
+    for _ in range(5):
+        response = await client.post("/api/auth/login", json=payload)
+        assert response.status_code == 401
+
+    response = await client.post("/api/auth/login", json=payload)
+
+    assert response.status_code == 429
+
+
+async def test_register_rate_limited_after_10_attempts_per_hour(client: AsyncClient, city: City):
+    # Etapa 9c — rate limiting contra registro masivo de cuentas.
+    for i in range(10):
+        response = await client.post(
+            "/api/auth/register", json=_register_payload(city_id=city.id, email=f"masivo{i}@sesale.com.ar")
+        )
+        assert response.status_code == 201
+
+    response = await client.post(
+        "/api/auth/register", json=_register_payload(city_id=city.id, email="masivo10@sesale.com.ar")
+    )
+
+    assert response.status_code == 429

@@ -1,4 +1,9 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Etapa 9c — valor por defecto de SECRET_KEY, nunca debe usarse en producción
+# (ver el model_validator más abajo, que lo rechaza explícitamente ahí).
+_DEV_SECRET_KEY = "change-me-in-dev"
 
 
 class Settings(BaseSettings):
@@ -8,7 +13,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     allowed_origins: str = "http://localhost:3000"
 
-    secret_key: str = "change-me-in-dev"
+    secret_key: str = _DEV_SECRET_KEY
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -42,6 +47,20 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    # Etapa 9c — auditoría de seguridad: si ENVIRONMENT=production arranca con
+    # el SECRET_KEY de desarrollo (porque no se cargó la variable de entorno
+    # real en Railway), cualquiera puede forjar un JWT válido (incluso de
+    # admin) firmando con este valor público del repo. Falla rápido en vez de
+    # arrancar "silenciosamente inseguro".
+    @model_validator(mode="after")
+    def _validate_production_secret_key(self) -> "Settings":
+        if self.environment == "production" and self.secret_key == _DEV_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY no puede ser el valor de desarrollo cuando ENVIRONMENT=production. "
+                "Configurá una SECRET_KEY real (larga y aleatoria) en las variables de entorno."
+            )
+        return self
 
 
 settings = Settings()

@@ -149,7 +149,11 @@ def verify_mp_signature(
     "id:{notification_id};request-id:{request_id};ts:{ts};" y se firma con el
     MERCADOPAGO_WEBHOOK_SECRET. Nunca procesar sin esta verificación.
     """
-    if not x_signature or not notification_id:
+    # Etapa 9c — si el secret vino vacío (MERCADOPAGO_WEBHOOK_SECRET sin
+    # configurar), rechazar directo en vez de calcular el HMAC con clave
+    # vacía: esa clave es conocida/computable por cualquiera, así que sin este
+    # chequeo un despliegue mal configurado aceptaría webhooks falsificados.
+    if not secret or not x_signature or not notification_id:
         return False
 
     parts: dict[str, str] = {}

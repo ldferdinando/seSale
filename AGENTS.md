@@ -91,6 +91,13 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 | supabase | 2.x | SDK de Supabase Storage — flyers de eventos (Etapa 8b) |
 | python-multipart | 0.0.x | Procesar uploads `multipart/form-data` (flyers, Etapa 8b) |
 
+### Herramientas de seguridad (dev, Etapa 9c)
+| Herramienta | Uso |
+|---|---|
+| pip-audit | Vulnerabilidades conocidas en dependencias Python |
+| bandit | Análisis estático de seguridad del código Python |
+| detect-secrets | Detección de credenciales/secrets colados en el código |
+
 ### Base de datos y servicios
 | Servicio | Etapa | Uso |
 |---|---|---|
@@ -430,6 +437,23 @@ Estas reglas son **no negociables** y aplican desde el primer commit.
 - Nunca procesar un pago sin confirmar con la API de MP que el estado es `approved`
 - El `ACCESS_TOKEN` de MP va solo en variables de entorno del backend, nunca en el frontend
 - En el frontend solo se usa la `PUBLIC_KEY` de MP (es de solo lectura, es seguro)
+
+### Auditoría pre-deploy (Etapa 9c)
+
+Antes de cada deploy correr:
+
+```bash
+cd apps/api && uv run pip-audit
+cd apps/web && npm audit
+cd apps/api && uv run bandit -r app/ -ll
+```
+
+Si aparecen vulnerabilidades nuevas: clasificar por severidad, verificar
+compatibilidad del fix con el resto del stack (nunca actualizar a ciegas) y
+correr toda la suite de tests después de cada actualización. Ver el reporte
+completo de la Etapa 9c en `a_revisar.md` por el detalle de qué quedó
+pendiente (versión de `starlette`/`fastapi`, `vite`/`esbuild` en `apps/web`)
+y por qué.
 
 ---
 

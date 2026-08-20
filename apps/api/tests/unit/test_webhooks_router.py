@@ -201,3 +201,32 @@ async def test_webhook_unknown_topic_returns_200_without_processing(monkeypatch,
     )
 
     assert response.status_code == 200
+
+
+async def test_webhook_with_empty_secret_rejects_hmac_computed_with_empty_key(client: AsyncClient, monkeypatch):
+    # Etapa 9c — si MERCADOPAGO_WEBHOOK_SECRET no está configurada (""), no
+    # hay que aceptar una firma calculada con esa misma clave vacía (que
+    # cualquiera puede reproducir).
+    monkeypatch.setattr(settings, "mercadopago_webhook_secret", "")
+    manifest = "id:1;request-id:req-1;ts:1700000000;"
+    v1_with_empty_secret = hmac.new(b"", manifest.encode(), hashlib.sha256).hexdigest()
+
+    response = await client.post(
+        "/api/webhooks/mercadopago?type=payment&id=1",
+        headers={"x-signature": f"ts=1700000000,v1={v1_with_empty_secret}", "x-request-id": "req-1"},
+    )
+
+    assert response.status_code == 400
+
+
+async def test_webhook_rate_limited_after_60_requests_per_minute(monkeypatch, client: AsyncClient):
+    # Etapa 9c — rate limiting en el webhook de MercadoPago.
+    monkeypatch.setattr(settings, "mercadopago_webhook_secret", WEBHOOK_SECRET)
+
+    for _ in range(60):
+        response = await client.post("/api/webhooks/mercadopago?type=payment&id=1")
+        assert response.status_code == 400  # sin firma, pero no rate-limited todavía
+
+    response = await client.post("/api/webhooks/mercadopago?type=payment&id=1")
+
+    assert response.status_code == 429
