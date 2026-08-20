@@ -14,11 +14,11 @@ import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
 
-function renderWithClient() {
+function renderWithClient(redirect?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <LoginForm />
+      <LoginForm redirect={redirect} />
     </QueryClientProvider>,
   );
 }
@@ -43,6 +43,17 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: "Ingresar" }));
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/mis-eventos"));
+  });
+
+  it("Etapa 9e — redirige a la ruta pedida (?redirect=) en vez de mis-eventos", async () => {
+    const user = userEvent.setup();
+    renderWithClient("/publicar");
+
+    await user.type(screen.getByLabelText(/Email/), "organizador@sesale.com.ar");
+    await user.type(screen.getByLabelText(/Contraseña/), "Password123!");
+    await user.click(screen.getByRole("button", { name: "Ingresar" }));
+
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/publicar"));
   });
 
   it("shows an error message on invalid credentials", async () => {

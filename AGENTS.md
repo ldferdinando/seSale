@@ -132,8 +132,10 @@ root/
 │   ├── web/                        # Next.js 14 (frontend web)
 │   │   ├── src/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
-│   │   │   │   └── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
-│   │   │   ├── middleware.ts       # Modo mantenimiento (NEXT_PUBLIC_MAINTENANCE_MODE, edge runtime) — Etapa 9d
+│   │   │   │   ├── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
+│   │   │   │   └── admin/layout.tsx   # Guard de /admin: redirige si no hay sesión o role≠"admin" — Etapa 9e
+│   │   │   ├── middleware.ts       # Modo mantenimiento (NEXT_PUBLIC_MAINTENANCE_MODE, edge runtime) — Etapa 9d;
+│   │   │   │                      #   + AUTH_REQUIRED_PATHS (redirige a /login?redirect= sin cookie has_session) — Etapa 9e
 │   │   │   ├── components/         # Componentes reutilizables globales
 │   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
 │   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar flyer o portada — prop type:"flyer"|"cover" — Etapa 8b, generalizado en Etapa 8e
@@ -467,8 +469,11 @@ Si aparecen vulnerabilidades nuevas: clasificar por severidad, verificar
 compatibilidad del fix con el resto del stack (nunca actualizar a ciegas) y
 correr toda la suite de tests después de cada actualización. Ver el reporte
 completo de la Etapa 9c en `a_revisar.md` por el detalle de qué quedó
-pendiente (versión de `starlette`/`fastapi`, `vite`/`esbuild` en `apps/web`)
-y por qué.
+pendiente (versión de `starlette`/`fastapi`) y por qué. La cadena
+`vite`/`esbuild` que quedó pendiente en la Etapa 9c se resolvió en la
+Etapa 9f (`vite` 5.4.21→7.3.6, `@vitejs/plugin-react` 4.3.3→4.7.0,
+`@testing-library/react` 16.0.1→16.1.0, `@types/node` 20.17.6→20.19.43 —
+`vitest`/`@vitest/coverage-v8` quedaron sin cambios en `3.2.7`).
 
 ---
 

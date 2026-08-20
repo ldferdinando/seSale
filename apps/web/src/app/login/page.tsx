@@ -3,7 +3,24 @@ import Link from "next/link";
 
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{ redirect?: string }>;
+}
+
+// Solo se acepta una ruta interna ("/algo") como redirect — nunca una URL
+// absoluta ni "//algo" (protocol-relative), para no abrir un open redirect
+// a partir de un query param que cualquiera puede armar a mano.
+function safeRedirect(redirect: string | undefined): string | undefined {
+  if (!redirect) return undefined;
+  if (!redirect.startsWith("/") || redirect.startsWith("//")) return undefined;
+  return redirect;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { redirect } = await searchParams;
+  const safeTarget = safeRedirect(redirect);
+  const isFromPublicar = safeTarget?.startsWith("/publicar") ?? false;
+
   return (
     <main className="container mx-auto flex max-w-2xl flex-col gap-6 py-6">
       <header className="flex flex-col gap-4">
@@ -22,7 +39,16 @@ export default function LoginPage() {
         </div>
       </header>
 
-      <LoginForm />
+      {isFromPublicar && (
+        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground">
+          Para publicar un evento necesitás una cuenta.{" "}
+          <Link href="/registro" className="font-semibold text-primary">
+            Registrate gratis →
+          </Link>
+        </p>
+      )}
+
+      <LoginForm redirect={safeTarget} />
     </main>
   );
 }

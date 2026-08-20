@@ -21,7 +21,14 @@ function FieldError({ message }: FieldErrorProps) {
   return <p className="text-xs text-destructive">{message}</p>;
 }
 
-export function LoginForm() {
+interface LoginFormProps {
+  // Etapa 9e — cuando el middleware redirigió acá desde una ruta protegida
+  // (?redirect=/publicar), volver ahí después del login en vez de al
+  // destino de siempre ("/mis-eventos").
+  redirect?: string;
+}
+
+export function LoginForm({ redirect }: LoginFormProps = {}) {
   const router = useRouter();
   const login = useLogin();
 
@@ -40,7 +47,7 @@ export function LoginForm() {
     } catch {
       return;
     }
-    router.push("/mis-eventos");
+    router.push(redirect || "/mis-eventos");
   }
 
   return (

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Tabs } from "@/components/ui/tabs";
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { AdminAdsPanel } from "@/features/admin/components/AdminAdsPanel";
 import { AdminCitiesPanel } from "@/features/admin/components/AdminCitiesPanel";
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
@@ -33,8 +32,6 @@ export default function AdminPage() {
   // Etapa 9b: "Ver eventos del usuario" (panel Usuarios) cambia a la tab
   // Eventos con este filtro ya aplicado.
   const [eventsOrganizerFilter, setEventsOrganizerFilter] = useState<string | undefined>(undefined);
-  const { data: currentUser, isLoading } = useCurrentUser();
-  const isAdmin = currentUser?.role === "admin";
 
   function handleViewUserEvents(organizerId: string) {
     setEventsOrganizerFilter(organizerId);
@@ -51,34 +48,19 @@ export default function AdminPage() {
         <h1 className="px-1 text-2xl font-black tracking-tight">Panel de administración</h1>
       </header>
 
-      {!isLoading && !isAdmin && currentUser && (
-        <p className="text-sm text-muted-foreground">No tenés permiso para ver esta sección.</p>
-      )}
+      {/* Etapa 9e: admin/layout.tsx ya garantiza sesión + role="admin" antes
+          de renderizar esta página — no hace falta repetir el chequeo acá. */}
+      <Tabs tabs={ADMIN_TABS} value={tab} onChange={setTab} />
 
-      {!isLoading && !isAdmin && !currentUser && (
-        <p className="text-sm text-muted-foreground">
-          Iniciá sesión como admin para acceder al panel.{" "}
-          <Link href="/login" className="font-semibold text-primary">
-            Ingresar
-          </Link>
-        </p>
-      )}
-
-      {isAdmin && (
-        <>
-          <Tabs tabs={ADMIN_TABS} value={tab} onChange={setTab} />
-
-          {tab === "destacados" && <AdminFeaturedPanel />}
-          {tab === "eventos" && <AdminEventsPanel initialOrganizerId={eventsOrganizerFilter} />}
-          {tab === "lugares" && <AdminLocationsPanel />}
-          {tab === "gastronomia" && <AdminGastroPanel />}
-          {tab === "banners" && <AdminAdsPanel />}
-          {tab === "ciudades" && <AdminCitiesPanel />}
-          {tab === "usuarios" && <AdminUsersPanel onViewUserEvents={handleViewUserEvents} />}
-          {tab === "suscripciones" && <AdminSubscriptionsPanel />}
-          {tab === "reportes" && <AdminReportsPanel />}
-        </>
-      )}
+      {tab === "destacados" && <AdminFeaturedPanel />}
+      {tab === "eventos" && <AdminEventsPanel initialOrganizerId={eventsOrganizerFilter} />}
+      {tab === "lugares" && <AdminLocationsPanel />}
+      {tab === "gastronomia" && <AdminGastroPanel />}
+      {tab === "banners" && <AdminAdsPanel />}
+      {tab === "ciudades" && <AdminCitiesPanel />}
+      {tab === "usuarios" && <AdminUsersPanel onViewUserEvents={handleViewUserEvents} />}
+      {tab === "suscripciones" && <AdminSubscriptionsPanel />}
+      {tab === "reportes" && <AdminReportsPanel />}
     </main>
   );
 }
