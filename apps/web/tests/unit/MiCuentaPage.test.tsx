@@ -54,7 +54,37 @@ describe("MiCuentaPage", () => {
 
     expect(await screen.findByText(/Email verificado/i)).toBeInTheDocument();
     expect(screen.getByText(/Teléfono sin verificar/i)).toBeInTheDocument();
-    expect(screen.getByText(/Identidad verificada por seSALE/i)).toBeInTheDocument();
+    expect(screen.getByText(/Identidad verificada ✓/i)).toBeInTheDocument();
+  });
+
+  it("Etapa 9d — muestra el banner de verificación con link a WhatsApp cuando is_verified=false", async () => {
+    server.use(
+      http.get(`${API_URL}/api/users/me`, () =>
+        HttpResponse.json(
+          makeUser({ is_verified: false, public_name: "El Tinglado Bar", email: "juan@sesale.com.ar" }),
+        ),
+      ),
+    );
+    setToken("test-token");
+    renderWithClient();
+
+    expect(await screen.findByText(/Contactanos por WhatsApp para verificar tu identidad/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Identidad verificada/i)).not.toBeInTheDocument();
+
+    const link = screen.getByRole("link", { name: /Contactar por WhatsApp/i });
+    expect(link.getAttribute("href")).toContain(encodeURIComponent("El Tinglado Bar"));
+    expect(link.getAttribute("href")).toContain(encodeURIComponent("juan@sesale.com.ar"));
+  });
+
+  it("Etapa 9d — no muestra el banner de verificación cuando is_verified=true", async () => {
+    server.use(
+      http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser({ is_verified: true }))),
+    );
+    setToken("test-token");
+    renderWithClient();
+
+    await screen.findByText(/Identidad verificada ✓/i);
+    expect(screen.queryByText(/Contactanos por WhatsApp para verificar tu identidad/i)).not.toBeInTheDocument();
   });
 
   it("sin plan activo, ofrece elegir un evento para destacar", async () => {

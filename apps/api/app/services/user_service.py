@@ -105,9 +105,9 @@ def update_user(session: Session, user: User, updates: dict) -> User:
     return user
 
 
-def verify_user(session: Session, user_id: UUID) -> User:
+def verify_user(session: Session, user_id: UUID, *, is_verified: bool = True) -> User:
     user = get_user(session, user_id)
-    user.is_verified = True
+    user.is_verified = is_verified
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -127,9 +127,15 @@ def create_user_by_admin(
     doc_type: str | None,
     doc_number: str | None,
     phone: str | None,
+    is_verified: bool = False,
 ) -> User:
     """Crea una cuenta en nombre de un cliente (ej. de banner). Registra
-    `created_by` con el id del admin autenticado."""
+    `created_by` con el id del admin autenticado.
+
+    Etapa 9d — `is_verified=True` es para cuando el admin ya confirmó la
+    identidad de esta persona por fuera del sistema (llamada, presencial):
+    la cuenta nace directamente is_verified/is_active/email_verified=True,
+    sin pasar por el flujo manual de verificación vía WhatsApp."""
     existing = session.exec(select(User).where(User.email == email)).first()
     if existing is not None:
         raise ValueError("El email ya está registrado")
@@ -145,6 +151,40 @@ def create_user_by_admin(
         public_name=public_name,
         city_id=city_id,
         created_by=admin_id,
+        is_verified=is_verified,
+        is_active=True,
+        email_verified=is_verified,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def admin_exists(session: Session) -> bool:
+    """Etapa 9d — usado por POST /api/setup/admin para decidir si el
+    endpoint sigue habilitado (True → 410, el setup ya se hizo)."""
+    return session.exec(select(User).where(User.role == "admin")).first() is not None
+
+
+def create_first_admin(session: Session, *, email: str, password: str, full_name: str, public_name: str) -> User:
+    """Etapa 9d — crea el primer admin de la instancia (POST /api/setup/admin,
+    sin autenticación). El caller (router) ya validó con admin_exists() que
+    no existe ningún admin todavía; igual se revalida acá el email único,
+    mismo criterio que register_user/create_user_by_admin."""
+    existing = session.exec(select(User).where(User.email == email)).first()
+    if existing is not None:
+        raise ValueError("El email ya está registrado")
+
+    user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        role="admin",
+        full_name=full_name,
+        public_name=public_name,
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
     )
     session.add(user)
     session.commit()

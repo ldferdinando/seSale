@@ -200,6 +200,7 @@ async def post_admin_user(
             doc_type=payload.doc_type,
             doc_number=payload.doc_number,
             phone=payload.phone,
+            is_verified=payload.is_verified,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc

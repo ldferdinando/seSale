@@ -41,7 +41,11 @@ class PlanPrice(SQLModel, table=True):
     valid_from: date
     valid_until: date | None = Field(default=None)
     promo_label: str | None = Field(default=None)
-    created_by: UUID = Field(foreign_key="users.id")
+    # Etapa 9d — nullable: la migración de datos base (0017) inserta los
+    # precios placeholder de dest/pro antes de que exista ningún usuario en
+    # producción (el primer admin se crea después, vía POST /api/setup/admin).
+    # Confirmado con la usuaria (AskUserQuestion) antes de tocar el modelo.
+    created_by: UUID | None = Field(default=None, foreign_key="users.id")
     notes: str | None = Field(default=None)
 
     plan: "Plan" = Relationship(back_populates="prices")

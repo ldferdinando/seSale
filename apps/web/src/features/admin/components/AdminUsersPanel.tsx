@@ -20,6 +20,7 @@ const EMPTY_FORM: AdminUserCreateInput = {
   full_name: "",
   city_id: undefined,
   role: "user",
+  is_verified: false,
 };
 
 function CreateUserForm({ onCreated }: { onCreated: () => void }) {
@@ -113,6 +114,22 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
             <SelectItem value="admin">Admin</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+        <input
+          id="admin-user-is-verified"
+          type="checkbox"
+          checked={form.is_verified ?? false}
+          onChange={(e) => setForm((f) => ({ ...f, is_verified: e.target.checked }))}
+          className="h-4 w-4 accent-primary"
+        />
+        <Label htmlFor="admin-user-is-verified" className="flex-1 text-sm font-normal">
+          ¿Verificar identidad al crear?
+          <span className="block text-xs text-ink-4">
+            Activalo si ya confirmaste la identidad de esta persona por fuera del sistema (llamada, presencial).
+          </span>
+        </Label>
       </div>
 
       {createUser.isError && (

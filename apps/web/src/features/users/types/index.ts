@@ -32,4 +32,7 @@ export interface AdminUserCreateInput {
   doc_type?: "dni" | "cuit";
   doc_number?: string;
   phone?: string;
+  // Etapa 9d — el admin ya verificó la identidad de esta persona por fuera
+  // del sistema (llamada, presencial) antes de cargarla.
+  is_verified?: boolean;
 }

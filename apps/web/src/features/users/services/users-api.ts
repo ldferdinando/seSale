@@ -37,3 +37,9 @@ export async function updateUserRole(userId: string, role: "user" | "admin"): Pr
 export async function updateUserActive(userId: string, isActive: boolean): Promise<User> {
   return apiPatch<User>(`/api/users/${userId}`, { is_active: isActive });
 }
+
+/** Etapa 9d — toggle bidireccional (PATCH /api/users/{id}/verify acepta
+ * {is_verified} desde esta etapa; antes solo verificaba, sin body). */
+export async function updateUserVerified(userId: string, isVerified: boolean): Promise<User> {
+  return apiPatch<User>(`/api/users/${userId}/verify`, { is_verified: isVerified });
+}

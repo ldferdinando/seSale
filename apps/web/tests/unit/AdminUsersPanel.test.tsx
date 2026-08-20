@@ -57,6 +57,51 @@ describe("AdminUsersPanel", () => {
     expect(await screen.findByRole("button", { name: "Crear usuario" })).toBeInTheDocument();
   });
 
+  it("Etapa 9d — includes is_verified when the toggle is checked", async () => {
+    let calledWith: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
+        calledWith = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeUser({ is_verified: true }), { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(screen.getByRole("button", { name: "Crear usuario" }));
+    await user.type(screen.getByLabelText("Email"), "verificado@sesale.com.ar");
+    await user.type(screen.getByLabelText("Contraseña"), "Password123!");
+    await user.type(screen.getByLabelText("Nombre público"), "Cliente Verificado");
+    await user.type(screen.getByLabelText("Nombre completo"), "Cliente Verificado SA");
+    await user.click(screen.getByText("¿Verificar identidad al crear?"));
+    await user.click(screen.getByRole("button", { name: "Crear usuario" }));
+
+    await waitFor(() => expect(calledWith).not.toBeNull());
+    expect(calledWith?.is_verified).toBe(true);
+  });
+
+  it("Etapa 9d — is_verified is false by default", async () => {
+    let calledWith: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
+        calledWith = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeUser(), { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(screen.getByRole("button", { name: "Crear usuario" }));
+    await user.type(screen.getByLabelText("Email"), "sinverificar@sesale.com.ar");
+    await user.type(screen.getByLabelText("Contraseña"), "Password123!");
+    await user.type(screen.getByLabelText("Nombre público"), "Cliente Sin Verificar");
+    await user.type(screen.getByLabelText("Nombre completo"), "Cliente Sin Verificar");
+    await user.click(screen.getByRole("button", { name: "Crear usuario" }));
+
+    await waitFor(() => expect(calledWith).not.toBeNull());
+    expect(calledWith?.is_verified).toBe(false);
+  });
+
   it("lists all users regardless of role or active state", async () => {
     server.use(
       http.get(`${API_URL}/api/admin/users`, () => {
@@ -147,5 +192,27 @@ describe("AdminUsersPanel", () => {
     await user.click(screen.getByRole("button", { name: "Desactivar" }));
 
     await waitFor(() => expect(calledWith).toEqual({ is_active: false }));
+  });
+
+  it("Etapa 9d — toggling verified calls PATCH /verify with the correct body", async () => {
+    let calledWith: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API_URL}/api/admin/users`, () => {
+        return HttpResponse.json([
+          makeAdminUser({ id: "u1", public_name: "El Tinglado Bar", is_verified: false }),
+        ]);
+      }),
+      http.patch(`${API_URL}/api/users/u1/verify`, async ({ request }) => {
+        calledWith = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeUser({ is_verified: true }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await screen.findByText("El Tinglado Bar");
+    await user.click(screen.getByRole("button", { name: "Verificar" }));
+
+    await waitFor(() => expect(calledWith).toEqual({ is_verified: true }));
   });
 });

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from httpx import AsyncClient
+from sqlmodel import Session
 
 from app.models import User
 
@@ -83,6 +84,24 @@ async def test_verify_user_as_admin(
 
     assert response.status_code == 200
     assert response.json()["is_verified"] is True
+
+
+async def test_unverify_user_as_admin(
+    client: AsyncClient, session: Session, organizer: User, admin_token_headers: dict[str, str]
+):
+    """Etapa 9d — toggle bidireccional: {"is_verified": false} revierte."""
+    organizer.is_verified = True
+    session.add(organizer)
+    session.commit()
+
+    response = await client.patch(
+        f"/api/users/{organizer.id}/verify",
+        json={"is_verified": False},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_verified"] is False
 
 
 async def test_verify_user_as_non_admin_returns_403(

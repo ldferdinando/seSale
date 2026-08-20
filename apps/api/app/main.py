@@ -18,6 +18,7 @@ from app.routers import (
     locations,
     plans,
     reports,
+    setup,
     stats,
     subscriptions,
     users,
@@ -50,6 +51,11 @@ app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
 app.include_router(ads.router)
 app.include_router(gastro.router)
+# Etapa 9d — /api/setup solo activo hasta que exista el primer admin.
+# Después de eso devuelve 410 (o siempre, si DISABLE_SETUP_ENDPOINT=true).
+# No eliminar este router — el 410 permanente es la respuesta de seguridad
+# correcta, no un error a "arreglar" sacándolo.
+app.include_router(setup.router)
 
 # Etapa 8b — sirve los flyers subidos en development sin Supabase configurado
 # (ver app/core/storage.py, fallback a disco local). En producción con
@@ -62,3 +68,11 @@ app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# Etapa 9d — health check público para Railway (sin auth, sin datos
+# sensibles). /health (arriba) queda igual, sin tocar — este es el que
+# documenta el README/ARCHITECTURE.md para el deploy.
+@app.get("/api/health")
+async def api_health() -> dict[str, str]:
+    return {"status": "ok", "environment": settings.environment}

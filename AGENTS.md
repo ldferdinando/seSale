@@ -132,6 +132,8 @@ root/
 │   ├── web/                        # Next.js 14 (frontend web)
 │   │   ├── src/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
+│   │   │   │   └── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
+│   │   │   ├── middleware.ts       # Modo mantenimiento (NEXT_PUBLIC_MAINTENANCE_MODE, edge runtime) — Etapa 9d
 │   │   │   ├── components/         # Componentes reutilizables globales
 │   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
 │   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar flyer o portada — prop type:"flyer"|"cover" — Etapa 8b, generalizado en Etapa 8e
@@ -219,7 +221,8 @@ root/
 │       │   │   ├── auth.py
 │       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b; + filtro location_id en GET /api/events — Etapa 8e
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
-│       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d
+│       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d; PATCH .../verify acepta body {is_verified} — Etapa 9d
+│       │   │   ├── setup.py        # POST /api/setup/admin — setup del primer admin, público hasta que exista uno — Etapa 9d
 │       │   │   ├── cities.py
 │       │   │   ├── locations.py    # GET /api/locations (+ filtros), GET /api/locations/{id} — Etapa 7b
 │       │   │   ├── gastro.py       # GET /api/gastro (+ filtros), GET /api/gastro/{id} — público, Etapa 8e
@@ -393,6 +396,18 @@ Si los tests fallan, el merge está bloqueado.
 cd apps/api && pytest          # Backend: todos verdes
 cd apps/web && npm run test    # Frontend: todos verdes
 ```
+
+**Workflows (Etapa 9d)** — `.github/workflows/ci-backend.yml` y
+`ci-frontend.yml` corren automáticamente en cada `push` a `develop`/`main`
+y en cada Pull Request contra `main` (filtrados por path: solo si cambió
+algo en `apps/api/**` o `apps/web/**` respectivamente). El backend corre
+`alembic upgrade head` contra un Postgres real de servicio (validar que las
+migraciones son válidas, no solo contra SQLite) y luego `pytest` con
+cobertura ≥80% + `bandit` (falla el CI en severidad media/alta). El
+frontend corre tests + `npm run build` + `npm audit --audit-level=high`
+(bloquea el merge solo con vulnerabilidades altas/críticas). Ver
+`README.md` → "Configurar branch protection en GitHub" para exigir que
+ambos pasen antes de mergear a `main`.
 
 ---
 

@@ -1609,6 +1609,34 @@ GET    /api/users/me/banners             Usuario autenticado. Sus propios
                                          Orden: starts_at DESC. Solo lectura
 ```
 
+### Setup inicial y salud del sistema (`/api/setup`, `/api/health`) ✓ Etapa 9d
+```
+POST   /api/setup/admin                  SIN autenticación — único endpoint
+                                         público que crea un admin. Solo
+                                         funciona si NO existe ningún
+                                         User.role="admin" todavía; una vez
+                                         creado el primero, devuelve 410 Gone
+                                         para siempre ("Setup already
+                                         completed..."), sea cual sea el
+                                         intento (incluso con datos válidos).
+                                         También devuelve 410 sin consultar
+                                         la DB si DISABLE_SETUP_ENDPOINT=true
+                                         (capa extra, a setear en Railway
+                                         después de crear el admin). Rate
+                                         limit 5/hora por IP. El admin nace
+                                         is_active/is_verified/
+                                         email_verified=True. Body: email,
+                                         password (mín. 12 chars), full_name,
+                                         public_name
+
+GET    /api/health                       Público, sin datos sensibles.
+                                         { status: "ok", environment }.
+                                         Usado por Railway para el health
+                                         check del servicio. (El /health sin
+                                         prefijo /api, de etapas anteriores,
+                                         sigue existiendo sin cambios)
+```
+
 ---
 
 ## 6. Etapas de desarrollo
@@ -1644,6 +1672,7 @@ GET    /api/users/me/banners             Usuario autenticado. Sus propios
 | **9a** | Fixes de UX pendientes de `a_revisar.md`: tab gastronomía habilitado, estadísticas reales, link de eventos en gastronomía, badge de organizador verificado con datos reales. | ✓ Completa: `BottomNav.tsx` — el tab Gastronomía ya apuntaba a `/lugares` sin `disabled` desde la Etapa 8e (hallazgo: la nota y el comentario del código habían quedado desactualizados), se le agregó `activeMatch` para que quede activo también en `/lugares/{id}`; estadísticas del home confirmadas sin cambios de código (`organizer_id` en `EventRead` y `GET /api/stats` ya funcionaban desde la Etapa 4.5); `GastroPlaceCard.tsx` — "Ver N evento(s)" navega a `/lugares/{id}` (la card entera ya es un `Link`, no se anida otro `<a>`); `OrganizerPublicRead` expone `is_verified`/`phone_verified`/`email_verified`/`member_since` (sin datos privados), `EventDetailView.tsx` muestra el banner de verificación solo si `is_verified=true`, con badges condicionados a cada flag. Sin cambios de modelo ni migraciones. |
 | **9b** | Panel admin listado completo de usuarios, flujo de planes rediseñado en resumen de evento, corrección selector de ciudades | ✓ Completa: `GET /api/admin/users` (todos los usuarios, filtros search/role/is_active/city_id, `UserAdminRead` con `city_name`/`event_count` calculados), `PATCH /api/users/{id}/role`, `PATCH /api/users/{id}` (is_active); `AdminUsersTable.tsx`/`UserDetailModal.tsx` en el panel admin (listado, filtros, ver detalle con datos privados, cambiar rol, activar/desactivar, "Ver eventos del usuario" → filtro `organizer_id` nuevo en `GET /api/admin/events`); `EventCreate.plan` opcional (default "gratis", protegido server-side — ver sección de API); selector de plan eliminado de `EventForm.tsx`, `EventPlanChooser.tsx` nuevo en el resumen del alta (`EventSummaryView.tsx`) con las tres opciones de visibilidad, precios reales desde `GET /api/plans`, y el mismo flujo de pago que ya existía en `/planes` (checkout de MercadoPago / transferencia). Selector de ciudades: dos bugs reales encontrados recién al abrir la app en el navegador (el diagnóstico estático inicial no los detectó) — (1) el `<h1>` del Home tenía "General Roca" hardcodeado en vez de `activeCity.name`; (2) el dropdown de `CitySelector` (`Navbar.tsx`) quedaba recortado casi por completo por un `overflow-hidden` en un contenedor ancestro pensado solo para el fondo decorativo del header — visible en el DOM/accesibilidad pero invisible para la usuaria. Ambos corregidos y verificados en vivo (estilos computados + `getBoundingClientRect()`, no solo el árbol de accesibilidad) — ver `a_revisar.md` |
 | **9c** | Auditoría de seguridad pre-deploy: `pip-audit`, `npm audit`, `bandit`, `detect-secrets`, revisión de configuraciones (CORS, rate limiting, headers HTTP, endpoints, webhook, `.env.example`). | ✓ Completa: guard de `SECRET_KEY` en producción (`config.py`, rechaza el valor de desarrollo si `ENVIRONMENT=production`); rate limiting agregado en `POST /api/auth/login` (5/min), `POST /api/auth/register` (10/hora) y `POST /api/webhooks/mercadopago` (60/min); `verify_mp_signature` rechaza `MERCADOPAGO_WEBHOOK_SECRET` vacío antes de calcular el HMAC; `cryptography` actualizado a 50.0.0 (CVE-2026-69247); headers de seguridad HTTP en `next.config.js` (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-DNS-Prefetch-Control` — sin CSP todavía, a propósito); `brace-expansion`/`nanoid`/`postcss`/`sharp` actualizados en `apps/web` vía `overrides` acotados (sin tocar `vite`/`esbuild`, ver `a_revisar.md`). Sin secrets expuestos (código ni historial de git), `.gitignore` y `.env.example` ya completos — sin cambios ahí. `starlette`/`fastapi` y el bump de `vite`/`esbuild` quedan pendientes para después del deploy (ver `a_revisar.md`) |
+| **9d** | Infraestructura de deploy: setup del primer admin sin SSH, migración de datos base para producción, modo mantenimiento en Next.js, workflows de GitHub Actions, mejoras al flujo de verificación de usuarios. Sin features nuevas para el usuario final — prepara el primer deploy a producción. | ✓ Completa: `POST /api/setup/admin` (público, se auto-desactiva con 410 apenas existe un admin, + `DISABLE_SETUP_ENDPOINT`), `GET /api/health`; migración de datos `0017_insert_base_data` (ciudades/ad_slots/planes/plan_prices, idempotente — reemplaza a `seed.py` en producción) y migración de esquema `0016_plan_price_created_by_nullable` (`PlanPrice.created_by` pasa a nullable — hueco real encontrado al planificar: la migración de datos corre antes de que exista cualquier usuario, confirmado con la usuaria); `middleware.ts` + `/proximamente` (modo mantenimiento vía `NEXT_PUBLIC_MAINTENANCE_MODE`, countdown opcional); toggle `is_verified` al crear usuario desde el panel admin (`AdminUserCreate.is_verified`); `PATCH /api/users/{id}/verify` pasa a aceptar body opcional `{is_verified}` (antes solo verificaba, sin body) — toggle real de verificación en `AdminUsersTable.tsx` con tooltip (el pedido daba por hecho que ya existía, no era así — ver `a_revisar.md`); banner de verificación con CTA de WhatsApp en `/mi-cuenta` si `is_verified=false`; `.github/workflows/ci-backend.yml`/`ci-frontend.yml` |
 | **9** | App mobile (Expo) — consume la misma API. | |
 
 ---
@@ -1678,6 +1707,9 @@ ADMIN_EMAIL=admin@sesale.com.ar            # Etapa 6.5 — destinatario del emai
 ENVIRONMENT=development                    # development | production
 ALLOWED_ORIGINS=http://localhost:3000,https://sesale.com.ar
 
+DISABLE_SETUP_ENDPOINT=false               # Etapa 9d — "true" desactiva POST /api/setup/admin
+                                            # sin consultar la DB (setear en Railway después del setup)
+
 # ── Frontend (Next.js — NEXT_PUBLIC_ se expone al cliente) ──
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp   # no se usa en Etapa 6 (checkout es redirect, no Bricks)
@@ -1685,6 +1717,10 @@ NEXT_PUBLIC_SESALE_WHATSAPP=549XXXXXXXXXX       # mismo número que SESALE_WHATS
 NEXT_PUBLIC_BANK_INFO=                          # Etapa 6b-1 — datos bancarios para /planes/transferencia
                                                  # formato "Label:valor|Label:valor", ej:
                                                  # "Alias:sesale.pagos|CBU:000...|Titular:seSALE SRL|Banco:..."
+NEXT_PUBLIC_MAINTENANCE_MODE=false              # Etapa 9d — "true" muestra /proximamente a todo el sitio
+                                                 # salvo /login y /api (middleware.ts, edge runtime)
+NEXT_PUBLIC_LAUNCH_DATE=                        # Etapa 9d — fecha ISO opcional para el countdown de
+                                                 # /proximamente. Vacía = sin countdown
 ```
 
 ### Entornos

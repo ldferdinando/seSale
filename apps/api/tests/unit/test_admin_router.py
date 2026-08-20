@@ -207,6 +207,50 @@ async def test_post_admin_users_creates_user_with_created_by(
     assert body["created_by"] == str(admin.id)
 
 
+async def test_post_admin_users_with_is_verified_true_creates_verified_active_user(
+    client: AsyncClient, city: City, admin_token_headers: dict[str, str]
+):
+    """Etapa 9d — el admin ya confirmó la identidad de la persona por fuera
+    del sistema: la cuenta nace directamente verificada."""
+    payload = {
+        "email": "verificado-al-crear@sesale.com.ar",
+        "password": "Password123!",
+        "public_name": "Cliente Verificado",
+        "full_name": "Cliente Verificado SA",
+        "city_id": str(city.id),
+        "role": "user",
+        "is_verified": True,
+    }
+
+    response = await client.post("/api/admin/users", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["is_verified"] is True
+    assert body["is_active"] is True
+    assert body["email_verified"] is True
+
+
+async def test_post_admin_users_without_is_verified_defaults_to_unverified(
+    client: AsyncClient, city: City, admin_token_headers: dict[str, str]
+):
+    payload = {
+        "email": "sin-verificar@sesale.com.ar",
+        "password": "Password123!",
+        "public_name": "Cliente Sin Verificar",
+        "full_name": "Cliente Sin Verificar",
+        "city_id": str(city.id),
+        "role": "user",
+    }
+
+    response = await client.post("/api/admin/users", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["is_verified"] is False
+    assert body["email_verified"] is False
+
+
 async def test_post_admin_users_as_non_admin_returns_403(client: AsyncClient, city: City, user_token_headers: dict[str, str]):
     payload = {
         "email": "otra-cuenta@sesale.com.ar",

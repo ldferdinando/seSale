@@ -105,6 +105,15 @@ class UserActiveUpdate(BaseModel):
     is_active: bool
 
 
+class UserVerifiedUpdate(BaseModel):
+    """Etapa 9d — body opcional de PATCH /api/users/{id}/verify: por defecto
+    verifica (True, comportamiento previo a esta etapa, cuando el endpoint
+    no aceptaba body); permite también revertir (False) para que el toggle
+    del panel admin sea bidireccional."""
+
+    is_verified: bool = True
+
+
 class AdminUserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
@@ -115,6 +124,10 @@ class AdminUserCreate(BaseModel):
     doc_type: str | None = None
     doc_number: str | None = None
     phone: str | None = None
+    # Etapa 9d — el admin ya verificó la identidad de esta persona por fuera
+    # del sistema (llamada, presencial) antes de cargarla: si es True, la
+    # cuenta nace is_verified/is_active/email_verified=True directamente.
+    is_verified: bool = False
 
     @field_validator("role")
     @classmethod
@@ -122,6 +135,18 @@ class AdminUserCreate(BaseModel):
         if value not in ("user", "admin"):
             raise ValueError("El rol debe ser 'user' o 'admin'")
         return value
+
+
+class SetupAdminCreate(BaseModel):
+    """Etapa 9d — POST /api/setup/admin. Password más largo que el registro
+    normal (mínimo 12, vs. 8 de UserRegister/AdminUserCreate) porque esta
+    cuenta nace con rol admin y el endpoint es público mientras no exista
+    ningún admin todavía."""
+
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+    full_name: str = Field(min_length=1, max_length=255)
+    public_name: str = Field(min_length=1, max_length=255)
 
 
 class Token(BaseModel):

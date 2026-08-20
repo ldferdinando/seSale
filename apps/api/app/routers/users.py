@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.core.deps import get_current_user, get_session, require_admin
 from app.models.user import User
 from app.schemas.ad_slot import AdItemWithSlotRead
-from app.schemas.user import UserActiveUpdate, UserRead, UserRoleUpdate, UserUpdate
+from app.schemas.user import UserActiveUpdate, UserRead, UserRoleUpdate, UserUpdate, UserVerifiedUpdate
 from app.services.ad_service import list_user_banners
 from app.services.user_service import (
     get_user,
@@ -62,9 +62,17 @@ async def get_user_by_id(user_id: UUID, session: Session = Depends(get_session))
 
 
 @router.patch("/{user_id}/verify", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def verify_user_by_id(user_id: UUID, session: Session = Depends(get_session)) -> User:
+async def verify_user_by_id(
+    user_id: UUID,
+    payload: UserVerifiedUpdate = UserVerifiedUpdate(),
+    session: Session = Depends(get_session),
+) -> User:
+    """Etapa 9d — body opcional (`is_verified`, default True): sin body se
+    comporta igual que antes de esta etapa (verifica). Con
+    `{"is_verified": false}` revierte la verificación — toggle bidireccional
+    para el panel admin."""
     try:
-        return verify_user(session, user_id)
+        return verify_user(session, user_id, is_verified=payload.is_verified)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { BadgeCheck, Mail, MapPin, Pencil, Phone, ShieldCheck, User as UserIcon, X } from "lucide-react";
+import { BadgeCheck, Mail, MapPin, MessageCircle, Pencil, Phone, ShieldCheck, User as UserIcon, X } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCities } from "@/features/auth/hooks/useCities";
 import type { User } from "@/features/auth/types";
+import { sesaleWhatsappHref } from "@/features/plans/lib/whatsapp";
 import { useUpdateProfile } from "@/features/users/hooks/useUpdateProfile";
 
 interface EditableFieldProps {
@@ -191,11 +192,34 @@ export function AccountProfile({ currentUser }: { currentUser: User }) {
             <Phone className="h-3 w-3" aria-hidden />
             Teléfono {currentUser.phone_verified ? "verificado" : "sin verificar"}
           </Badge>
-          <Badge variant={currentUser.is_verified ? "pro" : "muted"} className="flex items-center gap-1">
-            {currentUser.is_verified ? <BadgeCheck className="h-3 w-3" aria-hidden /> : <ShieldCheck className="h-3 w-3" aria-hidden />}
-            {currentUser.is_verified ? "Identidad verificada por seSALE" : "Identidad sin verificar"}
-          </Badge>
+          {currentUser.is_verified && (
+            <Badge variant="pro" className="flex items-center gap-1">
+              <BadgeCheck className="h-3 w-3" aria-hidden />
+              Identidad verificada ✓
+            </Badge>
+          )}
         </div>
+
+        {!currentUser.is_verified && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-3">
+            <p className="flex items-start gap-1.5 text-sm text-foreground">
+              <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
+              ¿Querés que tus eventos muestren el badge de organizador verificado? Contactanos por WhatsApp para
+              verificar tu identidad.
+            </p>
+            <a
+              href={sesaleWhatsappHref(
+                `Hola, soy ${currentUser.public_name} y quiero verificar mi identidad en seSALE. Mi email registrado es ${currentUser.email}.`,
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-fit items-center gap-1.5 text-xs font-semibold text-primary"
+            >
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              Contactar por WhatsApp →
+            </a>
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-ink-4">Miembro desde: {memberSince}</p>

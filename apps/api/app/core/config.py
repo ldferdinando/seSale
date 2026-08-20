@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Mismas credenciales de Supabase, bucket propio.
     supabase_cover_bucket: str = "covers"
 
+    # Etapa 9d — capa extra de seguridad para POST /api/setup/admin, además
+    # del guard automático (410 si ya existe un admin). Setear a "true" en
+    # Railway una vez creado el primer admin.
+    disable_setup_endpoint: bool = False
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

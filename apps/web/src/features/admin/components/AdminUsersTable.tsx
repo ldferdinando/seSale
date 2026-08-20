@@ -13,6 +13,7 @@ import { UserDetailModal } from "@/features/admin/components/UserDetailModal";
 import { useAdminUsers } from "@/features/users/hooks/useAdminUsers";
 import { useUpdateUserActive } from "@/features/users/hooks/useUpdateUserActive";
 import { useUpdateUserRole } from "@/features/users/hooks/useUpdateUserRole";
+import { useVerifyUser } from "@/features/users/hooks/useVerifyUser";
 import type { UserAdmin, UserAdminFilters } from "@/features/users/types";
 
 function UserRow({
@@ -26,6 +27,7 @@ function UserRow({
 }) {
   const updateRole = useUpdateUserRole();
   const updateActive = useUpdateUserActive();
+  const updateVerified = useVerifyUser();
 
   return (
     <div data-testid="admin-user-row" className="flex flex-col gap-2 rounded-lg border border-border p-3">
@@ -75,6 +77,16 @@ function UserRow({
           onClick={() => updateActive.mutate({ userId: user.id, isActive: !user.is_active })}
         >
           {user.is_active ? "Desactivar" : "Activar"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={updateVerified.isPending}
+          title="Verificar cuando hayas confirmado la identidad del organizador por fuera del sistema (DNI/CUIT por WhatsApp)."
+          onClick={() => updateVerified.mutate({ userId: user.id, isVerified: !user.is_verified })}
+        >
+          {user.is_verified ? "Quitar verificación" : "Verificar"}
         </Button>
       </div>
     </div>
