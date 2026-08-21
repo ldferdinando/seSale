@@ -1,6 +1,6 @@
 """Tests de GET /api/ads (público) — Etapa 8d."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 from httpx import AsyncClient
@@ -84,10 +84,14 @@ async def test_get_ads_excludes_expired_item(
 async def test_get_ads_excludes_item_with_future_starts_at(
     client: AsyncClient, session: Session, city: City, organizer: User, admin: User
 ):
+    # El servicio compara starts_at contra datetime.now(timezone.utc).date() (ver
+    # ad_service._is_current), no contra date.today() local: si se usa date.today()
+    # acá, en el servidor (UTC-3) hay una ventana diaria (~21:00-23:59 hora local,
+    # cuando el reloj UTC ya cruzó la medianoche) en la que "mañana" local coincide
+    # con "hoy" en UTC, y el test se vuelve flaky. Por eso se calcula en UTC.
+    tomorrow_utc = datetime.now(timezone.utc).date() + timedelta(days=1)
     slot = _make_slot(session, city=city, section="eventos", slot_position=0)
-    _make_item(
-        session, slot=slot, user=organizer, admin=admin, status="active", starts_at=date.today() + timedelta(days=1)
-    )
+    _make_item(session, slot=slot, user=organizer, admin=admin, status="active", starts_at=tomorrow_utc)
 
     response = await client.get("/api/ads", params={"city_id": str(city.id), "section": "eventos"})
 
