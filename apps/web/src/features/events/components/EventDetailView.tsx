@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, format, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   AlertTriangle,
@@ -41,7 +41,7 @@ import { ReportEventModal } from "@/features/events/components/ReportEventModal"
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
-import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
+import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 import { resolveMediaUrl } from "@/lib/media";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
@@ -107,6 +107,18 @@ export function EventDetailView({ event }: EventDetailViewProps) {
     (value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value,
   );
   const eventDate = parseISO(event.date);
+
+  // Etapa 10c: rango completo de fecha/hora + línea explicativa cuando el
+  // evento termina en un día distinto al que empieza.
+  const dateRange = formatEventDateRange(event.date, event.time, event.date_end, event.time_end);
+  const endsOnDifferentDay = event.date_end !== event.date;
+  const eventEndDate = endsOnDifferentDay ? parseISO(event.date_end) : null;
+  const endsNextDay = Boolean(eventEndDate && isSameDay(eventEndDate, addDays(eventDate, 1)));
+  const spanLabel = eventEndDate
+    ? endsNextDay
+      ? `Termina el ${format(eventEndDate, "EEEE d 'de' MMMM", { locale: es })}`
+      : `Del ${format(eventDate, "EEEE d", { locale: es })} al ${format(eventEndDate, "EEEE d 'de' MMMM", { locale: es })}`
+    : null;
 
   const canEdit = Boolean(currentUser && (currentUser.id === event.organizer_id || currentUser.role === "admin"));
   const isOwner = Boolean(currentUser && currentUser.id === event.organizer_id);
@@ -224,12 +236,11 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Horario</p>
-              <p className="text-sm font-bold text-foreground">
-                {formatEventTime(toEventDateTimeISO(event.date, event.time))}
-                {/* Etapa 10a: time_end ya es obligatorio — siempre hay valor */}
-                {" a "}
-                {formatEventTime(toEventDateTimeISO(event.date, event.time_end))} hs
-              </p>
+              <p className="text-sm font-bold text-foreground">{dateRange} hs</p>
+              {/* Etapa 10c: línea explicativa solo si el evento termina en
+                  un día distinto al que empieza — el rango de horas ya
+                  alcanza cuando es el mismo día. */}
+              {spanLabel && <p className="mt-0.5 text-xs text-ink-4">{spanLabel}</p>}
             </div>
           </div>
           <div className="flex items-start gap-2 rounded-xl border border-border bg-card p-3">

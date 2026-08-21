@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
 import { resolveMediaUrl } from "@/lib/media";
-import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
+import { formatEventDateRange } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 
 const VISIBLE_CATEGORY_BADGES = 2;
@@ -103,6 +103,13 @@ export function EventCard({ event }: EventCardProps) {
   const Icon = style.icon;
   const isPro = event.plan === "pro";
 
+  // Etapa 10c: rango completo (fin en otro día que el inicio, ej. fiestas
+  // 22:00→03:00) — formatEventDateRange ya devuelve el sufijo " +1" como
+  // texto plano; acá se separa para darle el estilo chico/secundario.
+  const dateRange = formatEventDateRange(event.date, event.time, event.date_end, event.time_end);
+  const showsNextDaySuffix = dateRange.endsWith(" +1");
+  const dateRangeMain = showsNextDaySuffix ? dateRange.slice(0, -" +1".length) : dateRange;
+
   return (
     <Link href={`/eventos/${event.id}`} data-testid="event-card-link">
       <Card
@@ -177,7 +184,9 @@ export function EventCard({ event }: EventCardProps) {
             <p className="mt-1 flex items-center gap-2 truncate text-xs text-ink-4">
               <span className="flex flex-shrink-0 items-center gap-1">
                 <Clock className="h-3 w-3 text-primary" aria-hidden />
-                {formatEventTime(toEventDateTimeISO(event.date, event.time))} hs
+                {dateRangeMain}
+                {showsNextDaySuffix && <span className="text-[10px] text-ink-5"> +1</span>}
+                {" hs"}
               </span>
               <span className="flex min-w-0 items-center gap-1 truncate">
                 <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />

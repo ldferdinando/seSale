@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { argentinaTodayIso, formatEventTime, localTimeToUtc, toEventDateTimeISO, utcTimeToLocal } from "@/lib/date-helpers";
+import {
+  argentinaTodayIso,
+  formatEventDateRange,
+  formatEventTime,
+  localTimeToUtc,
+  toEventDateTimeISO,
+  utcTimeToLocal,
+} from "@/lib/date-helpers";
 
 describe("formatEventTime", () => {
   it("convierte una hora UTC a formato 24hs en hora argentina", () => {
@@ -38,6 +45,29 @@ describe("utcTimeToLocal", () => {
   it("es la inversa de localTimeToUtc", () => {
     expect(utcTimeToLocal("2024-03-15", "20:00")).toBe("17:00");
     expect(utcTimeToLocal("2024-03-15", "01:00")).toBe("22:00");
+  });
+});
+
+describe("formatEventDateRange", () => {
+  it("mismo día: solo el rango de horas", () => {
+    expect(formatEventDateRange("2024-03-15", "20:00:00", "2024-03-15", "22:00:00")).toBe("17:00 – 19:00");
+  });
+
+  it("termina al día siguiente: agrega el sufijo +1", () => {
+    expect(formatEventDateRange("2024-03-15", "22:00:00", "2024-03-16", "06:00:00")).toBe("19:00 – 03:00 +1");
+  });
+
+  it("termina en más de un día después: formato con fechas cortas", () => {
+    expect(formatEventDateRange("2024-03-15", "23:00:00", "2024-03-17", "05:00:00")).toBe("20:00 15/3 – 02:00 17/3");
+  });
+
+  it("dateEnd null/undefined: solo la hora de inicio, como fallback", () => {
+    expect(formatEventDateRange("2024-03-15", "23:00:00", null, "05:00:00")).toBe("20:00");
+    expect(formatEventDateRange("2024-03-15", "23:00:00", undefined, "05:00:00")).toBe("20:00");
+  });
+
+  it("caso borde: medianoche exacta (23:00 → 00:00) cuenta como día siguiente, no mismo día", () => {
+    expect(formatEventDateRange("2024-03-15", "02:00:00", "2024-03-16", "03:00:00")).toBe("23:00 – 00:00 +1");
   });
 });
 

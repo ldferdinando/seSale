@@ -44,7 +44,46 @@ describe("EventDetailView", () => {
     expect(screen.getByText("Av. Roca 1240")).toBeInTheDocument();
     expect(screen.getByText("Música en vivo")).toBeInTheDocument();
     // event.time = "21:00:00" UTC, event.time_end = "23:30:00" UTC → 18:00/20:30 hora Argentina (UTC-3)
-    expect(screen.getByText(/18:00 a 20:30 hs/)).toBeInTheDocument();
+    // Etapa 10c: el separador pasa de " a " a "–" (formatEventDateRange).
+    expect(screen.getByText(/18:00 – 20:30 hs/)).toBeInTheDocument();
+  });
+
+  // Etapa 10c: date_end en el detalle.
+  it("with date === date_end, does not show the extra span line", () => {
+    const event = makeEventDetail({ date: "2099-01-01", date_end: "2099-01-01" });
+
+    renderWithClient(event);
+
+    expect(screen.queryByText(/Termina el/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Del /)).not.toBeInTheDocument();
+  });
+
+  it("with date_end = date + 1 day, shows 'Termina el {día} {fecha}'", () => {
+    const event = makeEventDetail({
+      date: "2024-03-15",
+      date_end: "2024-03-16",
+      time: "22:00:00",
+      time_end: "06:00:00",
+    });
+
+    renderWithClient(event);
+
+    // 2024-03-16 es sábado.
+    expect(screen.getByText(/Termina el sábado 16 de marzo/)).toBeInTheDocument();
+  });
+
+  it("with date_end > date + 1 day, shows 'Del {fecha_inicio} al {fecha_fin}'", () => {
+    const event = makeEventDetail({
+      date: "2024-03-15",
+      date_end: "2024-03-17",
+      time: "23:00:00",
+      time_end: "05:00:00",
+    });
+
+    renderWithClient(event);
+
+    // 2024-03-15 es viernes, 2024-03-17 es domingo.
+    expect(screen.getByText(/Del viernes 15 al domingo 17 de marzo/)).toBeInTheDocument();
   });
 
   it("shows the available_on_site indicator only when true", () => {

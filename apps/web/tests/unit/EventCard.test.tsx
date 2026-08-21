@@ -78,13 +78,61 @@ describe("EventCard", () => {
   });
 
   // Etapa 10a: EventCard antes no mostraba ninguna hora.
+  // Etapa 10c: ahora muestra el rango completo (formatEventDateRange), no
+  // solo la hora de inicio — makeEvent() por default tiene date === date_end.
   it("shows the start time in 24hs format, converted to hora argentina", () => {
-    const event = makeEvent({ date: "2099-01-01", time: "21:00:00" });
+    const event = makeEvent({ date: "2099-01-01", date_end: "2099-01-01", time: "21:00:00" });
 
     render(<EventCard event={event} />);
 
     // 21:00 UTC -3h = 18:00 hora Argentina
-    expect(screen.getByText("18:00 hs")).toBeInTheDocument();
+    expect(screen.getByTestId("event-card").textContent).toContain("18:00");
+  });
+
+  // Etapa 10c: date_end en la card.
+  it("with date === date_end, shows only the hour range (no date, no +1)", () => {
+    const event = makeEvent({
+      date: "2099-01-01",
+      date_end: "2099-01-01",
+      time: "21:00:00",
+      time_end: "23:00:00",
+    });
+
+    render(<EventCard event={event} />);
+
+    // 21:00/23:00 UTC -3h = 18:00/20:00 hora Argentina
+    expect(screen.getByTestId("event-card").textContent).toContain("18:00 – 20:00 hs");
+    expect(screen.queryByText(/\+1/)).not.toBeInTheDocument();
+  });
+
+  it("with date_end = date + 1 day, shows the +1 suffix in a smaller, secondary span", () => {
+    const event = makeEvent({
+      date: "2099-01-01",
+      date_end: "2099-01-02",
+      time: "22:00:00",
+      time_end: "06:00:00",
+    });
+
+    render(<EventCard event={event} />);
+
+    const card = screen.getByTestId("event-card");
+    expect(card.textContent).toContain("19:00 – 03:00");
+    const suffix = card.querySelector(".text-\\[10px\\]");
+    expect(suffix).toBeInTheDocument();
+    expect(suffix?.textContent).toContain("+1");
+  });
+
+  it("with date_end > date + 1 day, shows the range with short dates", () => {
+    const event = makeEvent({
+      date: "2099-01-01",
+      date_end: "2099-01-03",
+      time: "23:00:00",
+      time_end: "05:00:00",
+    });
+
+    render(<EventCard event={event} />);
+
+    expect(screen.getByTestId("event-card").textContent).toContain("20:00 1/1 – 02:00 3/1 hs");
   });
 
   // Etapa 10b-2: eventos dados de baja por el organizador — solo llegan a
