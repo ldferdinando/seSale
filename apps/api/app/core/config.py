@@ -53,6 +53,20 @@ class Settings(BaseSettings):
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
+    # Railway (y otros proveedores) inyectan DATABASE_URL como "postgresql://...",
+    # sin especificar el driver. SQLAlchemy por defecto intenta cargar psycopg2
+    # ahí, pero el proyecto instala psycopg (v3) — ver requirements.txt. Sin esta
+    # normalización, tanto el engine de la app (core/deps.py) como Alembic
+    # (alembic/env.py, que lee settings.database_url) fallan con
+    # "ModuleNotFoundError: No module named 'psycopg2'".
+    @model_validator(mode="after")
+    def _normalize_database_url_driver(self) -> "Settings":
+        if self.database_url.startswith("postgresql://"):
+            self.database_url = self.database_url.replace(
+                "postgresql://", "postgresql+psycopg://", 1
+            )
+        return self
+
     # Etapa 9c — auditoría de seguridad: si ENVIRONMENT=production arranca con
     # el SECRET_KEY de desarrollo (porque no se cargó la variable de entorno
     # real en Railway), cualquiera puede forjar un JWT válido (incluso de
