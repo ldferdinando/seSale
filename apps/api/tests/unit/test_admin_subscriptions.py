@@ -12,10 +12,12 @@ from tests.conftest import FakeMPSDK
 
 
 def _make_event(session: Session, *, organizer: User, location, city, **kwargs) -> Event:
+    now = datetime.now(timezone.utc)
     defaults = dict(
         title="Evento del organizador",
-        date=(datetime.now(timezone.utc) + timedelta(days=5)).date(),
-        time=datetime.now(timezone.utc).time(),
+        date=(now + timedelta(days=5)).date(),
+        time=now.time(),
+        time_end=(now + timedelta(hours=2)).time(),
         status=EventStatus.approved,
         is_active=True,
     )

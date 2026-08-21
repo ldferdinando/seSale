@@ -17,6 +17,7 @@ def _make_event(session: Session, *, organizer: User, location: Location, city: 
         title=title,
         date=date.today() + timedelta(days=5),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=status,
     )
     session.add(event)

@@ -36,6 +36,7 @@ async def test_get_admin_cities_includes_active_events_count(
         title="Evento futuro",
         date=date(2999, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
     )

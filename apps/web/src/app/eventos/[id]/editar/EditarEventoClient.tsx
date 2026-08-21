@@ -71,7 +71,10 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     // los reenvía en hora argentina (events-api.ts hace la conversión de
     // vuelta a UTC recién al mandar el payload).
     time: utcTimeToLocal(event.date, event.time.slice(0, 5)),
-    time_end: event.time_end ? utcTimeToLocal(event.date, event.time_end.slice(0, 5)) : "",
+    time_end: utcTimeToLocal(event.date, event.time_end.slice(0, 5)),
+    // Etapa 10b: date_end no se convierte (es un día de negocio, igual que
+    // date) — ya viene siempre resuelto desde la API (nunca null).
+    date_end: event.date_end,
     categories: event.categories,
     city_id: event.city_id,
     // Etapa 7b: precarga en modo "preset" con la ubicación actual del

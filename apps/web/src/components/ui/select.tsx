@@ -36,7 +36,20 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
-      className={cn("z-50 overflow-hidden rounded-md border border-border bg-card text-card-foreground shadow-md", className)}
+      // Etapa 10a — bug real (verificado en vivo, ver a_revisar.md): Radix
+      // no limita por sí solo la altura del listbox al espacio disponible
+      // — expone `--radix-select-content-available-height` para que el
+      // consumidor la use, pero sin `max-height` acá la lista crecía a su
+      // alto natural (ej. las 24 opciones de hora del TimePicker, ~778px)
+      // y se salía del viewport sin forma de hacerle scroll (Radix
+      // bloquea el scroll de `body` mientras el popover está abierto). No
+      // sacar este `max-height`/`overflow-y-auto` — reintroduce el bug en
+      // cualquier `<Select>` del sitio con más opciones de las que entran
+      // en pantalla, no solo el selector de hora.
+      className={cn(
+        "z-50 max-h-[var(--radix-select-content-available-height)] overflow-y-auto overflow-x-hidden rounded-md border border-border bg-card text-card-foreground shadow-md",
+        className,
+      )}
       position={position}
       {...props}
     >

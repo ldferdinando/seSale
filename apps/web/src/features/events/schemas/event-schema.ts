@@ -18,7 +18,13 @@ export const eventFormSchema = z
       message: "La fecha no puede estar en el pasado",
     }),
     time: z.string().min(1, "La hora es obligatoria"),
-    time_end: z.string().optional().or(z.literal("")),
+    // Etapa 10a: obligatorio (antes era opcional). La coherencia con
+    // `time`/`date`/`date_end` se valida en los `.refine` de más abajo —
+    // acá solo se exige que venga cargado.
+    time_end: z.string().min(1, "La hora de fin es requerida"),
+    // Etapa 10b: fecha de fin — obligatoria, con default automático
+    // (EventForm.tsx la completa sola cuando se elige la hora de inicio).
+    date_end: z.string().min(1, "La fecha de fin es obligatoria"),
     categories: z
       .array(z.enum(CATEGORY_VALUES))
       .min(MIN_EVENT_CATEGORIES, "Elegí al menos una categoría")
@@ -56,6 +62,30 @@ export const eventFormSchema = z
     {
       message: "Marcá la ubicación en el mapa (clickeá o arrastrá el pin)",
       path: ["location_address"],
+    },
+  )
+  // Etapa 10b — reemplaza la regla de la Etapa 10a (mínimo 15' si no
+  // cruza medianoche, "cruza medianoche" inferido de time_end < time).
+  // Ahora date_end es explícito: date_end >= date_start siempre, y si es
+  // el mismo día, time_end tiene que ser ESTRICTAMENTE posterior a
+  // time_start — no alcanza con que sean distintos, "18:00" también es
+  // "distinto" de "21:00" pero es anterior (bug real reportado: dejaba
+  // guardar esa combinación). Si date_end es un día posterior, cualquier
+  // time_end es válido. Mismo criterio que _validate_event_span en el
+  // backend (que sí comparaba datetimes completos y no tenía este bug).
+  .refine((data) => !data.date || !data.date_end || data.date_end >= data.date, {
+    message: "La fecha y hora de fin debe ser posterior al inicio",
+    path: ["date_end"],
+  })
+  .refine(
+    (data) => {
+      if (!data.date || !data.date_end || !data.time || !data.time_end) return true;
+      if (data.date_end === data.date) return data.time_end > data.time;
+      return true; // date_end posterior a date: cualquier time_end es válido
+    },
+    {
+      message: "La fecha y hora de fin debe ser posterior al inicio",
+      path: ["time_end"],
     },
   );
 

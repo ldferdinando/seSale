@@ -53,6 +53,7 @@ def test_toggle_city_active_with_future_approved_events_raises_value_error(sessi
         title="Evento futuro",
         date=date(2999, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
     )
@@ -71,6 +72,7 @@ def test_toggle_city_active_ignores_past_events(session, city, organizer, locati
         title="Evento pasado",
         date=date(2000, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
     )
@@ -90,6 +92,7 @@ def test_toggle_city_active_ignores_pending_events(session, city, organizer, loc
         title="Evento pendiente",
         date=date(2999, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.pending,
         is_active=True,
     )
@@ -131,6 +134,7 @@ def test_list_all_cities_with_active_event_counts_counts_future_approved_events(
         title="Evento futuro",
         date=date(2999, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
     )

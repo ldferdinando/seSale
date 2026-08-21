@@ -111,6 +111,7 @@ async def test_get_admin_users_includes_event_count(
                 title="Evento de prueba",
                 date=date(2030, 1, 1),
                 time=time(20, 0),
+                time_end=time(22, 0),
                 status=EventStatus.pending,
             )
         )
@@ -139,6 +140,7 @@ async def test_get_admin_events_filters_by_organizer_id(
             title="Evento del organizador",
             date=date(2030, 1, 1),
             time=time(20, 0),
+            time_end=time(22, 0),
             status=EventStatus.pending,
         )
     )
@@ -150,6 +152,7 @@ async def test_get_admin_events_filters_by_organizer_id(
             title="Evento del admin",
             date=date(2030, 1, 1),
             time=time(20, 0),
+            time_end=time(22, 0),
             status=EventStatus.pending,
         )
     )

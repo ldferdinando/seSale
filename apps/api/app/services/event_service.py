@@ -1,13 +1,13 @@
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, case, delete
+from sqlalchemy import and_, case, delete, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.moment import calculate_moments
 from app.core.storage import delete_flyer, upload_flyer, validate_flyer_file
-from app.core.timezone import argentina_today, utc_time_to_argentina
+from app.core.timezone import ARGENTINA_TZ, utc_time_to_argentina
 from app.models.category import EventCategory
 from app.models.city import City
 from app.models.event import Event, EventStatus, TicketType
@@ -42,6 +42,49 @@ def _sync_event_moments(session: Session, event: Event) -> None:
     for moment in calculate_moments(local_start, local_end):
         session.add(EventMoment(event_id=event.id, moment=moment))
 
+def is_event_currently_visible(
+    event_date: date,
+    date_end: date | None,
+    time_end: time,
+    now: datetime,
+) -> bool:
+    """Etapa 10b — ¿debe aparecer este evento en el listado público ahora?
+
+    Reemplaza las 3 condiciones A/B/C de la Etapa 10a (evento futuro / de
+    hoy / de ayer cruzando medianoche todavía en curso) por una sola: el
+    evento es visible mientras no haya terminado. `date_end` explícito
+    (Etapa 10b) hace innecesaria la inferencia implícita de "cruza
+    medianoche" (`time_end < time_start`) que usaba la versión anterior —
+    ahora la fecha de fin real ya viene en el dato, no hay que adivinarla.
+
+    `date_end=None` (filas de antes de la Etapa 10b, o cualquier evento
+    creado sin fecha de fin explícita) se trata como `date_end =
+    event_date` — mismo criterio que `EventRead.date_end` y
+    `Event.date_end` en el modelo.
+
+    `now` es un datetime aware en UTC — la comparación es 100% en UTC,
+    consistente con cómo se guardan `time`/`time_end` (nunca se convierte a
+    hora Argentina acá).
+
+    Cambio de comportamiento real respecto a la Etapa 10a: un evento de
+    HOY cuyo horario ya terminó (ej. terminó a las 10:00 y son las 15:00)
+    deja de ser visible apenas termina — antes, cualquier evento con
+    `event_date == hoy` quedaba visible todo el día sin importar la hora.
+    """
+    effective_date_end = date_end or event_date
+    end_datetime = datetime.combine(effective_date_end, time_end, tzinfo=timezone.utc)
+    return end_datetime >= now
+
+
+def _current_utc_now() -> datetime:
+    """Wrapper trivial sobre `datetime.now(timezone.utc)`, en su propia
+    función para poder patchearlo en tests — `datetime.now` no se puede
+    monkeypatchear directamente (es un método de un tipo built-in
+    inmutable), mismo motivo por el que `argentina_today()` existe como
+    función propia en `app/core/timezone.py`."""
+    return datetime.now(timezone.utc)
+
+
 _ORDER_RANK = case(
     (and_(Event.plan == PlanType.pro, Event.is_featured == True), 0),  # noqa: E712
     (Event.plan == PlanType.pro, 1),
@@ -64,6 +107,7 @@ def list_public_events(
     search: str | None = None,
     location_id: UUID | None = None,
     today: date | None = None,
+    now: datetime | None = None,
 ) -> list[Event]:
     """Eventos visibles al público: approved, activos y no vencidos.
 
@@ -81,15 +125,38 @@ def list_public_events(
     horario dual aparece en ambos filtros).
     `location_id`: Etapa 8e — eventos de un lugar puntual (usado por el
     detalle de un lugar gastronómico, "Eventos en este lugar").
-    """
-    if today is None:
-        today = argentina_today()
 
+    Etapa 10b — `is_event_currently_visible()` decide evento por evento si
+    ya terminó (usa `date_end`, explícito). El filtro SQL de acá abajo
+    compara contra `coalesce(Event.date_end, Event.date)` — no contra
+    `Event.date` solo — para no descartar en SQL eventos que empezaron
+    antes de "hoy - 1" pero cuyo `date_end` todavía no llegó (cruce de
+    medianoche, o un evento de varios días). Se mantiene el margen de un
+    día (`today - 1`) por la misma razón que en la Etapa 10a: el chequeo
+    fino en Python usa UTC, y "hoy" (Argentina) puede ir un día atrás del
+    "hoy" UTC cerca de la medianoche. El resto de los filtros (`date_from`,
+    `date_to`, etc.) se siguen aplicando en SQL contra `Event.date`
+    (fecha de inicio) igual que antes.
+    """
+    if now is None:
+        if today is not None:
+            # `today` fue fijado a mano (tests) sin `now`: se ancla a
+            # mediodía UTC de esa fecha, que en Argentina (UTC-3) sigue
+            # siendo el mismo día — así `is_event_currently_visible()`
+            # deriva el mismo "hoy" que este filtro SQL, sin tener que
+            # pasar los dos parámetros siempre.
+            now = datetime.combine(today, time(12, 0), tzinfo=timezone.utc)
+        else:
+            now = _current_utc_now()
+    if today is None:
+        today = now.astimezone(ARGENTINA_TZ).date()
+
+    effective_date_end_col = func.coalesce(Event.date_end, Event.date)
     stmt = (
         select(Event)
         .where(Event.status == EventStatus.approved)
         .where(Event.is_active == True)  # noqa: E712
-        .where(Event.date >= today)
+        .where(effective_date_end_col >= today - timedelta(days=1))
         .options(*_EVENT_LOAD_OPTIONS)
     )
 
@@ -116,7 +183,12 @@ def list_public_events(
 
     stmt = stmt.order_by(_ORDER_RANK, Event.created_at.desc())
 
-    return list(session.exec(stmt).all())
+    events = session.exec(stmt).all()
+    # El ORDER BY ya lo resolvió la DB — el filtro fino de acá abajo no lo
+    # altera, solo descarta filas (list comprehension conserva el orden).
+    return [
+        event for event in events if is_event_currently_visible(event.date, event.date_end, event.time_end, now)
+    ]
 
 
 def get_public_stats(session: Session) -> dict[str, int]:
@@ -196,7 +268,8 @@ def create_event(
     categories: list[str],
     location_id: UUID | None = None,
     location_data: LocationCreate | None = None,
-    time_end: time | None = None,
+    time_end: time,  # Etapa 10a — obligatorio, sin default (igual que el modelo)
+    date_end: date | None = None,  # Etapa 10b — None => mismo día que event_date
     ticket_type: TicketType = TicketType.gratis,
     price_at_door: int | None = None,
     price_advance: int | None = None,
@@ -259,6 +332,7 @@ def create_event(
         date=event_date,
         time=event_time,
         time_end=time_end,
+        date_end=date_end or event_date,
         status=EventStatus.pending,
         plan=effective_plan,
         ticket_type=ticket_type,

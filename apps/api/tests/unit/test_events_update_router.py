@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from httpx import AsyncClient
 from sqlmodel import Session
@@ -12,6 +12,7 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         title="Evento de prueba",
         date=date(2026, 6, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         category="musica",
         status=EventStatus.approved,
         is_active=True,
@@ -230,6 +231,150 @@ async def test_update_event_with_explicit_null_contact_whatsapp_does_not_overwri
 
 
 # Etapa 8a — PARTE 5: validación cruzada de location_data.city_id vs. city_id del evento
+
+
+async def test_update_event_time_and_time_end_equal_returns_422(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={"time": "21:00:00", "time_end": "21:00:00"},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_update_event_time_and_time_end_coherent_returns_200(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={"time": "21:00:00", "time_end": "23:00:00"},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["time_end"] == "23:00:00"
+
+
+async def test_update_event_only_time_end_without_time_does_not_require_coherence_check(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """Si el payload trae `time_end` sin `time`, el schema no tiene forma de
+    validar coherencia contra el `time` vigente del evento (vive en la DB,
+    no en el payload) — no debe fallar por eso."""
+    event = _make_event(session, city=city, organizer=organizer, location=location, time=time(21, 0))
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={"time_end": "23:45:00"},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["time_end"] == "23:45:00"
+
+
+# Etapa 10b — date_end
+
+
+async def test_update_event_date_and_date_end_and_times_coherent_returns_200(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+    date_start = (date.today() + timedelta(days=10)).isoformat()
+    date_end = (date.today() + timedelta(days=11)).isoformat()
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={
+            "date": date_start,
+            "date_end": date_end,
+            "time": "22:00:00",
+            "time_end": "03:00:00",
+        },
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["date_end"] == date_end
+    assert body["time_end"] == "03:00:00"
+
+
+async def test_update_event_date_end_before_date_returns_422(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={
+            "date": (date.today() + timedelta(days=11)).isoformat(),
+            "date_end": (date.today() + timedelta(days=10)).isoformat(),
+            "time": "21:00:00",
+            "time_end": "23:00:00",
+        },
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_update_event_date_without_date_end_assumes_same_day(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """Si el payload trae `date` pero no `date_end`, se asume el mismo día
+    (igual criterio que EventCreate) — un time_end "menor" que time sin
+    date_end explícito no es válido."""
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={
+            "date": (date.today() + timedelta(days=10)).isoformat(),
+            "time": "22:00:00",
+            "time_end": "03:00:00",
+        },
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 422
 
 
 async def test_update_event_location_data_city_mismatch_returns_422(

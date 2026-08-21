@@ -16,7 +16,7 @@ function renderWithClient() {
 
 /** Elige el día 15 del mes siguiente al actual — siempre en el futuro, sin depender de la fecha del sistema. */
 async function pickFutureDate(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Elegir fecha" }));
+  await user.click(screen.getByRole("button", { name: "Fecha inicio" }));
   await user.click(screen.getByRole("button", { name: "Mes siguiente" }));
   const days = screen.getAllByText("15", { selector: "button" });
   await user.click(days[0]);
@@ -33,6 +33,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
   await pickFutureDate(user);
   await selectTime(user, "Hora inicio", "21", "00");
+  await selectTime(user, "Hora fin", "23", "00");
   await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
   await user.type(screen.getByLabelText("Nombre del lugar"), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");

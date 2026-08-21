@@ -12,6 +12,7 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         title="Evento de prueba",
         date=date(2026, 6, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         category="musica",
         status=EventStatus.approved,
         plan=PlanType.gratis,

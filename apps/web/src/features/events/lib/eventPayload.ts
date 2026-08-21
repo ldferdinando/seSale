@@ -13,6 +13,7 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     date: payload.date,
     time: payload.time,
     time_end: payload.time_end ?? "",
+    date_end: payload.date_end ?? "",
     categories: payload.categories,
     city_id: payload.city_id ?? "",
     // Etapa 7b: si el payload tenía location_id, la Tab A la vuelve a

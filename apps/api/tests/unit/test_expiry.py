@@ -26,6 +26,7 @@ def _make_event(session: Session, *, organizer: User, location: Location, city: 
         title="Evento de prueba",
         date=date.today() + timedelta(days=3),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
         plan=PlanType.gratis,

@@ -45,7 +45,8 @@ export interface Event {
   description: string | null;
   date: string;
   time: string;
-  time_end: string | null;
+  time_end: string; // Etapa 10a — obligatorio, ya no nullable
+  date_end: string; // Etapa 10b — obligatorio, el backend lo completa con `date` si no viene
   categories: string[];
   status: EventStatus;
   plan: EventPlan;
@@ -115,7 +116,8 @@ export interface EventCreateInput {
   description?: string;
   date: string;
   time: string;
-  time_end?: string;
+  time_end: string; // Etapa 10a — obligatorio, ya no opcional
+  date_end: string; // Etapa 10b — obligatorio
   categories: string[];
   /** Ciudad del evento — Etapa 7a. Sin ella, el backend usa la ciudad del organizador. */
   city_id?: string;

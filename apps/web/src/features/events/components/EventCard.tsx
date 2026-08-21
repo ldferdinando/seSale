@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Crown, MapPin, Star } from "lucide-react";
+import { Clock, Crown, MapPin, Star } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
 import { resolveMediaUrl } from "@/lib/media";
+import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 
 const VISIBLE_CATEGORY_BADGES = 2;
 
@@ -105,9 +106,15 @@ export function EventCard({ event }: EventCardProps) {
               <p className="truncate text-sm font-bold text-foreground">{event.title}</p>
               <PlanBadge plan={event.plan} />
             </div>
-            <p className="mt-1 flex items-center gap-1 truncate text-xs text-ink-4">
-              <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
-              {event.location.name}
+            <p className="mt-1 flex items-center gap-2 truncate text-xs text-ink-4">
+              <span className="flex flex-shrink-0 items-center gap-1">
+                <Clock className="h-3 w-3 text-primary" aria-hidden />
+                {formatEventTime(toEventDateTimeISO(event.date, event.time))} hs
+              </span>
+              <span className="flex min-w-0 items-center gap-1 truncate">
+                <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
+                <span className="truncate">{event.location.name}</span>
+              </span>
             </p>
             <div className="mt-1.5">
               <CategoryBadges categories={event.categories} />

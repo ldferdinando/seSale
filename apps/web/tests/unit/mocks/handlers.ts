@@ -24,6 +24,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     date: "2099-01-01",
     time: "21:00:00",
     time_end: "23:30:00",
+    date_end: "2099-01-01",
     categories: ["musica"],
     status: "approved",
     plan: "gratis",

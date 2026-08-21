@@ -31,7 +31,13 @@ export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> 
  * tipeó el usuario en el formulario). La API guarda `time`/`time_end` en
  * UTC — esta es la única conversión antes de mandarlos, para que quede
  * consistente con `formatEventTime` (que asume que lo que devuelve la API
- * ya es UTC). `date` no se convierte: es el día de negocio en Argentina.
+ * ya es UTC). `date`/`date_end` no se convierten: son días de negocio en
+ * Argentina (Etapa 10b: `date_end` sigue el mismo criterio que `date`,
+ * spread tal cual más abajo — no hace falta tocarlo acá). La conversión de
+ * `time_end` usa `input.date` (no `date_end`) como referencia, pero da lo
+ * mismo: Argentina no tiene horario de verano, el offset UTC-3 es
+ * constante todo el año, así que el resultado ("HH:mm") no depende de qué
+ * fecha se use como referencia.
  */
 function toUtcPayload<T extends { date?: string; time?: string; time_end?: string }>(input: T): T {
   if (!input.date || !input.time) return input;

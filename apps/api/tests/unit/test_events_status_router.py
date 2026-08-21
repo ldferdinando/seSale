@@ -17,6 +17,7 @@ def pending_event_fixture(session: Session, city: City, organizer: User, locatio
         title="Evento pendiente",
         date=date(2099, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.pending,
     )
     session.add(event)

@@ -1,4 +1,5 @@
-from datetime import date, time
+from datetime import date, datetime, time, timezone
+from unittest.mock import patch
 
 from httpx import AsyncClient
 from sqlmodel import Session
@@ -11,6 +12,7 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
         title="Evento de prueba",
         date=date(2026, 6, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         category="musica",
         status=EventStatus.approved,
         plan=PlanType.gratis,
@@ -127,3 +129,52 @@ async def test_get_events_invalid_date_returns_422(client: AsyncClient):
     response = await client.get("/api/events", params={"date_from": "not-a-date"})
 
     assert response.status_code == 422
+
+
+# Etapa 10a — CONDICIÓN C: eventos de ayer que cruzan medianoche, GET /api/events
+
+
+_FAKE_NOW = datetime(2026, 3, 15, 5, 0, tzinfo=timezone.utc)  # 02:00 hora Argentina, 15/03
+
+
+async def test_get_events_returns_yesterdays_ongoing_crossmidnight_event(
+    client: AsyncClient, session: Session, city, organizer, location
+):
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="fiesta-de-anoche",
+        date=date(2026, 3, 14),
+        date_end=date(2026, 3, 15),
+        time=time(22, 0),
+        time_end=time(6, 0),
+    )
+
+    with patch("app.services.event_service._current_utc_now", return_value=_FAKE_NOW):
+        response = await client.get("/api/events")
+
+    assert response.status_code == 200
+    assert [e["title"] for e in response.json()] == ["fiesta-de-anoche"]
+
+
+async def test_get_events_does_not_return_events_from_two_or_more_days_ago(
+    client: AsyncClient, session: Session, city, organizer, location
+):
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="fiesta-de-anteanoche",
+        date=date(2026, 3, 13),
+        time=time(22, 0),
+        time_end=time(3, 0),
+    )
+
+    with patch("app.services.event_service._current_utc_now", return_value=_FAKE_NOW):
+        response = await client.get("/api/events")
+
+    assert response.status_code == 200
+    assert response.json() == []

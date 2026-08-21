@@ -17,6 +17,7 @@ def approved_event_fixture(session: Session, city: City, organizer: User, locati
         title="Evento aprobado",
         date=date(2099, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
     )
     session.add(event)

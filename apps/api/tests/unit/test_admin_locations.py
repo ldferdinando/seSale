@@ -107,6 +107,7 @@ async def test_delete_admin_location_with_events_returns_409(
         title="Evento con lugar",
         date=__import__("datetime").date.today(),
         time=__import__("datetime").time(21, 0),
+        time_end=__import__("datetime").time(23, 0),
         status=EventStatus.approved,
     )
     session.add(event)
@@ -141,6 +142,7 @@ async def test_get_admin_locations_returns_public_and_private_with_event_count(
         title="Evento",
         date=__import__("datetime").date.today(),
         time=__import__("datetime").time(21, 0),
+        time_end=__import__("datetime").time(23, 0),
         status=EventStatus.approved,
     )
     session.add(event)

@@ -16,6 +16,7 @@ def _make_event(
         title="Show en el bar",
         date=date.today() + timedelta(days=5),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=status,
     )
     session.add(event)

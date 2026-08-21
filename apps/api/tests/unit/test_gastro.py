@@ -122,6 +122,7 @@ async def test_get_gastro_place_detail_includes_future_approved_event_count(
             title="Show en el bar",
             date=date.today() + timedelta(days=5),
             time=time(21, 0),
+            time_end=time(23, 0),
             status=EventStatus.approved,
         )
     )
@@ -243,6 +244,7 @@ async def test_delete_admin_gastro_with_future_events_returns_409(
             title="Evento futuro",
             date=date.today() + timedelta(days=3),
             time=time(21, 0),
+            time_end=time(23, 0),
             status=EventStatus.approved,
         )
     )

@@ -182,7 +182,9 @@ export function EventDetailView({ event }: EventDetailViewProps) {
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Horario</p>
               <p className="text-sm font-bold text-foreground">
                 {formatEventTime(toEventDateTimeISO(event.date, event.time))}
-                {event.time_end ? ` a ${formatEventTime(toEventDateTimeISO(event.date, event.time_end))}` : ""} hs
+                {/* Etapa 10a: time_end ya es obligatorio — siempre hay valor */}
+                {" a "}
+                {formatEventTime(toEventDateTimeISO(event.date, event.time_end))} hs
               </p>
             </div>
           </div>

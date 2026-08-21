@@ -21,6 +21,7 @@ const payload: EventCreateInput = {
   date: "2099-05-20",
   time: "21:00",
   time_end: "23:30",
+  date_end: "2099-05-20",
   categories: ["musica"],
   location_data: { name: "El Tinglado Bar", address: "Av. Roca 1240", city_id: "city-1" },
   ticket_type: "pago",

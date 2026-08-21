@@ -50,6 +50,7 @@ async def test_create_event_uses_argentina_date_not_server_clock(
         "title": "Show esta noche",
         "date": fake_argentina_today.isoformat(),
         "time": "23:30:00",
+        "time_end": "23:59:00",
         "categories": ["musica"],
         "location_id": str(location.id),
         "ticket_type": "gratis",
@@ -437,3 +438,129 @@ async def test_create_event_with_banner_plan_returns_422(
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
 
     assert response.status_code == 422
+
+
+# Etapa 10a — time_end obligatorio; Etapa 10b — date_end + coherencia inicio/fin
+
+
+async def test_create_event_without_time_end_returns_422(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    del payload["time_end"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_time_end_equal_to_time_returns_422_with_message(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "21:00:00"
+    payload["time_end"] = "21:00:00"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+    assert "posterior al inicio" in response.text
+
+
+async def test_create_event_time_end_after_time_with_enough_gap_returns_201(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "21:00:00"
+    payload["time_end"] = "21:15:00"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+
+
+async def test_create_event_time_end_a_few_minutes_after_time_returns_201(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """Etapa 10b: ya no hay mínimo de 15' (regla de la Etapa 10a, reemplazada
+    por la validación date_end-aware) — cualquier gap positivo el mismo día
+    es válido."""
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "21:00:00"
+    payload["time_end"] = "21:10:00"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+
+
+async def test_create_event_time_end_before_time_without_date_end_returns_422(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """Etapa 10b: sin `date_end` explícito (se asume el mismo día que
+    `date`), un `time_end` "menor" que `time` ya no se interpreta como
+    "cruza medianoche" — simplemente termina antes de empezar."""
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "22:00:00"
+    payload["time_end"] = "03:00:00"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_time_end_before_time_crossing_midnight_returns_201(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """Etapa 10b: con date_end = date + 1 explícito, un time_end "menor"
+    que time es válido — el evento cruza medianoche de verdad."""
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "22:00:00"
+    payload["time_end"] = "03:00:00"
+    payload["date_end"] = (date.today() + timedelta(days=11)).isoformat()
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["date_end"] == payload["date_end"]
+
+
+# Etapa 10b — date_end
+
+
+async def test_create_event_without_date_end_defaults_to_date(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    assert "date_end" not in payload
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["date_end"] == payload["date"]
+
+
+async def test_create_event_date_end_before_date_returns_422(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["date_end"] = (date.today() + timedelta(days=9)).isoformat()  # antes que "date" (+10)
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_date_end_after_date_allows_any_time_end(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """Etapa 10b: si date_end > date, cualquier time_end es válido (incluso
+    "antes" que time — el evento termina días después de empezar)."""
+    payload = _valid_payload(str(location.id))
+    payload["date_end"] = (date.today() + timedelta(days=12)).isoformat()
+    payload["time"] = "21:00:00"
+    payload["time_end"] = "10:00:00"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201

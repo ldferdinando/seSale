@@ -87,6 +87,7 @@ async def test_toggle_city_by_admin_with_future_active_events_returns_409(
         title="Evento futuro",
         date=date(2999, 1, 1),
         time=time(21, 0),
+        time_end=time(23, 0),
         status=EventStatus.approved,
         is_active=True,
     )

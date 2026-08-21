@@ -32,7 +32,15 @@ class Event(SQLModel, table=True):
     description: str | None = Field(default=None)
     date: date
     time: time
-    time_end: time | None = Field(default=None)
+    # Etapa 10a: obligatorio. Migración 0018 backfillea las filas viejas
+    # (time_start + 2h, o 23:59 si eso cruza medianoche) antes del NOT NULL.
+    time_end: time = Field()
+    # Etapa 10b: fecha de fin — None = mismo día que `date` (retrocompatible,
+    # todas las filas anteriores a esta etapa quedan con date_end=None). El
+    # backend siempre lo trata como `date_end or date` (nunca None a mano);
+    # ver EventRead.date_end (schemas/event.py) y is_event_currently_visible
+    # (services/event_service.py).
+    date_end: date | None = Field(default=None)
     # category (str único) y moment (str único) se migraron a las tablas
     # event_categories / event_moments en la Etapa 6.5 — ver category_links /
     # moment_links más abajo. moment ahora se calcula siempre desde

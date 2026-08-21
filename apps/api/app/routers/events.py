@@ -90,6 +90,7 @@ async def post_event(
             event_date=payload.date,
             event_time=payload.time,
             time_end=payload.time_end,
+            date_end=payload.date_end,
             categories=payload.categories,
             location_id=payload.location_id,
             location_data=payload.location_data,

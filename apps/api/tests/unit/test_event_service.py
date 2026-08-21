@@ -13,6 +13,7 @@ from app.services.event_service import (
     delete_event,
     get_event_detail,
     get_events_for_organizer,
+    is_event_currently_visible,
     list_admin_events,
     list_public_events,
     update_event,
@@ -35,7 +36,10 @@ def _make_event(
     is_featured: bool = False,
     category: str = "musica",
     event_date: date = TODAY,
+    event_date_end: date | None = None,
     created_at: datetime | None = None,
+    event_time: time = time(21, 0),
+    event_time_end: time = time(23, 0),
 ) -> Event:
     event = Event(
         city_id=city.id,
@@ -43,7 +47,9 @@ def _make_event(
         location_id=location.id,
         title=title,
         date=event_date,
-        time=time(21, 0),
+        time=event_time,
+        time_end=event_time_end,
+        date_end=event_date_end,
         status=status,
         plan=plan,
         is_active=is_active,
@@ -241,6 +247,7 @@ def _create_event_kwargs(*, city: City | None, **overrides) -> dict:
         description="Un show",
         event_date=date.today() + timedelta(days=10),
         event_time=time(21, 0),
+        time_end=time(23, 0),
         categories=["musica"],
     )
     if city is not None:
@@ -287,7 +294,7 @@ def test_create_event_computes_moment_from_argentina_time_not_utc(session, city,
     event = create_event(
         session,
         user_id=organizer.id,
-        **_create_event_kwargs(city=city, event_time=time(23, 0)),
+        **_create_event_kwargs(city=city, event_time=time(23, 0), time_end=time(23, 30)),
     )
 
     moments = session.exec(select(EventMoment).where(EventMoment.event_id == event.id)).all()
@@ -465,6 +472,7 @@ def test_create_event_with_organizer_id_by_admin_uses_that_organizer(session, ci
         description=None,
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
+        time_end=time(23, 0),
         categories=["musica"],
         location_data=LocationCreate(name="Nuevo lugar", address="Calle Falsa 123", city_id=city.id),
         organizer_id=organizer.id,
@@ -482,6 +490,7 @@ def test_create_event_ignores_organizer_id_for_non_admin(session, city, organize
         description=None,
         event_date=TODAY + timedelta(days=10),
         event_time=time(21, 0),
+        time_end=time(23, 0),
         categories=["musica"],
         location_data=LocationCreate(name="Nuevo lugar", address="Calle Falsa 123", city_id=city.id),
         organizer_id=admin.id,
@@ -564,3 +573,132 @@ def test_list_admin_events_includes_inactive(session, city, organizer, location)
     events = list_admin_events(session)
 
     assert any(e.title == "inactivo" for e in events)
+
+
+# Etapa 10b — is_event_currently_visible() (usa date_end) y su uso en list_public_events
+
+
+NOW = datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
+
+
+def test_is_event_currently_visible_future_event_is_true():
+    assert is_event_currently_visible(date(2026, 3, 20), date(2026, 3, 20), time(21, 0), NOW) is True
+
+
+def test_is_event_currently_visible_today_not_ended_yet_is_true():
+    assert is_event_currently_visible(date(2026, 3, 15), date(2026, 3, 15), time(23, 0), NOW) is True
+
+
+def test_is_event_currently_visible_today_already_ended_is_false():
+    """Cambio de comportamiento real respecto a la Etapa 10a (ver
+    a_revisar.md): antes cualquier evento de HOY quedaba visible todo el
+    día sin importar la hora; ahora desaparece del listado apenas termina,
+    sea hoy o cualquier otro día."""
+    assert is_event_currently_visible(date(2026, 3, 15), date(2026, 3, 15), time(10, 0), NOW) is False
+
+
+def test_is_event_currently_visible_crossmidnight_still_ongoing_is_true():
+    """Empezó ayer (14/03) y termina hoy (15/03) a las 13:00 UTC — son las
+    12:00 UTC, todavía en curso."""
+    assert is_event_currently_visible(date(2026, 3, 14), date(2026, 3, 15), time(13, 0), NOW) is True
+
+
+def test_is_event_currently_visible_crossmidnight_already_ended_is_false():
+    later = datetime(2026, 3, 15, 13, 1, tzinfo=timezone.utc)
+    assert is_event_currently_visible(date(2026, 3, 14), date(2026, 3, 15), time(13, 0), later) is False
+
+
+def test_is_event_currently_visible_multiday_event_stays_visible_days_after_it_started():
+    """Un evento de varios días (ej. un festival) sigue visible mientras no
+    llegue a su date_end, sin importar cuánto empezó en el pasado."""
+    assert is_event_currently_visible(date(2026, 3, 1), date(2026, 3, 20), time(23, 0), NOW) is True
+
+
+def test_is_event_currently_visible_multiday_event_ends_after_date_end_time_end():
+    later = datetime(2026, 3, 20, 23, 1, tzinfo=timezone.utc)
+    assert is_event_currently_visible(date(2026, 3, 1), date(2026, 3, 20), time(23, 0), later) is False
+
+
+def test_is_event_currently_visible_null_date_end_falls_back_to_event_date():
+    """date_end=None (filas de antes de la Etapa 10b) se trata como el
+    mismo día que event_date."""
+    assert is_event_currently_visible(date(2026, 3, 15), None, time(23, 0), NOW) is True
+    assert is_event_currently_visible(date(2026, 3, 15), None, time(10, 0), NOW) is False
+
+
+def test_list_public_events_includes_crossmidnight_event_still_ongoing(session, city, organizer, location):
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="fiesta-de-anoche",
+        event_date=date(2026, 3, 14),
+        event_date_end=date(2026, 3, 15),
+        event_time=time(22, 0),
+        event_time_end=time(13, 0),
+    )
+
+    result = list_public_events(session, now=NOW)
+
+    assert [e.title for e in result] == ["fiesta-de-anoche"]
+
+
+def test_list_public_events_excludes_crossmidnight_event_once_ended(session, city, organizer, location):
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="fiesta-de-anoche",
+        event_date=date(2026, 3, 14),
+        event_date_end=date(2026, 3, 15),
+        event_time=time(22, 0),
+        event_time_end=time(13, 0),
+    )
+
+    later = datetime(2026, 3, 15, 13, 1, tzinfo=timezone.utc)
+    result = list_public_events(session, now=later)
+
+    assert result == []
+
+
+def test_list_public_events_includes_multiday_event_started_days_ago(session, city, organizer, location):
+    """Etapa 10b: un evento de varios días (date_end bien posterior a date)
+    sigue visible aunque haya empezado hace más de un día — el filtro SQL
+    de list_public_events compara contra date_end, no contra date."""
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="festival-de-varios-dias",
+        event_date=date(2026, 3, 1),
+        event_date_end=date(2026, 3, 20),
+        event_time=time(10, 0),
+        event_time_end=time(23, 0),
+    )
+
+    result = list_public_events(session, now=NOW)
+
+    assert [e.title for e in result] == ["festival-de-varios-dias"]
+
+
+def test_list_public_events_excludes_todays_event_already_ended(session, city, organizer, location):
+    """Cambio de comportamiento de la Etapa 10b (ver a_revisar.md): un
+    evento de hoy cuyo horario ya pasó deja de listarse."""
+    _make_event(
+        session,
+        city=city,
+        organizer=organizer,
+        location=location,
+        title="ya-termino-hoy",
+        event_date=date(2026, 3, 15),
+        event_date_end=date(2026, 3, 15),
+        event_time=time(8, 0),
+        event_time_end=time(10, 0),
+    )
+
+    result = list_public_events(session, now=NOW)
+
+    assert result == []

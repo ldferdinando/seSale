@@ -20,9 +20,20 @@ async function selectTime(user: ReturnType<typeof userEvent.setup>, fieldLabel: 
 
 /** Elige el día 15 del mes siguiente al actual — siempre en el futuro, sin depender de la fecha del sistema. */
 async function pickFutureDate(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Elegir fecha" }));
+  await user.click(screen.getByRole("button", { name: "Fecha inicio" }));
   await user.click(screen.getByRole("button", { name: "Mes siguiente" }));
   const days = screen.getAllByText("15", { selector: "button" });
+  await user.click(days[0]);
+}
+
+/** Elige el día 1 de dos meses atrás para "Fecha fin" — siempre queda
+ * antes que "Fecha inicio" (elegida con pickFutureDate), sin depender de
+ * la fecha del sistema. */
+async function pickPastEndDate(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Fecha fin" }));
+  await user.click(screen.getByRole("button", { name: "Mes anterior" }));
+  await user.click(screen.getByRole("button", { name: "Mes anterior" }));
+  const days = screen.getAllByText("1", { selector: "button" });
   await user.click(days[0]);
 }
 
@@ -30,6 +41,7 @@ async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEven
   await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
   await pickFutureDate(user);
   await selectTime(user, "Hora inicio", "21", "00");
+  await selectTime(user, "Hora fin", "23", "00");
   await user.click(screen.getByRole("tab", { name: "Indicar en el mapa" }));
   await user.type(screen.getByLabelText("Nombre del lugar"), "El Tinglado Bar");
   await user.type(screen.getByLabelText(/Dirección/), "Av. Roca 1240");
@@ -56,7 +68,8 @@ describe("EventForm", () => {
     expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Categorías" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Elegir fecha" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fecha inicio" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fecha fin" })).toBeInTheDocument();
     expect(screen.getByLabelText("Hora inicio — hora")).toBeInTheDocument();
     expect(screen.getByLabelText("Hora fin — hora")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Elegir lugar" })).toBeInTheDocument();
@@ -111,6 +124,8 @@ describe("EventForm", () => {
       title: "Mi evento de prueba",
       date: expectedDate,
       time: "21:00",
+      time_end: "23:00",
+      date_end: expectedDate, // Etapa 10b — auto-completado, mismo día (no cruza medianoche)
       location_data: expect.objectContaining({
         name: "El Tinglado Bar",
         address: "Av. Roca 1240",
@@ -171,5 +186,152 @@ describe("EventForm", () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
     const [payload] = onContinue.mock.calls[0];
     expect(payload.city_id).toBe("cccccccc-cccc-4ccc-cccc-cccccccccccc");
+  });
+
+  // Etapa 10a — time_end pasa de opcional a obligatorio
+
+  it("muestra error si se envía sin elegir ninguna hora", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
+    await pickFutureDate(user);
+    // Sin elegir "Hora inicio" a propósito — con eso, "Hora fin"/"Fecha
+    // fin" quedan vacíos (Etapa 10b: el auto-completado recién arranca
+    // cuando se elige la hora de inicio).
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("La hora de fin es requerida")).toBeInTheDocument();
+  });
+
+  it("muestra error si la hora de fin queda igual a la de inicio", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
+    await pickFutureDate(user);
+    await selectTime(user, "Hora inicio", "21", "00");
+    await selectTime(user, "Hora fin", "21", "00");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("La fecha y hora de fin debe ser posterior al inicio")).toBeInTheDocument();
+  });
+
+  it("muestra error si la hora de fin (mismo día) queda ANTES que la de inicio", async () => {
+    // Bug real reportado: "muestra error si la hora de fin queda igual a
+    // la de inicio" solo cubría el caso == — un time_end "distinto" pero
+    // ANTERIOR (ej. 18:00 con inicio 21:00, mismo día) pasaba la
+    // validación sin error.
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
+    await pickFutureDate(user);
+    await selectTime(user, "Hora inicio", "21", "00");
+    await selectTime(user, "Hora fin", "18", "00"); // mismo día, pero antes de la de inicio
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("La fecha y hora de fin debe ser posterior al inicio")).toBeInTheDocument();
+  });
+
+  it("no muestra error de hora de fin con una combinación válida", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await fillRequiredFieldsExceptCategory(user);
+    await toggleCategory(user, "Música en vivo");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(screen.queryByText("La hora de fin es requerida")).not.toBeInTheDocument();
+    expect(screen.queryByText("La fecha y hora de fin debe ser posterior al inicio")).not.toBeInTheDocument();
+  });
+
+  // Etapa 10b — date_end + defaults automáticos de fecha/hora de fin
+
+  it("completa automáticamente hora fin (+1h) y fecha fin (mismo día) al elegir la hora de inicio", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await pickFutureDate(user);
+    await selectTime(user, "Hora inicio", "21", "00");
+
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("22");
+    expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("00");
+    // "Fecha fin" muestra la misma fecha que "Fecha inicio" (no cruza medianoche).
+    const startDateText = screen.getByRole("button", { name: "Fecha inicio" }).textContent;
+    expect(screen.getByRole("button", { name: "Fecha fin" })).toHaveTextContent(startDateText ?? "");
+  });
+
+  it("también completa la fecha fin si se elige la hora de inicio ANTES que la fecha de inicio", async () => {
+    // Bug real reportado: en este orden, "Fecha fin" quedaba vacía para
+    // siempre (el efecto de "Hora inicio" no podía completarla porque
+    // todavía no había "Fecha inicio" de referencia).
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await selectTime(user, "Hora inicio", "21", "00");
+    await pickFutureDate(user);
+
+    const startDateText = screen.getByRole("button", { name: "Fecha inicio" }).textContent;
+    expect(screen.getByRole("button", { name: "Fecha fin" })).toHaveTextContent(startDateText ?? "");
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("22");
+  });
+
+  it("completa la fecha fin al día siguiente si la hora de inicio (elegida antes que la fecha) cruza medianoche", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await selectTime(user, "Hora inicio", "23", "30");
+    await pickFutureDate(user);
+
+    const startDateText = screen.getByRole("button", { name: "Fecha inicio" }).textContent;
+    expect(screen.getByRole("button", { name: "Fecha fin" })).not.toHaveTextContent(startDateText ?? "");
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("00");
+    expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("30");
+  });
+
+  it("si el horario de inicio cruza medianoche, la fecha de fin pasa a ser el día siguiente", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await pickFutureDate(user);
+    const startDateText = screen.getByRole("button", { name: "Fecha inicio" }).textContent;
+
+    await selectTime(user, "Hora inicio", "23", "30");
+
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("00");
+    expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("30");
+    expect(screen.getByRole("button", { name: "Fecha fin" })).not.toHaveTextContent(startDateText ?? "");
+  });
+
+  it("no pisa la hora de fin si ya fue modificada a mano, aunque cambie la hora de inicio", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await pickFutureDate(user);
+    await selectTime(user, "Hora inicio", "21", "00");
+    await selectTime(user, "Hora fin", "23", "45"); // modificado a mano
+
+    // Cambiar la hora de inicio de nuevo NO debe recalcular la hora de fin.
+    await selectTime(user, "Hora inicio", "20", "00");
+
+    expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("23");
+    expect(screen.getByLabelText("Hora fin — minutos")).toHaveTextContent("45");
+  });
+
+  it("muestra error si la fecha de fin queda antes que la fecha de inicio", async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.type(screen.getByLabelText(/Nombre del evento/), "Mi evento de prueba");
+    await pickFutureDate(user);
+    await selectTime(user, "Hora inicio", "21", "00");
+    await selectTime(user, "Hora fin", "23", "00");
+    // Fuerza "Fecha fin" a un valor inválido (antes que "Fecha inicio").
+    await pickPastEndDate(user);
+
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("La fecha y hora de fin debe ser posterior al inicio")).toBeInTheDocument();
   });
 });

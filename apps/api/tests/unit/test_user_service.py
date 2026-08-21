@@ -154,6 +154,7 @@ def test_list_users_admin_computes_event_count(session, organizer, city, locatio
                 title="Evento",
                 date=date(2030, 1, 1),
                 time=time(20, 0),
+                time_end=time(22, 0),
                 status=EventStatus.pending,
             )
         )

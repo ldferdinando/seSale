@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   AlarmClockOff,
@@ -47,6 +47,29 @@ import type { Event, EventCreateInput, TicketType } from "@/features/events/type
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+
+// Etapa 10b — default automático de "Hora fin": time_start + 1 hora, con
+// wraparound si cruza medianoche (ver addOneHourWithWrap más abajo).
+const AUTO_END_OFFSET_MINUTES = 60;
+
+/** "HH:mm" + 1 hora, con wraparound (23:30 -> 00:30, crossesMidnight=true). */
+function addOneHourWithWrap(hhmm: string): { time: string; crossesMidnight: boolean } {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + AUTO_END_OFFSET_MINUTES;
+  const crossesMidnight = totalMinutes >= 24 * 60;
+  const wrapped = totalMinutes % (24 * 60);
+  const newHours = Math.floor(wrapped / 60);
+  const newMinutes = wrapped % 60;
+  return {
+    time: `${String(newHours).padStart(2, "0")}:${String(newMinutes).padStart(2, "0")}`,
+    crossesMidnight,
+  };
+}
+
+/** "YYYY-MM-DD" + N días, mismo formato de vuelta. */
+function addDaysIso(iso: string, days: number): string {
+  return format(addDays(parseISO(iso), days), "yyyy-MM-dd");
+}
 
 const TICKET_TYPE_STYLES: { value: TicketType; label: string; icon: LucideIcon }[] = [
   { value: "gratis", label: "Gratis", icon: CheckCircle2 },
@@ -159,6 +182,13 @@ export function EventForm({
 
   const [organizerId, setOrganizerId] = useState<string | undefined>(undefined);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showEndCalendar, setShowEndCalendar] = useState(false);
+  // Etapa 10b — mientras esto sea `false`, "Hora inicio" recalcula "Hora
+  // fin" (+1h) y "Fecha fin" (+1 día si cruza medianoche) automáticamente.
+  // Se pone en `true` apenas la persona toca "Hora fin" a mano, o de
+  // entrada si el formulario ya traía un time_end cargado (editar/volver
+  // del resumen) — no hay que pisarle un valor real ya elegido.
+  const userModifiedTimeEnd = useRef(Boolean(initialValues?.time_end));
   const [acquisition, setAcquisition] = useState({
     whatsapp: true,
     instagram: Boolean(initialValues?.contact_instagram),
@@ -181,6 +211,7 @@ export function EventForm({
       date: "",
       time: "",
       time_end: "",
+      date_end: "",
       categories: [],
       city_id: "",
       location_mode: "preset",
@@ -201,6 +232,7 @@ export function EventForm({
   const ticketType = watch("ticket_type");
   const categories = watch("categories");
   const dateValue = watch("date");
+  const dateEndValue = watch("date_end");
   const timeValue = watch("time");
   const timeEndValue = watch("time_end");
   const cityIdValue = watch("city_id");
@@ -223,13 +255,56 @@ export function EventForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCity]);
 
+  // Etapa 10b — "Fecha fin" en relación a "Fecha inicio":
+  // - Si "Fecha fin" todavía está vacía (bug real reportado: si se elige
+  //   "Hora inicio" ANTES que "Fecha inicio", el efecto de más abajo no
+  //   puede completarla porque todavía no hay fecha de referencia — queda
+  //   vacía para siempre si no se corrige acá) y ya hay una hora de inicio
+  //   cargada, se completa recién ahora con el mismo criterio que el
+  //   efecto de "Hora inicio": mismo día, o el día siguiente si la hora de
+  //   fin (auto o ya tocada a mano) "cruza medianoche" respecto a la de
+  //   inicio.
+  // - Si "Fecha fin" ya tenía un valor y quedó antes de la nueva "Fecha
+  //   inicio", se corrige sola. Si ya estaba en o después, no se toca —
+  //   puede haber sido elegida a propósito (evento de varios días).
+  useEffect(() => {
+    if (!dateValue) return;
+    if (!dateEndValue) {
+      if (timeValue && timeEndValue) {
+        const crossesMidnight = timeEndValue < timeValue;
+        setValue("date_end", crossesMidnight ? addDaysIso(dateValue, 1) : dateValue, { shouldValidate: true });
+      }
+      return;
+    }
+    if (dateEndValue < dateValue) {
+      setValue("date_end", dateValue, { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateValue]);
+
+  // Etapa 10b — "Hora fin" (y, si corresponde, "Fecha fin") se recalculan
+  // solos cada vez que cambia "Hora inicio", pero SOLO mientras la persona
+  // no haya tocado "Hora fin" a mano (userModifiedTimeEnd.current). Cuando
+  // time_start + 1h cruza medianoche, "Fecha fin" pasa a ser el día
+  // siguiente de "Fecha inicio".
+  useEffect(() => {
+    if (!timeValue || userModifiedTimeEnd.current) return;
+    const { time: nextTimeEnd, crossesMidnight } = addOneHourWithWrap(timeValue);
+    setValue("time_end", nextTimeEnd, { shouldValidate: true });
+    if (dateValue) {
+      setValue("date_end", crossesMidnight ? addDaysIso(dateValue, 1) : dateValue, { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeValue]);
+
   async function onSubmit(values: EventFormValues) {
     const payload: EventCreateInput = {
       title: values.title,
       description: values.description || undefined,
       date: values.date,
       time: values.time,
-      time_end: values.time_end || undefined,
+      time_end: values.time_end,
+      date_end: values.date_end,
       categories: values.categories,
       city_id: values.city_id || undefined,
       ...(values.location_mode === "preset"
@@ -295,35 +370,44 @@ export function EventForm({
         <FieldError message={errors.categories?.message} />
       </div>
 
+      {/* Fecha y hora, inicio y fin, van juntas en dos columnas —
+          layout de seSALE.html ("Inicio: [fecha][hora] -> Fin: [fecha][hora]"). */}
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <FieldLabel icon={Calendar} required>
-            Fecha
+            Fecha inicio
           </FieldLabel>
           <button
             id="date"
             type="button"
+            aria-label="Fecha inicio"
             onClick={() => setShowCalendar((s) => !s)}
             className={cn(
               "flex h-9 items-center rounded-full border border-border bg-card px-4 text-left text-sm",
               dateValue ? "text-foreground" : "text-ink-5",
             )}
           >
-            {dateValue ? format(parseISO(dateValue), "d 'de' MMMM yyyy", { locale: es }) : "Elegir fecha"}
+            {dateValue ? format(parseISO(dateValue), "d MMM yyyy", { locale: es }) : "Elegir fecha"}
           </button>
           <FieldError message={errors.date?.message} />
         </div>
         <div className="flex flex-col gap-1">
-          <FieldLabel icon={Clock} htmlFor="time" required>
-            Hora inicio
+          <FieldLabel icon={Calendar} htmlFor="date_end" required>
+            Fecha fin
           </FieldLabel>
-          <TimePicker
-            id="time"
-            label="Hora inicio"
-            value={timeValue}
-            onChange={(value) => setValue("time", value, { shouldValidate: true })}
-          />
-          <FieldError message={errors.time?.message} />
+          <button
+            id="date_end"
+            type="button"
+            aria-label="Fecha fin"
+            onClick={() => setShowEndCalendar((s) => !s)}
+            className={cn(
+              "flex h-9 items-center rounded-full border border-border bg-card px-4 text-left text-sm",
+              dateEndValue ? "text-foreground" : "text-ink-5",
+            )}
+          >
+            {dateEndValue ? format(parseISO(dateEndValue), "d MMM yyyy", { locale: es }) : "Elegir fecha"}
+          </button>
+          <FieldError message={errors.date_end?.message} />
         </div>
       </div>
 
@@ -337,16 +421,44 @@ export function EventForm({
         />
       )}
 
-      <div className="flex flex-col gap-1">
-        <FieldLabel icon={AlarmClockOff} htmlFor="time_end">
-          Hora fin (opc.)
-        </FieldLabel>
-        <TimePicker
-          id="time_end"
-          label="Hora fin"
-          value={timeEndValue ?? ""}
-          onChange={(value) => setValue("time_end", value, { shouldValidate: true })}
+      {showEndCalendar && (
+        <CalendarWidget
+          selected={dateEndValue ? parseISO(dateEndValue) : undefined}
+          onSelect={(day) => {
+            setValue("date_end", format(day, "yyyy-MM-dd"), { shouldValidate: true });
+            setShowEndCalendar(false);
+          }}
         />
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+          <FieldLabel icon={Clock} htmlFor="time" required>
+            Hora inicio
+          </FieldLabel>
+          <TimePicker
+            id="time"
+            label="Hora inicio"
+            value={timeValue}
+            onChange={(value) => setValue("time", value, { shouldValidate: true })}
+          />
+          <FieldError message={errors.time?.message} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel icon={AlarmClockOff} htmlFor="time_end" required>
+            Hora fin
+          </FieldLabel>
+          <TimePicker
+            id="time_end"
+            label="Hora fin"
+            value={timeEndValue ?? ""}
+            onChange={(value) => {
+              userModifiedTimeEnd.current = true;
+              setValue("time_end", value, { shouldValidate: true });
+            }}
+          />
+          <FieldError message={errors.time_end?.message} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">

@@ -316,7 +316,16 @@ class Event(SQLModel, table=True):
     description: str | None = Field(default=None)
     date: date                                     # día de negocio en Argentina — no se convierte
     time: time                                     # hora inicio, en UTC
-    time_end: time | None = Field(default=None)    # hora fin (Etapa 4), en UTC
+    time_end: time                                 # hora fin, en UTC — OBLIGATORIO desde la Etapa 10a
+                                                    # (antes time | None).
+    date_end: date | None                          # Etapa 10b — fecha de fin explícita. None = mismo
+                                                    # día que `date` (retrocompatible con filas de antes
+                                                    # de esta etapa) — nunca se lee crudo, siempre
+                                                    # `date_end or date` (ver EventRead.date_end,
+                                                    # is_event_currently_visible). Reemplaza la inferencia
+                                                    # implícita de "cruza medianoche" de la Etapa 10a
+                                                    # (time_end < time) — ahora el evento cruza medianoche
+                                                    # cuando date_end > date, sin importar los horarios
     # category (str único) y moment (str único) vivieron acá hasta la
     # Etapa 6.5 — ahora son las tablas event_categories / event_moments
     # de abajo. moment se calcula siempre desde time/time_end, nunca se
@@ -827,6 +836,45 @@ reducen el conjunto de resultados, pero el orden interno no cambia.
 Dentro de cada uno de estos 6 niveles, se ordena por created_at DESC.
 ```
 
+### Lógica de visibilidad por fecha/hora (Etapa 10b, reemplaza la Etapa 10a)
+
+`list_public_events()` (`app/services/event_service.py`) decide, evento por
+evento, si corresponde mostrarlo con `is_event_currently_visible(event_date,
+date_end, time_end, now)` — función pura, `now` es un `datetime` aware en
+UTC, comparado 100% en UTC (sin conversión a Argentina).
+
+La Etapa 10a tenía 3 condiciones (evento futuro / de hoy / de ayer cruzando
+medianoche) porque "cruza medianoche" se inferÍa de forma implícita
+(`time_end < time_start`, sin fecha de fin real). Desde la Etapa 10b,
+`date_end` es un campo explícito — la regla se reduce a una sola condición:
+
+```
+el evento es visible  ⟺  datetime(date_end or event_date, time_end) >= ahora
+```
+
+Es decir: **el evento es visible mientras no haya terminado**, sin importar
+si es de hoy, de ayer (cruzando medianoche) o un evento de varios días que
+empezó hace tiempo. `date_end=None` (filas de antes de la Etapa 10b, o
+cualquier evento de un solo día) se trata como `date_end = event_date`.
+
+Ejemplo: hoy es 15/03 02:00 UTC, evento `date=14/03, date_end=15/03,
+time_end=06:00` (UTC) → `datetime(15/03, 06:00) >= 15/03 02:00` → visible.
+A las 06:01 UTC deja de serlo.
+
+**Cambio de comportamiento real respecto a la Etapa 10a:** un evento de
+HOY cuyo horario ya pasó (ej. terminó a las 10:00 y son las 15:00) deja de
+ser visible apenas termina — antes, cualquier evento con `event.date ==
+hoy` quedaba visible todo el día sin importar la hora (ver `a_revisar.md`
+§ Etapa 10b).
+
+El filtro SQL de `GET /api/events` compara contra
+`coalesce(Event.date_end, Event.date) >= hoy - 1 día` (en vez de contra
+`Event.date` solo) — así no descarta en SQL eventos que empezaron antes de
+"hoy" pero cuyo `date_end` todavía no llegó (cruce de medianoche, o un
+evento de varios días), y `is_event_currently_visible()` se aplica como
+filtro fino adicional en Python sobre esos resultados, sin alterar el
+`ORDER BY` de arriba.
+
 ---
 
 ## 4. Flujos principales
@@ -1151,6 +1199,17 @@ GET    /api/events/{id}                Detalle completo de un evento     ✓ Eta
                                        expone doc_type/doc_number/phone/
                                        full_name/email
 POST   /api/events                     Crear evento (user autenticado → pending)
+                                       time_end requerido (ya no opcional)      ✓ Etapa 10a
+                                       date_end opcional — si no viene, el     ✓ Etapa 10b
+                                       backend lo completa con `date` (mismo
+                                       día). 422 si datetime(date_end, time_end)
+                                       no es estrictamente posterior a
+                                       datetime(date, time) — reemplaza la
+                                       regla de la Etapa 10a (mínimo 15' si
+                                       no cruza medianoche); ya no hay mínimo,
+                                       date_end explícito reemplaza la
+                                       inferencia implícita de "cruza
+                                       medianoche"
                                        body admite organizer_id opcional        ✓ Etapa 5.6
                                        (solo tiene efecto si quien publica es
                                        admin: crea el evento en nombre de ese
@@ -1675,6 +1734,8 @@ GET    /api/health                       Público, sin datos sensibles.
 | **9d** | Infraestructura de deploy: setup del primer admin sin SSH, migración de datos base para producción, modo mantenimiento en Next.js, workflows de GitHub Actions, mejoras al flujo de verificación de usuarios. Sin features nuevas para el usuario final — prepara el primer deploy a producción. | ✓ Completa: `POST /api/setup/admin` (público, se auto-desactiva con 410 apenas existe un admin, + `DISABLE_SETUP_ENDPOINT`), `GET /api/health`; migración de datos `0017_insert_base_data` (ciudades/ad_slots/planes/plan_prices, idempotente — reemplaza a `seed.py` en producción) y migración de esquema `0016_plan_price_created_by_nullable` (`PlanPrice.created_by` pasa a nullable — hueco real encontrado al planificar: la migración de datos corre antes de que exista cualquier usuario, confirmado con la usuaria); `middleware.ts` + `/proximamente` (modo mantenimiento vía `NEXT_PUBLIC_MAINTENANCE_MODE`, countdown opcional); toggle `is_verified` al crear usuario desde el panel admin (`AdminUserCreate.is_verified`); `PATCH /api/users/{id}/verify` pasa a aceptar body opcional `{is_verified}` (antes solo verificaba, sin body) — toggle real de verificación en `AdminUsersTable.tsx` con tooltip (el pedido daba por hecho que ya existía, no era así — ver `a_revisar.md`); banner de verificación con CTA de WhatsApp en `/mi-cuenta` si `is_verified=false`; `.github/workflows/ci-backend.yml`/`ci-frontend.yml` |
 | **9e** | Fixes finales pre-deploy: protección de rutas autenticadas, documentación de entornos, guía de deploy completa. Sin features nuevas — deja el proyecto listo para el primer deploy real. | ✓ Completa: `middleware.ts` agrega `AUTH_REQUIRED_PATHS` (`/publicar`, `/mis-eventos`, `/mi-cuenta`, `/planes`, `/admin`, `/eventos/{id}/editar`) — redirige a `/login?redirect=...` si falta la cookie `has_session` (no-HttpOnly, ya existía desde antes para este uso exacto — ver `a_revisar.md`, `access_token` nunca es una cookie y `refresh_token` no viaja fuera de `/api/auth`); `admin/layout.tsx` nuevo, verifica `role==="admin"` en el cliente (el edge no puede); `LoginForm`/`login/page.tsx` soportan `?redirect=` (vuelve ahí post-login, default `/mis-eventos`) con mensaje contextual si viene de `/publicar`; `session-restore-store.ts`/`useHasToken.ts` nuevos (evitan expulsar a un admin real por la carrera entre el refresh de página y la restauración de sesión). Guía de deploy (Railway/Vercel/Supabase) y tabla de variables por entorno en `README.md`; `.env.example` con comentarios de cómo generar/obtener cada variable (se mantuvo un único archivo raíz, no partido por app — ver `a_revisar.md`) |
 | **9** | App mobile (Expo) — consume la misma API. | |
+| **10a** | `time_end` obligatorio en `Event` + selector de hora corregido. | ✓ Completa: `Event.time_end: time` (antes `time \| None`), migración `0018` (backfillea `time_start + 2h`, o `23:59` si eso cruza medianoche, antes del `NOT NULL`); `EventCreate.time_end` requerido, `EventUpdate.time_end` sigue opcional (edición parcial); `@model_validator` de coherencia horaria en ambos (mínimo 15' si no cruza medianoche, siempre válido si cruza, 422 si son iguales) — mismo criterio en Zod (`event-schema.ts`); `is_event_currently_visible()` nuevo en `event_service.py` (CONDICIÓN C: evento de ayer que cruza medianoche y sigue en curso, ver § "Lógica de visibilidad" arriba); bug real del selector de hora (verificado en vivo, no era el patrón del selector de ciudades de la Etapa 9b — ver `a_revisar.md`): `SelectContent` (`ui/select.tsx`) no limitaba su altura al espacio disponible de Radix, la lista de 24 horas se salía del viewport sin scroll posible — fix genérico (`max-height: var(--radix-select-content-available-height)` + `overflow-y-auto`), corrige todo `<Select>` del sitio, no solo `TimePicker.tsx`; `EventForm.tsx` — hora fin ahora requerida, junto a hora inicio en el layout; `EventCard.tsx` muestra la hora (antes no mostraba ninguna) |
+| **10b** | `date_end` (fecha de fin) explícito en `Event`, con defaults automáticos en el formulario. | ✓ Completa: `Event.date_end: date \| None` (migración `0019`, nullable/retrocompatible — `None` = mismo día que `date`); `EventCreate.date_end` opcional (se completa con `date` si falta), `EventUpdate.date_end` opcional; el validador de coherencia de la Etapa 10a (mínimo 15', "cruza medianoche" inferido de `time_end < time_start`) se reemplaza por uno solo: `datetime(date_end, time_end) > datetime(date, time)`; `is_event_currently_visible()` se simplifica a una sola condición (`datetime_fin >= ahora`, ver § "Lógica de visibilidad" arriba) — cambio de comportamiento real: un evento de HOY ya terminado deja de listarse (antes quedaba visible todo el día); `EventForm.tsx` — segundo selector de fecha ("Fecha fin"), layout en 2 columnas (fecha y hora, inicio/fin), autocompletado de "Hora fin" (+1h) y "Fecha fin" al elegir "Hora inicio" (con `useRef` para no pisar una "Hora fin" ya editada a mano), "Fecha fin" se corrige sola si queda antes que "Fecha inicio" al mover la fecha de inicio |
 
 ---
 

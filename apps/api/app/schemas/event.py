@@ -3,7 +3,7 @@ from datetime import date as _Date
 from datetime import time as _Time
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.timezone import argentina_today
 from app.models.event import EventStatus, TicketType
@@ -40,6 +40,20 @@ def _validate_categories(value: list[str]) -> list[str]:
     return value
 
 
+# Etapa 10b — coherencia de fecha/hora de inicio y fin (ver a_revisar.md).
+# Reemplaza la regla de la Etapa 10a (mínimo 15' si no cruza medianoche,
+# "cruza medianoche" inferido de forma implícita con time_end < time_start).
+# Ahora que `date_end` es un campo explícito, la validación es directa:
+# el evento tiene que terminar estrictamente después de que empieza.
+
+
+def _validate_event_span(date_start: date, time_start: time, date_end: date, time_end: time) -> None:
+    start = datetime.combine(date_start, time_start)
+    end = datetime.combine(date_end, time_end)
+    if end <= start:
+        raise ValueError("La fecha y hora de fin debe ser posterior al inicio.")
+
+
 class LocationRead(BaseModel):
     id: UUID
     name: str
@@ -66,7 +80,8 @@ class EventRead(BaseModel):
     description: str | None
     date: date
     time: time
-    time_end: time | None
+    time_end: time  # Etapa 10a — obligatorio, ya no Optional
+    date_end: date  # Etapa 10b — siempre se devuelve, ver _default_date_end
     categories: list[str]
     status: EventStatus
     plan: PlanType
@@ -84,6 +99,23 @@ class EventRead(BaseModel):
     location: LocationRead
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_date_end(cls, data):
+        """Etapa 10b — `Event.date_end` es `None` en la DB para las filas
+        anteriores a esta etapa (y para cualquier evento de un solo día,
+        ver el modelo). La respuesta siempre devuelve una fecha real: si es
+        `None`, se completa con `date` (mismo día). `data` acá es el objeto
+        ORM crudo (`from_attributes=True`) o un dict — nunca se persiste
+        este fallback, solo afecta lo que se serializa en esta respuesta."""
+        if isinstance(data, dict):
+            if data.get("date_end") is None:
+                data = {**data, "date_end": data.get("date")}
+            return data
+        if getattr(data, "date_end", None) is None:
+            data.date_end = getattr(data, "date", None)
+        return data
 
 
 class OrganizerPublicRead(BaseModel):
@@ -146,7 +178,10 @@ class EventCreate(BaseModel):
     description: str | None = None
     date: date
     time: time
-    time_end: time | None = None
+    time_end: time  # Etapa 10a — obligatorio, sin default
+    # Etapa 10b: opcional — si no viene, el backend lo completa con `date`
+    # (mismo día), ver el validator de abajo.
+    date_end: date | None = None
     categories: list[str] = Field(min_length=MIN_CATEGORIES, max_length=MAX_CATEGORIES)
 
     # Solo tiene efecto si quien crea el evento es admin (Etapa 5.6): permite
@@ -205,6 +240,13 @@ class EventCreate(BaseModel):
             raise ValueError("La fecha del evento no puede estar en el pasado")
         return value
 
+    @model_validator(mode="after")
+    def default_date_end_and_validate_span(self) -> "EventCreate":
+        if self.date_end is None:
+            self.date_end = self.date
+        _validate_event_span(self.date, self.time, self.date_end, self.time_end)
+        return self
+
 
 class EventUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=255, min_length=1)
@@ -212,6 +254,7 @@ class EventUpdate(BaseModel):
     date: _Date | None = None
     time: _Time | None = None
     time_end: _Time | None = None
+    date_end: _Date | None = None  # Etapa 10b
     categories: list[str] | None = Field(default=None, min_length=MIN_CATEGORIES, max_length=MAX_CATEGORIES)
 
     # Etapa 7a: cambiar la ciudad del evento. None = no se toca.
@@ -245,6 +288,34 @@ class EventUpdate(BaseModel):
         if value is not None and value < argentina_today():
             raise ValueError("La fecha del evento no puede estar en el pasado")
         return value
+
+    @model_validator(mode="after")
+    def validate_event_span_coherence(self) -> "EventUpdate":
+        # En un update todos los campos son opcionales/parciales. Solo se
+        # puede validar la coherencia inicio/fin cuando el payload trae
+        # `time` y `time_end` juntos — si trae uno solo, el otro valor
+        # vigente vive en el evento ya guardado (no acá), y no es
+        # responsabilidad de este schema ir a buscarlo a la DB.
+        fields = self.model_fields_set
+        if "time" not in fields or "time_end" not in fields:
+            return self
+        if self.time is None or self.time_end is None:
+            return self
+
+        date_start = self.date if "date" in fields and self.date is not None else None
+        if date_start is None:
+            # No hay forma de saber la fecha vigente del evento acá (vive
+            # en la DB) — como mínimo, no permitir que la hora de fin sea
+            # exactamente igual a la de inicio.
+            if self.time_end == self.time:
+                raise ValueError("La fecha y hora de fin debe ser posterior al inicio.")
+            return self
+
+        # `date` sí vino: si `date_end` no vino, se asume el mismo día que
+        # `date` (mismo default que EventCreate).
+        date_end = self.date_end if "date_end" in fields and self.date_end is not None else date_start
+        _validate_event_span(date_start, self.time, date_end, self.time_end)
+        return self
 
 
 class EventStatusUpdate(BaseModel):

@@ -12,6 +12,7 @@ const initialValues: Partial<EventFormValues> = {
   date: "2099-01-01",
   time: "21:00",
   time_end: "23:30",
+  date_end: "2099-01-01",
   categories: ["musica"],
   location_mode: "map",
   location_name: "El Tinglado Bar",
@@ -40,7 +41,8 @@ describe("EventForm — modo edición", () => {
 
     expect(screen.getByLabelText(/Nombre del evento/)).toHaveValue("Show original");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Descripción original");
-    expect(screen.getByRole("button", { name: "1 de enero 2099" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fecha inicio" })).toHaveTextContent("1 ene 2099");
+    expect(screen.getByRole("button", { name: "Fecha fin" })).toHaveTextContent("1 ene 2099");
     expect(screen.getByLabelText("Hora inicio — hora")).toHaveTextContent("21");
     expect(screen.getByLabelText("Hora inicio — minutos")).toHaveTextContent("00");
     expect(screen.getByLabelText("Hora fin — hora")).toHaveTextContent("23");
