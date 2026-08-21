@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Search, Store } from "lucide-react";
+import { ArrowLeft, Info, Search, Store } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -88,6 +88,12 @@ export default function LugaresPage() {
         ) : (
           places.map((place) => <GastroPlaceCard key={place.id} place={place} />)
         )}
+      </div>
+
+      {/* Copy calcado de `.no-deliv` en seSALE.html — Etapa 10b-1. */}
+      <div className="mx-4 flex items-start gap-2 rounded-xl bg-surface-1 p-3 text-[11px] leading-relaxed text-ink-4">
+        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
+        <span>Solo lugares para salir — bares, restaurantes, cafés y otros. Sin delivery, sin clases, sin servicios.</span>
       </div>
     </main>
   );

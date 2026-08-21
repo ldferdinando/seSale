@@ -42,7 +42,7 @@ function CitySelector() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-ink-2"
+        className="flex items-center gap-[7px] rounded-full border border-[#E91E8C55] bg-card px-3.5 py-2 text-[13px] font-semibold text-ink-2"
       >
         <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden />
         {activeCity.emoji} {activeCity.name.replace("General", "Gral.")}

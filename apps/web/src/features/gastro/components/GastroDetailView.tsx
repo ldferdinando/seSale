@@ -30,6 +30,24 @@ interface GastroDetailViewProps {
   place: GastroPlace;
 }
 
+/** Mismo criterio que `buildMapUrl`/`buildReservarUrl` en GastroPlaceCard.tsx. */
+function buildMapUrl(place: GastroPlace): string | null {
+  if (place.latitude != null && place.longitude != null) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
+  }
+  if (place.address) {
+    return `https://www.google.com/maps/search/${encodeURIComponent(`${place.address}, ${place.city_name}`)}`;
+  }
+  return null;
+}
+
+function buildReservarUrl(place: GastroPlace): string | null {
+  if (place.plan !== "pro" || !place.gastro_whatsapp) return null;
+  const digits = place.gastro_whatsapp.replace(/\D/g, "");
+  const message = `Hola, quiero hacer una reserva en ${place.name}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
 function shareGastroPlace(place: GastroPlace) {
   const url = typeof window !== "undefined" ? `${window.location.origin}/lugares/${place.id}` : "";
   const title = `${place.name} — seSALE`;
@@ -63,6 +81,8 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
       : `https://${place.gastro_web}`
     : null;
   const emailHref = place.gastro_email ? `mailto:${place.gastro_email}` : null;
+  const mapUrl = buildMapUrl(place);
+  const reservarUrl = buildReservarUrl(place);
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,6 +114,18 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
             {place.address}
           </p>
+          {mapUrl && (
+            <a
+              href={mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="gastro-map-link"
+              className="mt-1 flex items-center gap-1.5 text-xs font-bold text-primary underline underline-offset-2"
+            >
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+              Cómo llegar
+            </a>
+          )}
         </div>
         <GastroPlanBadge plan={place.plan} />
       </div>
@@ -169,10 +201,25 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
         )
       )}
 
-      {(whatsappHref || instagramHref || webHref || emailHref) && (
+      {reservarUrl && (
+        <a
+          href={reservarUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="gastro-reservar-button"
+          className="flex items-center justify-center gap-2 rounded-xl bg-brand-whatsapp p-3 text-sm font-bold text-white"
+        >
+          <MessageCircle className="h-4 w-4" aria-hidden />
+          Reservar por WhatsApp
+        </a>
+      )}
+
+      {((whatsappHref && !reservarUrl) || instagramHref || webHref || emailHref) && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto</p>
-          {whatsappHref && (
+          {/* Etapa 10b-1: si ya se muestra el CTA "Reservar" (arriba, plan pro
+              con WhatsApp) no se repite el link genérico de WhatsApp acá. */}
+          {whatsappHref && !reservarUrl && (
             <a
               href={whatsappHref}
               target="_blank"

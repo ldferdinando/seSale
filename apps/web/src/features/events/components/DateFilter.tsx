@@ -89,8 +89,8 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
           type="button"
           onClick={() => setShowCalendar((s) => !s)}
           className={cn(
-            "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",
-            showCalendar ? "bg-primary text-primary-foreground" : "bg-surface-5 text-ink-1 hover:bg-surface-6",
+            "flex items-center gap-1.5 whitespace-nowrap rounded-full border-[1.5px] border-brand-pink px-3.5 py-2 text-xs font-semibold transition-colors",
+            showCalendar ? "bg-brand-pink text-white" : "bg-brand-pinkBg text-brand-pink",
           )}
         >
           <CalendarPlus className="h-3.5 w-3.5" aria-hidden />

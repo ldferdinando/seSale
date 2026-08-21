@@ -46,21 +46,34 @@ describe("GastroPlaceCard", () => {
     expect(screen.queryByText(/^Hoy:/)).not.toBeInTheDocument();
   });
 
-  it('shows "Destacado Plus" badge for plan pro', () => {
-    const place = makeGastroPlace({ plan: "pro" });
+  // Etapa 10b-1: seSALE.html elimina la etiqueta de texto de plan — se
+  // distingue solo por fondo/borde/miniatura, nunca por texto.
+  it("does not render any plan text badge, for any plan", () => {
+    render(<GastroPlaceCard place={makeGastroPlace({ plan: "gratis" })} />);
+    expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
 
-    render(<GastroPlaceCard place={place} />);
-
-    expect(screen.getByText("Destacado Plus")).toBeInTheDocument();
+    render(<GastroPlaceCard place={makeGastroPlace({ plan: "pro" })} />);
+    expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
   });
 
-  it("shows no plan badge for plan gratis", () => {
-    const place = makeGastroPlace({ plan: "gratis" });
+  it("plan='pro' with cover_img_url shows the thumbnail image", () => {
+    const place = makeGastroPlace({ plan: "pro", cover_img_url: "/uploads/covers/1/cover.jpg" });
 
-    render(<GastroPlaceCard place={place} />);
+    const { container } = render(<GastroPlaceCard place={place} />);
 
-    expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
-    expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
+    const card = screen.getByTestId("gastro-place-card");
+    expect(card.className).toContain("border-l-[6px]");
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("src", expect.stringContaining("cover.jpg"));
+  });
+
+  it("plan='pro' without cover_img_url shows a placeholder icon", () => {
+    const place = makeGastroPlace({ plan: "pro", cover_img_url: null });
+
+    const { container } = render(<GastroPlaceCard place={place} />);
+
+    expect(container.querySelector("img")).not.toBeInTheDocument();
   });
 
   it("shows the verified icon when is_verified is true", () => {
@@ -69,6 +82,35 @@ describe("GastroPlaceCard", () => {
     render(<GastroPlaceCard place={place} />);
 
     expect(screen.getByTestId("gastro-verified-icon")).toBeInTheDocument();
+  });
+
+  // Etapa 10b-1: botón "Llegar" (Google Maps) — siempre que haya
+  // coordenadas o dirección (address es obligatorio en el modelo).
+  it('shows a "Llegar" button that links to Google Maps by coordinates', () => {
+    const place = makeGastroPlace({ latitude: -39.03, longitude: -67.58 });
+
+    render(<GastroPlaceCard place={place} />);
+
+    expect(screen.getByTestId("gastro-map-button")).toBeInTheDocument();
+  });
+
+  // Etapa 10b-1: CTA "Reservar" — solo Destacado Plus con WhatsApp cargado.
+  it('shows a "Reservar" button only for plan pro with gastro_whatsapp', () => {
+    const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: "5492984000001" });
+    render(<GastroPlaceCard place={pro} />);
+    expect(screen.getByTestId("gastro-reservar-button")).toBeInTheDocument();
+  });
+
+  it('does not show "Reservar" for plan dest', () => {
+    const dest = makeGastroPlace({ plan: "dest", gastro_whatsapp: "5492984000001" });
+    render(<GastroPlaceCard place={dest} />);
+    expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
+  });
+
+  it('does not show "Reservar" for plan pro without gastro_whatsapp', () => {
+    const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: null });
+    render(<GastroPlaceCard place={pro} />);
+    expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
   });
 
   // Etapa 9a — "Ver N evento(s)" navega al detalle del lugar (la card entera
