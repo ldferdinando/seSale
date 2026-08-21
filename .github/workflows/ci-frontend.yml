@@ -1,0 +1,51 @@
+name: Frontend CI
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/ci-frontend.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      NEXT_PUBLIC_MP_PUBLIC_KEY: ""
+      NEXT_PUBLIC_SESALE_WHATSAPP: "5492984000000"
+      NEXT_PUBLIC_MAINTENANCE_MODE: "false"
+      NEXT_PUBLIC_LAUNCH_DATE: ""
+      NEXT_PUBLIC_BANK_INFO: "Alias: sesale.test"
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Run npm audit (falla solo con vulnerabilidades altas/críticas)
+        run: npm audit --audit-level=high
