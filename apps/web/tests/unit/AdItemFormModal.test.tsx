@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { HttpResponse, delay, http } from "msw";
+import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import { AdItemFormModal } from "@/features/ads/components/AdItemFormModal";
@@ -25,12 +25,18 @@ describe("AdItemFormModal — selector de anunciante", () => {
   it(
     'shows "Cargando usuarios..." (not an empty popup) if the Select opens before GET /api/users resolves',
     async () => {
+      // En vez de un delay fijo (que corre la carrera contra la velocidad de
+      // la máquina y flaquea bajo carga en CI), controlamos manualmente
+      // cuándo resuelve el request: así el estado de loading queda
+      // garantizado en vez de depender del timing.
+      let resolveUsers!: (users: unknown[]) => void;
+      const usersResponse = new Promise<unknown[]>((resolve) => {
+        resolveUsers = resolve;
+      });
       server.use(
         http.get(`${API_URL}/api/users`, async () => {
-          await delay(200);
-          return HttpResponse.json([
-            { id: "u1", public_name: "Bar Uno", email: "uno@x.com", role: "user", is_active: true, full_name: "a", doc_type: null, doc_number: null, phone: null, phone_verified: false, email_verified: false, public_whatsapp: null, city_id: null, is_verified: false, created_at: "2024-01-01", created_by: null },
-          ]);
+          const users = await usersResponse;
+          return HttpResponse.json(users);
         }),
       );
       renderModal();
@@ -42,6 +48,10 @@ describe("AdItemFormModal — selector de anunciante", () => {
       await user.click(screen.getByRole("combobox", { name: "Anunciante" }));
 
       expect(await screen.findByText("Cargando usuarios...")).toBeInTheDocument();
+
+      resolveUsers([
+        { id: "u1", public_name: "Bar Uno", email: "uno@x.com", role: "user", is_active: true, full_name: "a", doc_type: null, doc_number: null, phone: null, phone_verified: false, email_verified: false, public_whatsapp: null, city_id: null, is_verified: false, created_at: "2024-01-01", created_by: null },
+      ]);
 
       await waitFor(() => expect(screen.getByRole("option", { name: /Bar Uno/ })).toBeInTheDocument());
     },
