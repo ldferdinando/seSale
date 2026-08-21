@@ -62,6 +62,9 @@ export interface Event {
   contact_email: string | null;
   flyer_url: string | null;
   location: EventLocation;
+  // Etapa 10b-2: expuesto también al organizador dueño (antes solo en
+  // AdminEventRead) — autoservicio "Dar de baja"/"Volver a publicar".
+  is_active: boolean;
 }
 
 export interface EventOrganizerPublic {
@@ -143,7 +146,9 @@ export interface EventCreateInput {
   plan?: EventPlan;
 }
 
-export type EventUpdateInput = Partial<EventCreateInput>;
+// Etapa 10b-2: is_active no forma parte de EventCreateInput (solo tiene
+// sentido en un evento ya existente) — se agrega acá.
+export type EventUpdateInput = Partial<EventCreateInput> & { is_active?: boolean };
 
 export interface EventFeaturedUpdateInput {
   is_featured: boolean;
@@ -158,7 +163,7 @@ export interface EventsByStatus {
 
 export interface AdminEvent extends Event {
   organizer_public_name: string;
-  is_active: boolean;
+  // is_active ya viene de Event desde la Etapa 10b-2 (antes era exclusivo de acá).
   organizer_subscription: OrganizerSubscriptionStatus | null;
 }
 

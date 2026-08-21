@@ -86,4 +86,24 @@ describe("EventCard", () => {
     // 21:00 UTC -3h = 18:00 hora Argentina
     expect(screen.getByText("18:00 hs")).toBeInTheDocument();
   });
+
+  // Etapa 10b-2: eventos dados de baja por el organizador — solo llegan a
+  // esta card vía /mis-eventos (el listado público ya los filtra).
+  it("shows a faded card and a badge when is_active is false", () => {
+    const event = makeEvent({ is_active: false });
+
+    render(<EventCard event={event} />);
+
+    expect(screen.getByTestId("event-inactive-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("event-card").className).toContain("opacity-50");
+  });
+
+  it("does not show the inactive badge when is_active is true", () => {
+    const event = makeEvent({ is_active: true });
+
+    render(<EventCard event={event} />);
+
+    expect(screen.queryByTestId("event-inactive-badge")).not.toBeInTheDocument();
+    expect(screen.getByTestId("event-card").className).not.toContain("opacity-50");
+  });
 });

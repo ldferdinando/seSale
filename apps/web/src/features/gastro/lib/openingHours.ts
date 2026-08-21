@@ -1,4 +1,4 @@
-import { toZonedTime } from "date-fns-tz";
+import { format, toZonedTime } from "date-fns-tz";
 
 import { ARGENTINA_TZ } from "@/lib/date-helpers";
 import { WEEKDAYS, type OpeningHours, type Weekday } from "@/features/gastro/types";
@@ -39,6 +39,35 @@ export function formatTodayHours(opening: OpeningHours | null, now: Date = new D
   const today = currentWeekdayInArgentina(now);
   const hours = opening[today];
   return hours ? `Hoy: ${hours.open} a ${hours.close} hs` : "Hoy: cerrado";
+}
+
+/**
+ * Hora actual en Argentina, formato "HH:mm" — comparable lexicográficamente
+ * contra `open`/`close` (mismo criterio que `localTimeToUtc`/etc. en
+ * `date-helpers.ts`, siempre 2 dígitos).
+ */
+function currentTimeInArgentina(now: Date): string {
+  return format(toZonedTime(now, ARGENTINA_TZ), "HH:mm", { timeZone: ARGENTINA_TZ });
+}
+
+/**
+ * ¿Está abierto ahora mismo? `opening_hours` null (no se sabe el horario) o
+ * el día actual sin horario cargado (cerrado hoy) → false. Contempla
+ * horarios que cruzan medianoche (`close < open`, ej. 20:00 a 02:00): abierto
+ * si la hora actual es >= open O < close.
+ */
+export function isOpenNow(opening: OpeningHours | null, now: Date = new Date()): boolean {
+  if (!opening) return false;
+  const today = currentWeekdayInArgentina(now);
+  const hours = opening[today];
+  if (!hours) return false;
+
+  const current = currentTimeInArgentina(now);
+  if (hours.close < hours.open) {
+    // Cruza medianoche: abierto desde `open` hasta `close` del día siguiente.
+    return current >= hours.open || current < hours.close;
+  }
+  return current >= hours.open && current < hours.close;
 }
 
 export { WEEKDAYS };

@@ -404,3 +404,114 @@ async def test_update_event_location_data_city_mismatch_returns_422(
     )
 
     assert response.status_code == 422
+
+
+# Etapa 10b-2 — autoservicio "Dar de baja"/"Volver a publicar" (is_active en
+# EventUpdate) para el organizador dueño del evento.
+
+
+async def test_update_event_owner_can_set_is_active_false(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"is_active": False}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+
+async def test_update_event_owner_can_reactivate_with_is_active_true(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(
+        session, city=city, organizer=organizer, location=location, status=EventStatus.approved, is_active=False
+    )
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"is_active": True}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+
+async def test_update_event_owner_only_is_active_does_not_reset_to_pending(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """La excepción puntual acordada: un PUT del dueño que trae ÚNICAMENTE
+    is_active no dispara el reset a pending que sí ocurre con cualquier otro
+    campo (ver test_update_event_by_organizer_returns_200_and_resets_to_pending)."""
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"is_active": False}, headers=user_token_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "approved"
+    assert body["is_active"] is False
+
+
+async def test_update_event_owner_is_active_with_other_field_still_resets_to_pending(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    """Si el payload trae is_active junto con cualquier otro campo, se
+    mantiene el comportamiento existente: vuelve a pending."""
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={"is_active": False, "title": "Editado junto con la baja"},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "pending"
+    assert body["is_active"] is False
+
+
+async def test_update_event_admin_setting_is_active_does_not_reset_status_either_way(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    admin_token_headers: dict[str, str],
+):
+    """Para un admin, `status` nunca se resetea por PUT (regla preexistente
+    de update_event) — is_active se comporta igual que cualquier otro campo."""
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"is_active": False}, headers=admin_token_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "approved"
+    assert body["is_active"] is False

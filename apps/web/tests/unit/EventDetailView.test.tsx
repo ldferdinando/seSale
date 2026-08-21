@@ -73,7 +73,7 @@ describe("EventDetailView", () => {
 
     renderWithClient(event);
 
-    expect(screen.getByText("WhatsApp")).toBeInTheDocument();
+    expect(screen.getByTestId("ticket-whatsapp-link")).toBeInTheDocument();
     expect(screen.queryByText("Instagram")).not.toBeInTheDocument();
     expect(screen.queryByText("Página web")).not.toBeInTheDocument();
     expect(screen.getByText("Email")).toBeInTheDocument();
@@ -227,7 +227,59 @@ describe("EventDetailView", () => {
 
     await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
     expect(screen.getByText("Espacio cultural con shows en vivo")).toBeInTheDocument();
-    expect(screen.getByText("Jueves a sábados 21:00 a 03:00")).toBeInTheDocument();
+    // Etapa 10b-2: el horario del lugar ahora se muestra junto a la
+    // dirección, dentro del bloque "Lugar" (`event-location-card`).
+    expect(screen.getByTestId("event-location-card").textContent).toContain("Jueves a sábados 21:00 a 03:00");
+  });
+
+  // Etapa 10b-2: bloque "Lugar" separado — botón "Cómo llegar" a Google Maps
+  // (mismo patrón que GastroPlaceCard/GastroDetailView, Etapa 10b-1) y badge
+  // de verificación del lugar (Location.is_verified, ya existía en el
+  // modelo/schema).
+  it('shows a "Cómo llegar" button and the verified badge for the location', () => {
+    const event = makeEventDetail({
+      location: {
+        id: "33333333-3333-3333-3333-333333333333",
+        name: "El Tinglado Bar",
+        address: "Av. Roca 1240",
+        city_id: "22222222-2222-2222-2222-222222222222",
+        latitude: -39.032,
+        longitude: -67.581,
+        description: null,
+        hours: null,
+        place_type: "bar",
+        is_verified: true,
+        is_public: true,
+      },
+    });
+
+    renderWithClient(event);
+
+    const mapLink = screen.getByTestId("event-location-map-link");
+    expect(mapLink).toHaveAttribute("href", expect.stringContaining("-39.032,-67.581"));
+    expect(screen.getByTestId("location-verified-icon")).toBeInTheDocument();
+  });
+
+  it("does not show the location verified badge when is_verified is false", () => {
+    const event = makeEventDetail({
+      location: {
+        id: "33333333-3333-3333-3333-333333333333",
+        name: "El Tinglado Bar",
+        address: "Av. Roca 1240",
+        city_id: "22222222-2222-2222-2222-222222222222",
+        latitude: null,
+        longitude: null,
+        description: null,
+        hours: null,
+        place_type: "bar",
+        is_verified: false,
+        is_public: true,
+      },
+    });
+
+    renderWithClient(event);
+
+    expect(screen.queryByTestId("location-verified-icon")).not.toBeInTheDocument();
   });
 
   it("does not show the map when the location has no coordinates", () => {
@@ -383,7 +435,7 @@ describe("EventDetailView", () => {
 
       renderWithClient(event);
 
-      expect(screen.getByText("Organizador verificado por seSALE")).toBeInTheDocument();
+      expect(screen.getByText("Identidad confirmada por seSALE")).toBeInTheDocument();
       expect(screen.getByText("Documento verificado")).toBeInTheDocument();
     });
 
@@ -402,7 +454,7 @@ describe("EventDetailView", () => {
 
       renderWithClient(event);
 
-      expect(screen.queryByText("Organizador verificado por seSALE")).not.toBeInTheDocument();
+      expect(screen.queryByText("Identidad confirmada por seSALE")).not.toBeInTheDocument();
     });
 
     it('shows "Celular verificado" only when phone_verified is true', () => {
@@ -483,6 +535,108 @@ describe("EventDetailView", () => {
       renderWithClient(event);
 
       expect(screen.getByText("Miembro desde marzo 2024")).toBeInTheDocument();
+    });
+  });
+
+  // Etapa 10b-2 — "Dar de baja"/"Volver a publicar" (autoservicio del organizador).
+  describe("dar de baja", () => {
+    const OWNER_ID = "44444444-4444-4444-4444-444444444444";
+
+    it('shows "Dar de baja este evento" for the owner with status=approved', async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: true });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      expect(await screen.findByTestId("deactivate-event-button")).toBeInTheDocument();
+      expect(screen.queryByTestId("reactivate-event-button")).not.toBeInTheDocument();
+    });
+
+    it('shows "Volver a publicar" when is_active is false', async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: false });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      expect(await screen.findByTestId("reactivate-event-button")).toBeInTheDocument();
+      expect(screen.getByText("Este evento está dado de baja.")).toBeInTheDocument();
+      expect(screen.queryByTestId("deactivate-event-button")).not.toBeInTheDocument();
+    });
+
+    it("does not show the section for an anonymous visitor", () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: true });
+
+      renderWithClient(event);
+
+      expect(screen.queryByTestId("event-active-toggle-section")).not.toBeInTheDocument();
+    });
+
+    it("does not show the section for a user who is not the organizer", () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: true });
+      mockLoggedInAs(makeUser({ id: "99999999-9999-9999-9999-999999999999", role: "user" }));
+
+      renderWithClient(event);
+
+      expect(screen.queryByTestId("event-active-toggle-section")).not.toBeInTheDocument();
+    });
+
+    it("does not show the section when status is not approved", () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "pending", is_active: true });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+
+      expect(screen.queryByTestId("event-active-toggle-section")).not.toBeInTheDocument();
+    });
+
+    it('clicking "Dar de baja este evento" shows the confirmation dialog', async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: true });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      renderWithClient(event);
+      (await screen.findByTestId("deactivate-event-button")).click();
+
+      expect(await screen.findByRole("dialog", { name: "¿Dar de baja este evento?" })).toBeInTheDocument();
+    });
+
+    it("confirming the dialog calls PUT with is_active: false", async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: true });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      let capturedBody: Record<string, unknown> | null = null;
+      server.use(
+        http.put(`${API_URL}/api/events/:id`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ ...event, ...capturedBody });
+        }),
+      );
+
+      renderWithClient(event);
+      (await screen.findByTestId("deactivate-event-button")).click();
+      (await screen.findByRole("button", { name: "Dar de baja" })).click();
+
+      await waitFor(() => expect(capturedBody).toEqual({ is_active: false }));
+      await waitFor(() => expect(screen.getByText("Tu evento fue dado de baja.")).toBeInTheDocument());
+    });
+
+    it('clicking "Volver a publicar" calls PUT with is_active: true, without a confirmation dialog', async () => {
+      const event = makeEventDetail({ organizer_id: OWNER_ID, status: "approved", is_active: false });
+      mockLoggedInAs(makeUser({ id: OWNER_ID, role: "user" }));
+
+      let capturedBody: Record<string, unknown> | null = null;
+      server.use(
+        http.put(`${API_URL}/api/events/:id`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ ...event, ...capturedBody });
+        }),
+      );
+
+      renderWithClient(event);
+      (await screen.findByTestId("reactivate-event-button")).click();
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => expect(capturedBody).toEqual({ is_active: true }));
+      await waitFor(() => expect(screen.getByText("Tu evento volvió a estar activo.")).toBeInTheDocument());
     });
   });
 });

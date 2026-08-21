@@ -159,7 +159,6 @@ async def get_admin_events(
         AdminEventRead(
             **EventRead.model_validate(event).model_dump(),
             organizer_public_name=event.organizer.public_name,
-            is_active=event.is_active,
             organizer_subscription=_to_organizer_subscription_read(latest_subscriptions.get(event.id)),
         )
         for event in events

@@ -464,6 +464,12 @@ def update_event(
         raise PermissionError("No tenés permiso para editar este evento")
 
     data = payload.model_dump(exclude_unset=True)
+    # Etapa 10b-2: si el dueño (no admin) manda ÚNICAMENTE is_active (dar de
+    # baja/volver a publicar), no se resetea `status` a pending más abajo —
+    # ver el comentario junto a esa asignación. Cualquier otro campo en el
+    # payload (aunque venga junto a is_active) mantiene el comportamiento
+    # existente: vuelve a pending.
+    only_toggles_active = set(data.keys()) == {"is_active"}
     categories = data.pop("categories", None)
     new_city_id = data.pop("city_id", None)
     target_city_id = _resolve_target_city(session, new_city_id, event.city_id)
@@ -500,7 +506,10 @@ def update_event(
     # time/time_end pueden haber cambiado — se recalcula siempre (es idempotente).
     _sync_event_moments(session, event)
 
-    if is_owner and not is_admin:
+    # Etapa 10b-2: excepción puntual — un PUT que solo trae is_active (dar de
+    # baja/volver a publicar) no vuelve el evento a pending. Cualquier otro
+    # campo editado por el dueño sigue reseteando a pending, sin cambios.
+    if is_owner and not is_admin and not only_toggles_active:
         event.status = EventStatus.pending
 
     event.updated_at = datetime.now(timezone.utc)

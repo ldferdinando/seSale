@@ -52,6 +52,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
       is_verified: false,
       is_public: false,
     },
+    is_active: true,
     ...overrides,
   };
 }

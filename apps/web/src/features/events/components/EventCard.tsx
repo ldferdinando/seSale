@@ -107,7 +107,14 @@ export function EventCard({ event }: EventCardProps) {
     <Link href={`/eventos/${event.id}`} data-testid="event-card-link">
       <Card
         data-testid="event-card"
-        className={cn("overflow-hidden transition-colors hover:border-primary/40", planCardClasses(event.plan))}
+        className={cn(
+          "overflow-hidden transition-colors hover:border-primary/40",
+          planCardClasses(event.plan),
+          // Etapa 10b-2: eventos dados de baja por el organizador — solo
+          // pueden llegar acá vía /mis-eventos (el listado público ya los
+          // filtra), atenuados para que se note que no están visibles.
+          !event.is_active && "opacity-50",
+        )}
       >
         <CardContent className="flex items-center gap-3 p-3">
           <div className="flex min-w-[34px] flex-col items-center text-center">
@@ -156,7 +163,17 @@ export function EventCard({ event }: EventCardProps) {
                 {categoryLabel}
               </p>
             )}
-            <p className="truncate text-sm font-bold text-foreground">{event.title}</p>
+            <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-bold text-foreground">
+              <span className="truncate">{event.title}</span>
+              {!event.is_active && (
+                <span
+                  data-testid="event-inactive-badge"
+                  className="flex-shrink-0 rounded-full bg-surface-5 px-2 py-0.5 text-[9px] font-bold text-ink-3"
+                >
+                  Dado de baja
+                </span>
+              )}
+            </p>
             <p className="mt-1 flex items-center gap-2 truncate text-xs text-ink-4">
               <span className="flex flex-shrink-0 items-center gap-1">
                 <Clock className="h-3 w-3 text-primary" aria-hidden />

@@ -97,6 +97,11 @@ class EventRead(BaseModel):
     contact_email: str | None
     flyer_url: str | None
     location: LocationRead
+    # Etapa 10b-2: se expone para que el organizador dueño del evento (o un
+    # admin) puedan saber si su propio evento está dado de baja — antes solo
+    # estaba en AdminEventRead. Sin lógica nueva, el campo ya existe en el
+    # modelo desde el día 1.
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -167,7 +172,8 @@ class AdminEventListParams(BaseModel):
 
 class AdminEventRead(EventRead):
     organizer_public_name: str
-    is_active: bool
+    # is_active ya viene de EventRead desde la Etapa 10b-2 (antes era
+    # exclusivo de este schema).
     # Estado de pago más reciente del organizador — Etapa 6b-1, para decidir
     # si aprobar el evento sabiendo si ya avisó/confirmó el pago del plan.
     organizer_subscription: OrganizerSubscriptionRead | None = None
@@ -274,6 +280,13 @@ class EventUpdate(BaseModel):
     contact_instagram: str | None = None
     contact_web: str | None = None
     contact_email: str | None = None
+
+    # Etapa 10b-2: autoservicio de "Dar de baja"/"Volver a publicar" para el
+    # organizador dueño del evento (antes solo se podía desactivar, vía
+    # DELETE /api/events/{id}, y solo en esa dirección). None = no se toca.
+    # Ver update_event() en event_service.py — un payload que solo trae este
+    # campo no resetea `status` a pending.
+    is_active: bool | None = None
 
     @field_validator("categories")
     @classmethod

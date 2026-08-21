@@ -18,6 +18,8 @@ import {
   MessageCircle,
   Instagram as InstagramIcon,
   Pencil,
+  Power,
+  PowerOff,
   Share2,
   ShieldCheck,
   Sparkles,
@@ -28,6 +30,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import {
@@ -35,6 +38,7 @@ import {
   OrganizerSubscriptionBadge,
 } from "@/features/events/components/OrganizerSubscriptionBadge";
 import { ReportEventModal } from "@/features/events/components/ReportEventModal";
+import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { EVENT_CATEGORIES } from "@/features/events/types";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
@@ -60,6 +64,19 @@ const PLAN_NAME: Record<"dest" | "pro", string> = {
   pro: "Destacado Plus",
 };
 
+/** Google Maps: navegación directa por coordenadas si existen, si no
+ * búsqueda por dirección. Mismo criterio que `buildMapUrl` en
+ * GastroPlaceCard.tsx/GastroDetailView.tsx (Etapa 10b-1). */
+function buildLocationMapUrl(location: EventDetail["location"]): string | null {
+  if (location.latitude != null && location.longitude != null) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`;
+  }
+  if (location.address) {
+    return `https://www.google.com/maps/search/${encodeURIComponent(location.address)}`;
+  }
+  return null;
+}
+
 function shareEvent(event: EventDetail) {
   const eventDate = parseISO(event.date);
   const dateLabel = format(eventDate, "EEEE d 'de' MMMM", { locale: es });
@@ -79,6 +96,10 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const { data: currentUser } = useCurrentUser();
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Etapa 10b-2: "Dar de baja" / "Volver a publicar" (autoservicio del organizador).
+  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = useState(false);
+  const [activeActionMessage, setActiveActionMessage] = useState<string | null>(null);
+  const updateActive = useUpdateEvent(event.id);
 
   const style = CATEGORY_STYLES[event.categories[0]] ?? DEFAULT_CATEGORY_STYLE;
   const Icon = style.icon;
@@ -89,6 +110,25 @@ export function EventDetailView({ event }: EventDetailViewProps) {
 
   const canEdit = Boolean(currentUser && (currentUser.id === event.organizer_id || currentUser.role === "admin"));
   const isOwner = Boolean(currentUser && currentUser.id === event.organizer_id);
+
+  function handleDeactivate() {
+    updateActive.mutate(
+      { is_active: false },
+      {
+        onSuccess: () => {
+          setDeactivateConfirmOpen(false);
+          setActiveActionMessage("Tu evento fue dado de baja.");
+        },
+      },
+    );
+  }
+
+  function handleReactivate() {
+    updateActive.mutate(
+      { is_active: true },
+      { onSuccess: () => setActiveActionMessage("Tu evento volvió a estar activo.") },
+    );
+  }
 
   const whatsappHref = event.contact_whatsapp
     ? `https://wa.me/${event.contact_whatsapp.replace(/\D/g, "")}`
@@ -102,6 +142,10 @@ export function EventDetailView({ event }: EventDetailViewProps) {
       : `https://${event.contact_web}`
     : null;
   const emailHref = event.contact_email ? `mailto:${event.contact_email}` : null;
+
+  // Etapa 10b-2: botón "Llegar" del bloque Lugar (mismo criterio que
+  // GastroPlaceCard.tsx/GastroDetailView.tsx en la Etapa 10b-1).
+  const locationMapUrl = buildLocationMapUrl(event.location);
 
   // Etapa 8b — el flyer es exclusivo del plan Destacado Plus (ver
   // a_revisar.md): "pro" con flyer_url es clickable (lightbox), "dest" con
@@ -197,39 +241,147 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 text-sm text-ink-2">
-          <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
-          <span>{event.location.address}</span>
-        </div>
-
-        {/* Etapa 7b: mapa solo si el lugar tiene coordenadas — sin ellas no
-            tiene sentido mostrar un mapa. Description/hours ya vienen en
-            event.location (Etapa 7b, LocationRead anidado en EventRead),
-            no hace falta un fetch aparte. */}
-        {event.location.latitude != null && event.location.longitude != null && (
-          <MapPicker
-            latitude={event.location.latitude}
-            longitude={event.location.longitude}
-            onLocationSelect={() => {}}
-            readonly
-            heightClassName="h-[220px]"
-          />
-        )}
-        {(event.location.description || event.location.hours) && (
-          <div className="flex flex-col gap-1 text-sm text-ink-2">
-            {event.location.description && <p>{event.location.description}</p>}
-            {event.location.hours && (
-              <p className="flex items-start gap-1.5 text-xs text-ink-4">
-                <Clock className="mt-0.5 h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
-                {event.location.hours}
-              </p>
-            )}
-          </div>
-        )}
-
         {event.description && (
           <p className="text-sm leading-relaxed text-ink-2">{event.description}</p>
         )}
+
+        {/* Etapa 10b-2: bloque "Lugar" separado del organizador (calcado de
+            `.evlg-card` en seSALE.html) — el lugar donde pasa el evento no
+            siempre es quien lo organiza (ej. una banda tocando en un bar que
+            no es suyo). Sin llamadas nuevas: event.location ya trae todo
+            (LocationRead anidado en EventRead desde la Etapa 7b). */}
+        {event.location.name && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Lugar</p>
+            <div
+              className="flex flex-col gap-3 rounded-xl border border-[#E91E8C44] bg-card p-3.5"
+              data-testid="event-location-card"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-surface-2">
+                  <Building2 className="h-5 w-5 text-primary" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                    <span className="truncate">{event.location.name}</span>
+                    {event.location.is_verified && (
+                      <ShieldCheck
+                        className="h-3.5 w-3.5 flex-shrink-0 text-brand-green"
+                        aria-label="Lugar verificado"
+                        data-testid="location-verified-icon"
+                      />
+                    )}
+                  </p>
+                  <p className="truncate text-xs text-ink-3">
+                    {event.location.address}
+                    {event.location.hours ? ` · ${event.location.hours}` : ""}
+                  </p>
+                </div>
+              </div>
+
+              {event.location.description && (
+                <p className="text-sm text-ink-2">{event.location.description}</p>
+              )}
+
+              {/* Etapa 7b: mapa embebido solo si el lugar tiene coordenadas. */}
+              {event.location.latitude != null && event.location.longitude != null && (
+                <MapPicker
+                  latitude={event.location.latitude}
+                  longitude={event.location.longitude}
+                  onLocationSelect={() => {}}
+                  readonly
+                  heightClassName="h-[220px]"
+                />
+              )}
+
+              {locationMapUrl && (
+                <a
+                  href={locationMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="event-location-map-link"
+                  className="flex items-center gap-1.5 border-t border-border pt-3 text-xs font-bold text-primary"
+                >
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                  Cómo llegar (Google Maps)
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Etapa 10b-2: bloque "Organizador" separado del lugar (calcado de
+            `.org-card` en seSALE.html) — datos reales ya expuestos por
+            OrganizerPublicRead desde la Etapa 9a, solo se reorganiza el
+            layout. Sin banner de verificación si is_verified=False (ya era
+            así, se respeta). */}
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5"
+          data-testid="event-organizer-card"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Organizador</p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-pink/15 text-xs font-bold text-primary">
+              {event.organizer.public_name.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                <span className="truncate">{event.organizer.public_name}</span>
+                {event.organizer.is_verified && (
+                  <ShieldCheck
+                    className="h-3.5 w-3.5 flex-shrink-0 text-brand-green"
+                    aria-label="Organizador verificado"
+                    data-testid="organizer-verified-icon"
+                  />
+                )}
+              </p>
+              {event.organizer.city && <p className="truncate text-xs text-ink-3">{event.organizer.city}</p>}
+            </div>
+          </div>
+
+          {/* Banner de verificación con datos reales — Etapa 9a. Solo se
+              muestra si el admin verificó la identidad (is_verified); si no,
+              no se muestra nada para no generar desconfianza innecesaria. */}
+          {event.organizer.is_verified && (
+            <div className="flex flex-col gap-1.5 rounded-lg border border-[#1D9E7544] bg-[#0d2a1a] p-2.5">
+              <p className="text-xs font-bold text-[#5DCAA5]">Identidad confirmada por seSALE</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="muted" className="gap-1">
+                  <ShieldCheck className="h-3 w-3" aria-hidden />
+                  Documento verificado
+                </Badge>
+                {event.organizer.phone_verified && (
+                  <Badge variant="muted" className="gap-1">
+                    <MessageCircle className="h-3 w-3" aria-hidden />
+                    Celular verificado
+                  </Badge>
+                )}
+                {event.organizer.email_verified && (
+                  <Badge variant="muted" className="gap-1">
+                    <Mail className="h-3 w-3" aria-hidden />
+                    Email verificado
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-ink-4">
+                Miembro desde {format(parseISO(event.organizer.member_since), "MMMM yyyy", { locale: es })}
+              </p>
+            </div>
+          )}
+
+          {event.organizer.public_whatsapp && (
+            <a
+              href={`https://wa.me/${event.organizer.public_whatsapp.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="organizer-whatsapp-link"
+              className="flex w-fit items-center gap-1.5 rounded-full bg-[#0d1a12] px-3 py-1.5 text-xs font-bold text-[#25D366]"
+            >
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              WhatsApp
+            </a>
+          )}
+        </div>
 
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-5">
@@ -251,12 +403,18 @@ export function EventDetailView({ event }: EventDetailViewProps) {
 
         {(whatsappHref || instagramHref || webHref || emailHref) && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto del organizador</p>
+            {/* Etapa 10b-2: se renombra de "Contacto del organizador" a
+                "Contacto para entradas" — con el bloque Organizador ya
+                separado más arriba (con su propio WhatsApp), el título
+                anterior generaba dos secciones "del organizador" distintas.
+                Mismos datos (event.contact_*), sin tocar lógica. */}
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto para entradas</p>
             {whatsappHref && (
               <a
                 href={whatsappHref}
                 target="_blank"
                 rel="noreferrer"
+                data-testid="ticket-whatsapp-link"
                 className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
               >
                 <MessageCircle className="h-4 w-4 text-[#25D366]" aria-hidden />
@@ -390,54 +548,6 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
         )}
 
-        {/* Placeholder visual: horario del lugar y descripción del venue.
-            No existe todavía en el modelo Location — ver a_revisar.md */}
-        <div className="flex items-start gap-2 text-xs text-ink-4">
-          <Building2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
-          <span>{event.organizer.public_name} es un espacio cultural con shows en vivo.</span>
-        </div>
-
-        {/* Banner de organizador verificado con datos reales — Etapa 9a.
-            Solo se muestra si el admin verificó la identidad del organizador
-            (is_verified); no mostrar nada si no está verificado, para no
-            generar desconfianza innecesaria. */}
-        {event.organizer.is_verified && (
-          <div className="flex items-start gap-3 rounded-xl border border-[#1D9E7544] bg-[#0d2a1a] p-3">
-            <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#5DCAA5]" aria-hidden />
-            <div className="flex flex-col gap-1.5">
-              <p className="text-sm font-bold text-[#5DCAA5]">Organizador verificado por seSALE</p>
-              <p className="text-xs text-ink-4">Identidad confirmada. Datos personales confidenciales.</p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge variant="muted" className="gap-1">
-                  <ShieldCheck className="h-3 w-3" aria-hidden />
-                  Documento verificado
-                </Badge>
-                {event.organizer.phone_verified && (
-                  <Badge variant="muted" className="gap-1">
-                    <MessageCircle className="h-3 w-3" aria-hidden />
-                    Celular verificado
-                  </Badge>
-                )}
-                {event.organizer.email_verified && (
-                  <Badge variant="muted" className="gap-1">
-                    <Mail className="h-3 w-3" aria-hidden />
-                    Email verificado
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-ink-4">
-                Miembro desde {format(parseISO(event.organizer.member_since), "MMMM yyyy", { locale: es })}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3">
-          <p className="text-sm font-bold text-foreground">{event.organizer.public_name}</p>
-          {event.organizer.city && <p className="text-xs text-ink-4">{event.organizer.city}</p>}
-          {event.organizer.public_whatsapp && <p className="text-xs text-ink-4">{event.organizer.public_whatsapp}</p>}
-        </div>
-
         <div className="flex flex-col gap-2 rounded-xl bg-surface-5 p-3">
           <p className="text-xs text-ink-4">
             El contenido de seSALE es moderado. Si este evento no te parece cultural o apropiado, podés reportarlo.
@@ -451,9 +561,59 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             Reportar evento
           </button>
         </div>
+
+        {/* Etapa 10b-2: autoservicio "Dar de baja"/"Volver a publicar" —
+            solo el organizador dueño, y solo con status=approved (el admin
+            ya tiene su propio panel para esto). Botón discreto, no es una
+            acción destructiva irreversible. */}
+        {isOwner && event.status === "approved" && (
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3" data-testid="event-active-toggle-section">
+            {activeActionMessage && (
+              <p role="status" className="text-xs font-semibold text-brand-green">
+                {activeActionMessage}
+              </p>
+            )}
+            {event.is_active ? (
+              <button
+                type="button"
+                onClick={() => setDeactivateConfirmOpen(true)}
+                data-testid="deactivate-event-button"
+                className="flex w-fit items-center gap-1.5 rounded-full bg-surface-5 px-3 py-1.5 text-xs font-bold text-ink-2"
+              >
+                <PowerOff className="h-3.5 w-3.5" aria-hidden />
+                Dar de baja este evento
+              </button>
+            ) : (
+              <>
+                <p className="text-xs text-ink-4">Este evento está dado de baja.</p>
+                <button
+                  type="button"
+                  onClick={handleReactivate}
+                  disabled={updateActive.isPending}
+                  data-testid="reactivate-event-button"
+                  className="flex w-fit items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
+                >
+                  <Power className="h-3.5 w-3.5" aria-hidden />
+                  Volver a publicar
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {reportModalOpen && <ReportEventModal eventId={event.id} onClose={() => setReportModalOpen(false)} />}
+
+      {deactivateConfirmOpen && (
+        <ConfirmDialog
+          title="¿Dar de baja este evento?"
+          description="El evento dejará de aparecer en la lista. Podés volver a publicarlo cuando quieras."
+          confirmLabel="Dar de baja"
+          isConfirming={updateActive.isPending}
+          onConfirm={handleDeactivate}
+          onClose={() => setDeactivateConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }
