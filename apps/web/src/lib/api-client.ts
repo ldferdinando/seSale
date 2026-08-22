@@ -1,16 +1,22 @@
 import { clearToken, getToken, setToken } from "@/features/auth/lib/token-store";
 import type { TokenResponse } from "@/features/auth/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-if (!API_URL && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "NEXT_PUBLIC_API_URL no está configurada. " +
-      "Configurar la variable en Vercel antes de deployar.",
-  );
+// Etapa 9f — todas las requests van a rutas relativas (mismo origen que el
+// frontend) y next.config.js las reenvía al backend real vía rewrite. Nunca
+// se le pega directo al backend (Railway) desde acá.
+//
+// Es necesario porque frontend y backend viven en dominios distintos
+// (Vercel / Railway): un fetch directo cross-domain hace que las cookies de
+// sesión (has_session, refresh_token) queden scopeadas al dominio del
+// backend — nunca llegan al middleware de Next.js (que corre en el dominio
+// del frontend) y, con SameSite=Strict, tampoco se reenvían en llamados
+// posteriores. Resolviendo todo contra el propio origen, las cookies quedan
+// seteadas para el dominio del frontend y el flujo funciona igual que si
+// fuera un único backend.
+function resolveUrl(path: string): URL {
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  return new URL(path, origin);
 }
-
-const BASE_URL = API_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
   constructor(
@@ -52,7 +58,7 @@ async function doRefresh(): Promise<TokenResponse | null> {
 
   refreshPromise = (async () => {
     try {
-      const response = await fetch(new URL("/api/auth/refresh", BASE_URL).toString(), {
+      const response = await fetch(resolveUrl("/api/auth/refresh").toString(), {
         method: "POST",
         credentials: "include",
       });
@@ -113,7 +119,7 @@ async function fetchWithAuthRetry(url: string, init: RequestInit, skipRefreshRet
 }
 
 export async function apiGet<T>(path: string, params?: Record<string, string | undefined>): Promise<T> {
-  const url = new URL(path, BASE_URL);
+  const url = resolveUrl(path);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") {
@@ -137,7 +143,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string | u
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, BASE_URL).toString(),
+    resolveUrl(path).toString(),
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -168,7 +174,7 @@ export async function apiPostFile<T>(path: string, file: File, fieldName = "file
   formData.append(fieldName, file);
 
   const response = await fetchWithAuthRetry(
-    new URL(path, BASE_URL).toString(),
+    resolveUrl(path).toString(),
     {
       method: "POST",
       headers: authHeaders(),
@@ -187,7 +193,7 @@ export async function apiPostFile<T>(path: string, file: File, fieldName = "file
 
 export async function apiPatch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, BASE_URL).toString(),
+    resolveUrl(path).toString(),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders(), ...headers },
@@ -206,7 +212,7 @@ export async function apiPatch<T>(path: string, body: unknown, headers?: Record<
 
 export async function apiDelete<T = void>(path: string): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, BASE_URL).toString(),
+    resolveUrl(path).toString(),
     { method: "DELETE", headers: authHeaders() },
     false,
   );
@@ -225,7 +231,7 @@ export async function apiDelete<T = void>(path: string): Promise<T> {
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, BASE_URL).toString(),
+    resolveUrl(path).toString(),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
