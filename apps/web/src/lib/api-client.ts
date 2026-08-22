@@ -1,7 +1,16 @@
 import { clearToken, getToken, setToken } from "@/features/auth/lib/token-store";
 import type { TokenResponse } from "@/features/auth/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_URL && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL no está configurada. " +
+      "Configurar la variable en Vercel antes de deployar.",
+  );
+}
+
+const BASE_URL = API_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
   constructor(
@@ -43,7 +52,7 @@ async function doRefresh(): Promise<TokenResponse | null> {
 
   refreshPromise = (async () => {
     try {
-      const response = await fetch(new URL("/api/auth/refresh", API_URL).toString(), {
+      const response = await fetch(new URL("/api/auth/refresh", BASE_URL).toString(), {
         method: "POST",
         credentials: "include",
       });
@@ -104,7 +113,7 @@ async function fetchWithAuthRetry(url: string, init: RequestInit, skipRefreshRet
 }
 
 export async function apiGet<T>(path: string, params?: Record<string, string | undefined>): Promise<T> {
-  const url = new URL(path, API_URL);
+  const url = new URL(path, BASE_URL);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") {
@@ -128,7 +137,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string | u
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, API_URL).toString(),
+    new URL(path, BASE_URL).toString(),
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -159,7 +168,7 @@ export async function apiPostFile<T>(path: string, file: File, fieldName = "file
   formData.append(fieldName, file);
 
   const response = await fetchWithAuthRetry(
-    new URL(path, API_URL).toString(),
+    new URL(path, BASE_URL).toString(),
     {
       method: "POST",
       headers: authHeaders(),
@@ -178,7 +187,7 @@ export async function apiPostFile<T>(path: string, file: File, fieldName = "file
 
 export async function apiPatch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, API_URL).toString(),
+    new URL(path, BASE_URL).toString(),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders(), ...headers },
@@ -197,7 +206,7 @@ export async function apiPatch<T>(path: string, body: unknown, headers?: Record<
 
 export async function apiDelete<T = void>(path: string): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, API_URL).toString(),
+    new URL(path, BASE_URL).toString(),
     { method: "DELETE", headers: authHeaders() },
     false,
   );
@@ -216,7 +225,7 @@ export async function apiDelete<T = void>(path: string): Promise<T> {
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const response = await fetchWithAuthRetry(
-    new URL(path, API_URL).toString(),
+    new URL(path, BASE_URL).toString(),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
