@@ -5,11 +5,21 @@ from app.core.config import settings
 from app.core.deps import get_client_ip, get_current_user, get_session
 from app.core.limiter import limiter
 from app.models.user import User
-from app.schemas.user import Token, UserLogin, UserRead, UserRegister
+from app.schemas.user import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    Token,
+    UserLogin,
+    UserRead,
+    UserRegister,
+)
 from app.services.auth_service import (
     authenticate_user,
     issue_tokens,
     register_user,
+    request_password_reset,
+    reset_password,
     revoke_session,
     rotate_refresh_token,
 )
@@ -106,6 +116,32 @@ async def refresh(
 
     _set_refresh_cookie(response, new_refresh_token)
     return Token(access_token=access_token, expires_in=expires_in)
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+@limiter.limit("5/hour", key_func=get_client_ip)
+async def forgot_password(
+    request: Request, payload: ForgotPasswordRequest, session: Session = Depends(get_session)
+) -> ForgotPasswordResponse:
+    reset_token = request_password_reset(session, email=payload.email)
+    message = (
+        "Si tu email está registrado, recibirás instrucciones."
+        if settings.environment == "staging"
+        else "Si tu email está registrado, te enviaremos las instrucciones para recuperar tu contraseña."
+    )
+    return ForgotPasswordResponse(message=message, reset_token=reset_token)
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour", key_func=get_client_ip)
+async def reset_password_endpoint(
+    request: Request, payload: ResetPasswordRequest, session: Session = Depends(get_session)
+) -> dict:
+    try:
+        reset_password(session, token=payload.token, new_password=payload.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"detail": "Contraseña actualizada"}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

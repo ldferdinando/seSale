@@ -153,3 +153,22 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Respuesta siempre 200, mismo mensaje exista o no el email (no revela
+    si una cuenta existe). `reset_token` solo viaja en `environment ==
+    "staging"` — ver `auth_service.request_password_reset`; en producción
+    queda `None` (se mandaría por email cuando Resend esté configurado)."""
+
+    message: str
+    reset_token: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)

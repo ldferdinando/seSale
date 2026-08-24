@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refreshSession } from "@/features/auth/services/auth-api";
 import { clearToken } from "@/features/auth/lib/token-store";
-import { apiGet } from "@/lib/api-client";
+import { ApiError, apiGet, apiPost } from "@/lib/api-client";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
@@ -79,5 +79,49 @@ describe("api-client — guardia de trySilentRefresh contra el 401 ruidoso", () 
 
     expect(refreshCalls).toBe(1);
     expect(sessionResult.access_token).toBe("nuevo-token");
+  });
+});
+
+// Bug real reportado: el error de publicar un evento se mostraba como
+// "[object Object]" en vez del mensaje legible del backend.
+describe("apiPost — extracción de mensaje de error legible (evita '[object Object]')", () => {
+  it("detail es un array de errores de validación (Pydantic/FastAPI 422): usa el msg del primero", async () => {
+    server.use(
+      http.post(`${API_URL}/api/events`, () =>
+        HttpResponse.json(
+          { detail: [{ loc: ["body", "date_end"], msg: "La fecha y hora de fin debe ser posterior al inicio", type: "value_error" }] },
+          { status: 422 },
+        ),
+      ),
+    );
+
+    await expect(apiPost("/api/events", {})).rejects.toMatchObject({
+      message: "La fecha y hora de fin debe ser posterior al inicio",
+      status: 422,
+    });
+  });
+
+  it("detail es un string (HTTPException simple): lo usa tal cual", async () => {
+    server.use(
+      http.post(`${API_URL}/api/events`, () => HttpResponse.json({ detail: "El email ya está registrado" }, { status: 409 })),
+    );
+
+    await expect(apiPost("/api/events", {})).rejects.toMatchObject({
+      message: "El email ya está registrado",
+      status: 409,
+    });
+  });
+
+  it("body de error irreconocible: usa el fallback, nunca '[object Object]'", async () => {
+    server.use(http.post(`${API_URL}/api/events`, () => new HttpResponse(null, { status: 500 })));
+
+    try {
+      await apiPost("/api/events", {});
+      throw new Error("no debería llegar acá");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).message).not.toContain("[object Object]");
+      expect((err as ApiError).message).toBe("Error al enviar a /api/events");
+    }
   });
 });

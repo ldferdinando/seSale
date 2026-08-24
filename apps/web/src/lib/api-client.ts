@@ -28,6 +28,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Extrae un mensaje legible del body de error de la API.
+ *
+ * Bug real reportado: `detail?.detail ?? fallback` se pasaba directo como
+ * `message` de `ApiError` (que extiende `Error`). FastAPI devuelve, en
+ * errores de validación (422), `detail` como un ARRAY de objetos
+ * `{ msg, loc, type }` — no un string — y `new Error(unArray)` hace
+ * `String(array)` internamente, que para un array de un solo objeto da
+ * literalmente el texto "[object Object]" en vez del mensaje. Acá se
+ * cubren las formas que devuelve el backend: `detail` string (HTTPException
+ * simple), `detail` array de objetos de validación (Pydantic/FastAPI), o
+ * ninguna de las anteriores (fallback).
+ */
+function extractErrorMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string" && detail) {
+    return detail;
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (typeof first === "string") return first;
+    if (first && typeof first === "object" && typeof (first as { msg?: unknown }).msg === "string") {
+      return (first as { msg: string }).msg;
+    }
+  }
+  return fallback;
+}
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -153,8 +181,8 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   );
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+    const body = await response.json().catch(() => null);
+    throw new ApiError(extractErrorMessage(body, `Error al enviar a ${path}`), response.status);
   }
 
   if (response.status === 204) {
@@ -184,8 +212,8 @@ export async function apiPostFile<T>(path: string, file: File, fieldName = "file
   );
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+    const body = await response.json().catch(() => null);
+    throw new ApiError(extractErrorMessage(body, `Error al enviar a ${path}`), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -203,8 +231,8 @@ export async function apiPatch<T>(path: string, body: unknown, headers?: Record<
   );
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+    const body = await response.json().catch(() => null);
+    throw new ApiError(extractErrorMessage(body, `Error al enviar a ${path}`), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -218,8 +246,8 @@ export async function apiDelete<T = void>(path: string): Promise<T> {
   );
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new ApiError(detail?.detail ?? `Error al eliminar ${path}`, response.status);
+    const body = await response.json().catch(() => null);
+    throw new ApiError(extractErrorMessage(body, `Error al eliminar ${path}`), response.status);
   }
 
   if (response.status === 204) {
@@ -241,8 +269,8 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   );
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new ApiError(detail?.detail ?? `Error al enviar a ${path}`, response.status);
+    const body = await response.json().catch(() => null);
+    throw new ApiError(extractErrorMessage(body, `Error al enviar a ${path}`), response.status);
   }
 
   return response.json() as Promise<T>;

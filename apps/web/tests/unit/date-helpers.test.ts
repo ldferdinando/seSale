@@ -4,6 +4,7 @@ import {
   argentinaTodayIso,
   formatEventDateRange,
   formatEventTime,
+  localDateTimeToUtc,
   localTimeToUtc,
   toEventDateTimeISO,
   utcTimeToLocal,
@@ -38,6 +39,16 @@ describe("localTimeToUtc", () => {
 
   it("caso borde: 22:00 ART cruza a la madrugada UTC", () => {
     expect(localTimeToUtc("2024-03-15", "22:00")).toBe("01:00");
+  });
+});
+
+describe("localDateTimeToUtc", () => {
+  it("no cruza medianoche: devuelve la misma fecha", () => {
+    expect(localDateTimeToUtc("2024-03-15", "17:00")).toEqual({ date: "2024-03-15", time: "20:00" });
+  });
+
+  it("cruza medianoche (ART >= 21:00): la fecha UTC avanza un día", () => {
+    expect(localDateTimeToUtc("2024-03-15", "22:00")).toEqual({ date: "2024-03-16", time: "01:00" });
   });
 });
 

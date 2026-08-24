@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { AdminUsersTable } from "@/features/admin/components/AdminUsersTable";
@@ -54,9 +55,8 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="admin-user-password">Contraseña</Label>
-        <Input
+        <PasswordInput
           id="admin-user-password"
-          type="password"
           required
           minLength={8}
           value={form.password}

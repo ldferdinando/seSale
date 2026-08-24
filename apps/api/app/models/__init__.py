@@ -6,6 +6,7 @@ from app.models.event import Event, EventStatus, TicketType
 from app.models.location import Location
 from app.models.location_gastro_type import GASTRO_TYPES, LocationGastroType
 from app.models.moment import EventMoment
+from app.models.password_reset_token import PasswordResetToken
 from app.models.plan import Plan, PlanPrice, PlanType, PricingType
 from app.models.report import Report
 from app.models.subscription import Subscription, SubscriptionStatus
@@ -23,6 +24,7 @@ __all__ = [
     "GASTRO_TYPES",
     "Location",
     "LocationGastroType",
+    "PasswordResetToken",
     "Plan",
     "PlanPrice",
     "PlanType",

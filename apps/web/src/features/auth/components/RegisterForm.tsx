@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { useRegister } from "@/features/auth/hooks/useRegister";
@@ -101,7 +102,7 @@ export function RegisterForm() {
         <FieldLabel icon={Lock} htmlFor="password" required>
           Contraseña
         </FieldLabel>
-        <Input id="password" type="password" {...register("password")} placeholder="Mínimo 8 caracteres" />
+        <PasswordInput id="password" {...register("password")} placeholder="Mínimo 8 caracteres" />
         <FieldError message={errors.password?.message} />
       </div>
 

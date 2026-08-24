@@ -2,12 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Lock, Mail } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useLogin } from "@/features/auth/hooks/useLogin";
 import { loginFormSchema, type LoginFormValues } from "@/features/auth/schemas/auth-schema";
 import { ApiError } from "@/lib/api-client";
@@ -66,7 +68,7 @@ export function LoginForm({ redirect }: LoginFormProps = {}) {
           <Lock className="h-3 w-3 text-primary" aria-hidden />
           Contraseña
         </Label>
-        <Input id="password" type="password" {...register("password")} placeholder="••••••••" />
+        <PasswordInput id="password" {...register("password")} placeholder="••••••••" />
         <FieldError message={errors.password?.message} />
       </div>
 
@@ -80,6 +82,10 @@ export function LoginForm({ redirect }: LoginFormProps = {}) {
         {isSubmitting ? "Ingresando..." : "Ingresar"}
         <ArrowRight className="h-4 w-4" aria-hidden />
       </Button>
+
+      <Link href="/recuperar-contrasena" className="self-center text-xs font-semibold text-primary hover:underline">
+        ¿Olvidaste tu contraseña?
+      </Link>
     </form>
   );
 }

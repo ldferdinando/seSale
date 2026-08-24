@@ -1,8 +1,12 @@
-from httpx import AsyncClient
-from sqlmodel import Session
+from datetime import datetime, timedelta, timezone
 
-from app.core.security import create_refresh_token, hash_refresh_token
+from httpx import AsyncClient
+from sqlmodel import Session, select
+
+from app.core.config import settings
+from app.core.security import create_refresh_token, hash_refresh_token, verify_password
 from app.models import City, User
+from app.models.password_reset_token import PasswordResetToken
 
 
 def _register_payload(*, city_id, email="nuevo@sesale.com.ar") -> dict:
@@ -191,3 +195,144 @@ async def test_register_rate_limited_after_10_attempts_per_hour(client: AsyncCli
     )
 
     assert response.status_code == 429
+
+
+# Etapa 10e — recuperación de contraseña.
+
+
+async def test_forgot_password_registered_email_returns_200_without_token_outside_staging(
+    client: AsyncClient, organizer: User, monkeypatch
+):
+    monkeypatch.setattr(settings, "environment", "production")
+
+    response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reset_token"] is None
+    assert body["message"] == (
+        "Si tu email está registrado, te enviaremos las instrucciones para recuperar tu contraseña."
+    )
+
+
+async def test_forgot_password_unknown_email_returns_200_same_shape(client: AsyncClient, monkeypatch):
+    # No revela si el email existe: mismo 200, mismo mensaje, sin token.
+    monkeypatch.setattr(settings, "environment", "production")
+
+    response = await client.post("/api/auth/forgot-password", json={"email": "no-existe@sesale.com.ar"})
+
+    assert response.status_code == 200
+    assert response.json()["reset_token"] is None
+
+
+async def test_forgot_password_returns_token_in_staging(client: AsyncClient, organizer: User, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "staging")
+
+    response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reset_token"]
+
+
+async def test_forgot_password_creates_token_row_expiring_in_one_hour(
+    client: AsyncClient, session: Session, organizer: User, monkeypatch
+):
+    monkeypatch.setattr(settings, "environment", "staging")
+    before = datetime.now(timezone.utc)
+
+    response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    token = response.json()["reset_token"]
+
+    row = session.exec(select(PasswordResetToken).where(PasswordResetToken.token == token)).first()
+    assert row is not None
+    assert row.user_id == organizer.id
+    assert row.used_at is None
+    expires_at = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)
+    assert before + timedelta(minutes=55) < expires_at < before + timedelta(minutes=65)
+
+
+async def test_reset_password_with_valid_token_updates_password(
+    client: AsyncClient, session: Session, organizer: User, monkeypatch
+):
+    monkeypatch.setattr(settings, "environment", "staging")
+    forgot_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    token = forgot_response.json()["reset_token"]
+
+    response = await client.post(
+        "/api/auth/reset-password", json={"token": token, "new_password": "NuevaPassword123!"}
+    )
+
+    assert response.status_code == 200
+    session.refresh(organizer)
+    assert verify_password("NuevaPassword123!", organizer.hashed_password)
+
+    login_response = await client.post(
+        "/api/auth/login", json={"email": organizer.email, "password": "NuevaPassword123!"}
+    )
+    assert login_response.status_code == 200
+
+
+async def test_reset_password_invalidates_used_token(client: AsyncClient, organizer: User, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "staging")
+    forgot_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    token = forgot_response.json()["reset_token"]
+
+    first = await client.post("/api/auth/reset-password", json={"token": token, "new_password": "PrimeraVez123!"})
+    assert first.status_code == 200
+
+    second = await client.post("/api/auth/reset-password", json={"token": token, "new_password": "SegundaVez123!"})
+    assert second.status_code == 400
+
+
+async def test_reset_password_with_expired_token_returns_400(
+    client: AsyncClient, session: Session, organizer: User
+):
+    expired_token = PasswordResetToken(
+        user_id=organizer.id,
+        token="expired-token",
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+    session.add(expired_token)
+    session.commit()
+
+    response = await client.post(
+        "/api/auth/reset-password", json={"token": "expired-token", "new_password": "NuevaPassword123!"}
+    )
+
+    assert response.status_code == 400
+
+
+async def test_reset_password_with_unknown_token_returns_400(client: AsyncClient):
+    response = await client.post(
+        "/api/auth/reset-password", json={"token": "no-existe", "new_password": "NuevaPassword123!"}
+    )
+
+    assert response.status_code == 400
+
+
+async def test_reset_password_weak_password_returns_422(client: AsyncClient, organizer: User, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "staging")
+    forgot_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    token = forgot_response.json()["reset_token"]
+
+    response = await client.post("/api/auth/reset-password", json={"token": token, "new_password": "short"})
+
+    assert response.status_code == 422
+
+
+async def test_reset_password_clears_active_session(client: AsyncClient, session: Session, organizer: User, monkeypatch):
+    # Cambiar la password invalida cualquier sesión activa (refresh token).
+    login_response = await client.post(
+        "/api/auth/login", json={"email": organizer.email, "password": "Password123!"}
+    )
+    refresh_cookie = login_response.cookies["refresh_token"]
+
+    monkeypatch.setattr(settings, "environment", "staging")
+    forgot_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    token = forgot_response.json()["reset_token"]
+    await client.post("/api/auth/reset-password", json={"token": token, "new_password": "NuevaPassword123!"})
+
+    client.cookies.set("refresh_token", refresh_cookie)
+    refresh_after_reset = await client.post("/api/auth/refresh")
+    assert refresh_after_reset.status_code == 401

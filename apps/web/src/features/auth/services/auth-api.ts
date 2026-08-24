@@ -1,5 +1,13 @@
 import { apiGet, apiPost, restoreSession } from "@/lib/api-client";
-import type { LoginInput, RegisterInput, TokenResponse, User } from "@/features/auth/types";
+import type {
+  ForgotPasswordInput,
+  ForgotPasswordResponse,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  TokenResponse,
+  User,
+} from "@/features/auth/types";
 
 export async function registerUser(input: RegisterInput): Promise<User> {
   return apiPost<User>("/api/auth/register", input);
@@ -24,4 +32,12 @@ export async function logoutUser(): Promise<void> {
 
 export async function getCurrentUser(): Promise<User> {
   return apiGet<User>("/api/users/me");
+}
+
+export async function forgotPassword(input: ForgotPasswordInput): Promise<ForgotPasswordResponse> {
+  return apiPost<ForgotPasswordResponse>("/api/auth/forgot-password", input);
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  return apiPost<void>("/api/auth/reset-password", input);
 }

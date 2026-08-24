@@ -50,3 +50,19 @@ export interface RegisterInput {
   public_whatsapp?: string;
   city_id?: string;
 }
+
+// Etapa 10e — recuperación de contraseña.
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  // Solo viene en environment=staging (sin envío de email real todavía).
+  reset_token: string | null;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  new_password: string;
+}
