@@ -135,6 +135,7 @@ export function makePlan(overrides: Partial<Plan> = {}): Plan {
     description: "Ilimitado · fondo destacado · 2° prioridad",
     is_active: true,
     price: { id: "77777777-7777-7777-7777-777777777777", amount: 3500, currency: "ARS", promo_label: null },
+    mercadopago_available: true,
     ...overrides,
   };
 }

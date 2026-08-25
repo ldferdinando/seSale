@@ -17,9 +17,26 @@ export interface UserAdminFilters {
 export interface ProfileUpdateInput {
   full_name?: string;
   phone?: string;
+  // Etapa 11a — BUG 5: el usuario puede editar su propio documento desde
+  // /mi-cuenta.
+  doc_type?: "dni" | "cuit";
+  doc_number?: string;
   public_name?: string;
   public_whatsapp?: string;
   city_id?: string;
+}
+
+/** Etapa 11a — BUG 4: edición completa de un usuario por un admin, vía
+ * PATCH /api/users/{id}. `email` queda afuera a propósito (identificador,
+ * no se edita). */
+export interface AdminUserEditInput {
+  full_name?: string;
+  public_name?: string;
+  city_id?: string | null;
+  doc_type?: "dni" | "cuit" | null;
+  doc_number?: string | null;
+  phone?: string | null;
+  public_whatsapp?: string | null;
 }
 
 export interface AdminUserCreateInput {

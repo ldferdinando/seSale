@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.models import User
+from app.models import City, User
 
 
 def _payload(email: str = "primer-admin@sesale.com.ar") -> dict:
@@ -26,6 +26,24 @@ async def test_setup_admin_without_existing_admin_creates_admin(client: AsyncCli
     assert body["email_verified"] is True
     assert "password" not in body
     assert "hashed_password" not in body
+
+
+async def test_setup_admin_assigns_general_roca_city_when_it_exists(client: AsyncClient, city: City):
+    # Etapa 11a — BUG 1: sin esto el admin no tiene city_id y no puede
+    # publicar eventos (city_id es requerido en create_event).
+    response = await client.post("/api/setup/admin", json=_payload())
+
+    assert response.status_code == 201
+    assert response.json()["city_id"] == str(city.id)
+
+
+async def test_setup_admin_leaves_city_id_none_when_general_roca_missing(client: AsyncClient, session: Session):
+    # Staging recién inicializado, sin la migración de datos base todavía —
+    # no se crea la ciudad acá, el admin la completa después desde su perfil.
+    response = await client.post("/api/setup/admin", json=_payload())
+
+    assert response.status_code == 201
+    assert response.json()["city_id"] is None
 
 
 async def test_setup_admin_with_existing_admin_returns_410(client: AsyncClient, admin: User):

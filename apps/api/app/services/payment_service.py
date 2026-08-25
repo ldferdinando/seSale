@@ -79,6 +79,15 @@ def create_checkout_preference(
         raise LookupError("Plan no encontrado")
     if plan.plan_type in (PlanType.gratis, PlanType.banner):
         raise ValueError("Este plan no se paga a través de MercadoPago")
+    if not settings.mercadopago_access_token:
+        # Etapa 11a — BUG 2: pagos manuales por ahora. Sin esto,
+        # `mercadopago.SDK(None)` lanza `ValueError("Param access_token
+        # must be a String")` desde `_get_mp_sdk()` (antes de cualquier
+        # try/except de esta función) y el router lo traduce en un 400
+        # crudo, con el mensaje interno de la librería. `GET /api/plans`
+        # ya expone `mercadopago_available` para que el frontend oculte
+        # el botón de MP y deje solo la transferencia manual.
+        raise ValueError("El pago con MercadoPago no está disponible por ahora — usá la opción de transferencia")
 
     event = _get_event_for_plan_purchase(session, event_id=event_id, user=user)
 

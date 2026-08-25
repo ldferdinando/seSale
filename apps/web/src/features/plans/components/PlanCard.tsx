@@ -57,14 +57,16 @@ export function PlanCard({ plan, eventId, onContratar, isSubmitting }: PlanCardP
 
         {(plan.plan_type === "dest" || plan.plan_type === "pro") && (
           <>
-            <Button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onContratar(plan.id)}
-              className="h-11 w-full rounded-xl"
-            >
-              {isSubmitting ? "Redirigiendo..." : "Contratar con MercadoPago"}
-            </Button>
+            {plan.mercadopago_available && (
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => onContratar(plan.id)}
+                className="h-11 w-full rounded-xl"
+              >
+                {isSubmitting ? "Redirigiendo..." : "Contratar con MercadoPago"}
+              </Button>
+            )}
             <Button asChild variant="ghost" className="h-10 w-full rounded-xl text-sm">
               <Link href={`/planes/transferencia?plan_id=${plan.id}&event_id=${eventId}`}>
                 Ya realicé una transferencia bancaria

@@ -38,7 +38,13 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   });
 
   async function onSubmit(values: ResetPasswordFormValues) {
-    await resetPassword.mutateAsync({ token, new_password: values.new_password });
+    try {
+      await resetPassword.mutateAsync({ token, new_password: values.new_password });
+    } catch {
+      // El error ya queda en resetPassword.isError/error — se muestra más
+      // abajo. Se atrapa acá para no dejar una promesa rechazada sin
+      // manejar (mismo patrón que EventPlanChooser.tsx).
+    }
   }
 
   if (resetPassword.isSuccess) {

@@ -146,3 +146,56 @@ async def test_transfer_notification_skips_when_no_api_key(monkeypatch):
         admin_panel_url="https://sesale.com.ar",
     )
     # No debe lanzar excepción.
+
+
+# Etapa 11a — recuperación de contraseña: send_password_reset_email.
+
+
+async def test_send_password_reset_email_skips_when_no_api_key(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", None)
+
+    await email_module.send_password_reset_email(
+        user_email="organizador@sesale.com.ar",
+        user_name="El Tinglado Bar",
+        reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
+    )
+    # No debe lanzar excepción.
+
+
+async def test_send_password_reset_email_calls_resend_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+
+    sent = {}
+
+    def fake_send(payload):
+        sent.update(payload)
+        return {"id": "email-1"}
+
+    monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
+
+    await email_module.send_password_reset_email(
+        user_email="organizador@sesale.com.ar",
+        user_name="El Tinglado Bar",
+        reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
+    )
+
+    assert sent["to"] == ["organizador@sesale.com.ar"]
+    assert sent["subject"] == "Recuperá tu contraseña — seSALE"
+    assert "https://sesale.com.ar/reset-contrasena?token=abc123" in sent["text"]
+    assert "vence en 1 hora" in sent["text"]
+
+
+async def test_send_password_reset_email_logs_and_does_not_raise_on_failure(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+
+    def fake_send(payload):
+        raise RuntimeError("Resend caído")
+
+    monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
+
+    await email_module.send_password_reset_email(
+        user_email="organizador@sesale.com.ar",
+        user_name="El Tinglado Bar",
+        reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
+    )
+    # No debe lanzar excepción — el token ya se guardó igual.

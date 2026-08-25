@@ -139,6 +139,44 @@ async def send_subscription_approved_email(
         logger.exception("Error al enviar el email de aprobación a %s", user_email)
 
 
+async def send_password_reset_email(
+    user_email: str,
+    user_name: str,
+    reset_url: str,
+) -> None:
+    """Etapa 11a — recuperación de contraseña: envía el link de reset por
+    Resend cuando está configurado. Si no lo está, `auth_service` no llega
+    a llamar a esta función (ver `request_password_reset`/router de
+    `forgot-password`) — el `reset_token` viaja en la respuesta solo en
+    staging para poder probar el flujo sin bandeja de entrada. Mismo
+    patrón defensivo que el resto de este módulo: si el envío falla, se
+    loguea pero no se propaga (el token ya quedó guardado en la base)."""
+    if not settings.resend_api_key:
+        logger.warning("RESEND_API_KEY no configurada — no se envía email de recuperación a %s", user_email)
+        return
+
+    body = (
+        f"Hola {user_name},\n\n"
+        f"Recibimos una solicitud para recuperar tu contraseña en seSALE.\n\n"
+        f"Hacé click en el siguiente enlace para crear una nueva contraseña:\n{reset_url}\n\n"
+        f"Este enlace vence en 1 hora.\n\n"
+        f"Si no solicitaste esto, ignorá este email. Tu contraseña no cambiará."
+    )
+
+    try:
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send(
+            {
+                "from": "seSALE <cuentas@sesale.com.ar>",
+                "to": [user_email],
+                "subject": "Recuperá tu contraseña — seSALE",
+                "text": body,
+            }
+        )
+    except Exception:
+        logger.exception("Error al enviar el email de recuperación de contraseña a %s", user_email)
+
+
 async def send_subscription_rejected_email(
     user_email: str,
     user_public_name: str,

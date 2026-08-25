@@ -1,5 +1,7 @@
+import secrets
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlmodel import Session, select
 
@@ -105,32 +107,56 @@ def revoke_session(session: Session, user: User) -> None:
     session.commit()
 
 
-def request_password_reset(session: Session, *, email: str) -> str | None:
+@dataclass
+class PasswordResetRequestResult:
+    """Etapa 11a — el router necesita el usuario (para armar el email) y el
+    token crudo (para el link/`reset_token` de debug), pero solo cuando el
+    email SÍ está registrado — `user`/`raw_token` quedan `None` si no
+    (mismo criterio anti-enumeración de siempre)."""
+
+    user: User | None
+    raw_token: str | None
+
+
+def request_password_reset(session: Session, *, email: str) -> PasswordResetRequestResult:
     """Genera un token de recuperación si el email existe, sin revelarlo.
 
-    Devuelve el token crudo solo cuando `settings.environment == "staging"`
-    (todavía no hay envío de email real — Resend no está configurado; ver
-    Token temporal en la respuesta del router). En cualquier otro caso
-    (incluida producción) devuelve `None` aunque el token se haya generado y
-    guardado igual, para que en el futuro el flujo de email no tenga que
-    cambiar esta función.
+    El router decide, con esto, si envía el email real (Resend configurado)
+    y/o si expone el `reset_token` de debug (staging sin Resend) — esta
+    función no sabe nada de eso, solo genera y persiste el token.
     """
     user = session.exec(select(User).where(User.email == email)).first()
     if user is None or not user.is_active:
-        return None
+        return PasswordResetRequestResult(user=None, raw_token=None)
 
-    raw_token = str(uuid4())
+    # Etapa 11a: invalidar cualquier token anterior sin usar del mismo
+    # usuario — pedir "olvidé mi contraseña" dos veces no debe dejar dos
+    # tokens válidos circulando (el más viejo, ya enviado a una bandeja de
+    # entrada previa, sigue siendo utilizable hasta su expiración si no se
+    # hace esto).
+    now = datetime.now(timezone.utc)
+    previous_tokens = session.exec(
+        select(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+        )
+    ).all()
+    for previous in previous_tokens:
+        previous.used_at = now
+        session.add(previous)
+
+    # secrets.token_urlsafe(32) — criptográficamente seguro y no predecible
+    # (usa os.urandom), ~43 caracteres URL-safe, entra en `token: str =
+    # Field(max_length=64)` de PasswordResetToken.
+    raw_token = secrets.token_urlsafe(32)
     reset_token = PasswordResetToken(
         user_id=user.id,
         token=raw_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=PASSWORD_RESET_TOKEN_EXPIRE_HOURS),
+        expires_at=now + timedelta(hours=PASSWORD_RESET_TOKEN_EXPIRE_HOURS),
     )
     session.add(reset_token)
     session.commit()
 
-    if settings.environment == "staging":
-        return raw_token
-    return None
+    return PasswordResetRequestResult(user=user, raw_token=raw_token)
 
 
 def reset_password(session: Session, *, token: str, new_password: str) -> None:

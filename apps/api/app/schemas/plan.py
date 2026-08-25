@@ -23,4 +23,13 @@ class PlanRead(BaseModel):
     is_active: bool
     price: PlanPriceRead | None
 
+    # Etapa 11a — BUG 2: mientras MERCADOPAGO_ACCESS_TOKEN no esté
+    # configurado (pagos manuales por ahora), el frontend usa este flag
+    # para ocultar "Contratar por MercadoPago" y dejar solo la opción de
+    # transferencia manual — evita el 400 crudo de la SDK de MP al armar
+    # la preferencia sin token. Repetido en cada item (no hay un endpoint
+    # separado para esto todavía) a propósito para no romper el shape de
+    # `GET /api/plans` (array plano) que ya consume `usePlans()`.
+    mercadopago_available: bool
+
     model_config = ConfigDict(from_attributes=True)

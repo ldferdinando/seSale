@@ -6,13 +6,13 @@ from sqlmodel import Session
 from app.core.deps import get_current_user, get_session, require_admin
 from app.models.user import User
 from app.schemas.ad_slot import AdItemWithSlotRead
-from app.schemas.user import UserActiveUpdate, UserRead, UserRoleUpdate, UserUpdate, UserVerifiedUpdate
+from app.schemas.user import AdminUserUpdate, UserRead, UserRoleUpdate, UserUpdate, UserVerifiedUpdate
 from app.services.ad_service import list_user_banners
 from app.services.user_service import (
     get_user,
     list_users,
     update_user,
-    update_user_active,
+    update_user_admin,
     update_user_role,
     verify_user,
 )
@@ -89,11 +89,18 @@ async def update_user_role_by_id(
 
 
 @router.patch("/{user_id}", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def update_user_active_by_id(
-    user_id: UUID, payload: UserActiveUpdate, session: Session = Depends(get_session)
+async def update_user_by_id(
+    user_id: UUID, payload: AdminUserUpdate, session: Session = Depends(get_session)
 ) -> User:
-    """Etapa 9b — activar/desactivar un usuario desde el panel admin."""
+    """Etapa 9b — activar/desactivar un usuario desde el panel admin.
+
+    Etapa 11a — BUG 4: ampliado de solo `is_active` a cualquier combinación
+    de los campos editables por un admin (`full_name`, `public_name`,
+    `city_id`, `doc_type`, `doc_number`, `phone`, `public_whatsapp`,
+    `is_active`, `is_verified`, `role`) — `email` queda afuera a propósito.
+    `exclude_unset=True` conserva el comportamiento previo: mandar solo
+    `{"is_active": false}` sigue funcionando igual que antes."""
     try:
-        return update_user_active(session, user_id, payload.is_active)
+        return update_user_admin(session, user_id, payload.model_dump(exclude_unset=True))
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

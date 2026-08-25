@@ -3,6 +3,7 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.deps import get_client_ip, get_current_user, get_session
+from app.core.email import send_password_reset_email
 from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.user import (
@@ -119,17 +120,31 @@ async def refresh(
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
-@limiter.limit("5/hour", key_func=get_client_ip)
+@limiter.limit("3/hour", key_func=get_client_ip)
 async def forgot_password(
     request: Request, payload: ForgotPasswordRequest, session: Session = Depends(get_session)
 ) -> ForgotPasswordResponse:
-    reset_token = request_password_reset(session, email=payload.email)
+    result = request_password_reset(session, email=payload.email)
+
+    resend_configured = bool(settings.resend_api_key)
+    if result.user is not None and result.raw_token is not None and resend_configured:
+        reset_url = f"{settings.frontend_url}/reset-contrasena?token={result.raw_token}"
+        await send_password_reset_email(result.user.email, result.user.public_name, reset_url)
+
+    # Etapa 11a — BUG (password reset): el token de debug solo tiene sentido
+    # cuando NO hay otra forma de que la persona lo reciba, es decir en
+    # staging Y sin Resend configurado. Antes solo miraba `environment`, así
+    # que si alguna vez se configura Resend en staging para probar el envío
+    # real, igual filtraba el token en la respuesta HTTP — un token de
+    # recuperación viajando en un body 200 además del email es una
+    # exposición innecesaria.
+    debug_token = result.raw_token if (settings.environment == "staging" and not resend_configured) else None
     message = (
         "Si tu email está registrado, recibirás instrucciones."
         if settings.environment == "staging"
         else "Si tu email está registrado, te enviaremos las instrucciones para recuperar tu contraseña."
     )
-    return ForgotPasswordResponse(message=message, reset_token=reset_token)
+    return ForgotPasswordResponse(message=message, reset_token=debug_token)
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)

@@ -105,6 +105,20 @@ def update_user(session: Session, user: User, updates: dict) -> User:
     return user
 
 
+def update_user_admin(session: Session, user_id: UUID, updates: dict) -> User:
+    """Etapa 11a — BUG 4: PATCH /api/users/{id}, admin-only, con cualquier
+    combinación de los campos de `AdminUserUpdate` (`updates` ya viene con
+    `exclude_unset=True` desde el router — solo trae lo que el admin
+    efectivamente mandó). `email` nunca llega acá: no está en el schema."""
+    user = get_user(session, user_id)
+    for field, value in updates.items():
+        setattr(user, field, value)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
 def verify_user(session: Session, user_id: UUID, *, is_verified: bool = True) -> User:
     user = get_user(session, user_id)
     user.is_verified = is_verified
@@ -171,10 +185,19 @@ def create_first_admin(session: Session, *, email: str, password: str, full_name
     """Etapa 9d — crea el primer admin de la instancia (POST /api/setup/admin,
     sin autenticación). El caller (router) ya validó con admin_exists() que
     no existe ningún admin todavía; igual se revalida acá el email único,
-    mismo criterio que register_user/create_user_by_admin."""
+    mismo criterio que register_user/create_user_by_admin.
+
+    Etapa 11a — BUG 1: sin `city_id`, el admin recién creado no puede
+    publicar eventos (city_id es requerido en `create_event`). Se le asigna
+    "General Roca" si ya existe en la tabla `cities` (la crea la migración
+    de datos base, `0017_insert_base_data.py`); si un staging recién
+    inicializado todavía no la tiene, queda `city_id=None` y el admin lo
+    completa después desde su perfil — no se crea la ciudad acá."""
     existing = session.exec(select(User).where(User.email == email)).first()
     if existing is not None:
         raise ValueError("El email ya está registrado")
+
+    city = session.exec(select(City).where(City.name == "General Roca")).first()
 
     user = User(
         email=email,
@@ -182,6 +205,7 @@ def create_first_admin(session: Session, *, email: str, password: str, full_name
         role="admin",
         full_name=full_name,
         public_name=public_name,
+        city_id=city.id if city else None,
         is_active=True,
         is_verified=True,
         email_verified=True,

@@ -2,7 +2,18 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { BadgeCheck, Mail, MapPin, MessageCircle, Pencil, Phone, ShieldCheck, User as UserIcon, X } from "lucide-react";
+import {
+  BadgeCheck,
+  FileText,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  Phone,
+  ShieldCheck,
+  User as UserIcon,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +154,83 @@ function CityField({ currentUser }: { currentUser: User }) {
   );
 }
 
+/** Etapa 11a — BUG 5: doc_type/doc_number se editan juntos (mismo criterio
+ * que CityField) — no tiene sentido guardar un número de documento sin su
+ * tipo, o viceversa. */
+function DocumentField({ currentUser }: { currentUser: User }) {
+  const updateProfile = useUpdateProfile();
+  const [editing, setEditing] = useState(false);
+  const [docType, setDocType] = useState<"dni" | "cuit" | "">((currentUser.doc_type as "dni" | "cuit" | null) ?? "");
+  const [docNumber, setDocNumber] = useState(currentUser.doc_number ?? "");
+
+  function startEditing() {
+    setDocType((currentUser.doc_type as "dni" | "cuit" | null) ?? "");
+    setDocNumber(currentUser.doc_number ?? "");
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    await updateProfile.mutateAsync({
+      doc_type: docType || undefined,
+      doc_number: docNumber || undefined,
+    });
+    setEditing(false);
+  }
+
+  const currentValue =
+    currentUser.doc_type && currentUser.doc_number
+      ? `${currentUser.doc_type.toUpperCase()} ${currentUser.doc_number}`
+      : "—";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+        <FileText className="h-3 w-3 text-primary" aria-hidden />
+        Documento
+      </span>
+
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <Select value={docType || undefined} onValueChange={(value) => setDocType(value as "dni" | "cuit")}>
+            <SelectTrigger aria-label="Tipo de documento" className="w-[100px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dni">DNI</SelectItem>
+              <SelectItem value="cuit">CUIT</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            value={docNumber}
+            onChange={(e) => setDocNumber(e.target.value)}
+            placeholder="Número"
+            aria-label="Número de documento"
+          />
+          <Button type="button" size="sm" disabled={updateProfile.isPending} onClick={handleSave}>
+            {updateProfile.isPending ? "Guardando..." : "Guardar"}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-foreground">{currentValue}</span>
+          <button
+            type="button"
+            onClick={startEditing}
+            aria-label="Editar documento"
+            className="flex items-center gap-1 text-xs font-semibold text-primary"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+            editar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AccountProfile({ currentUser }: { currentUser: User }) {
   const updateProfile = useUpdateProfile();
 
@@ -180,6 +268,33 @@ export function AccountProfile({ currentUser }: { currentUser: User }) {
         placeholder="Ej: +54 9 299 1234567"
         onSave={(value) => updateProfile.mutateAsync({ public_whatsapp: value })}
       />
+
+      {/* Etapa 11a — BUG 5: datos privados — solo el propio usuario los ve
+          (no aparecen en ningún evento publicado ni perfil público). Antes
+          full_name/phone/doc_type/doc_number no tenían ninguna UI de
+          edición en /mi-cuenta, aunque full_name/phone ya estaban en
+          UserUpdate — doc_type/doc_number faltaban también en el schema. */}
+      <div className="flex flex-col gap-3 border-t border-border pt-3">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Datos privados</span>
+
+        <EditableTextField
+          icon={UserIcon}
+          label="Nombre real"
+          value={currentUser.full_name}
+          placeholder="Nombre y apellido"
+          onSave={(value) => updateProfile.mutateAsync({ full_name: value })}
+        />
+
+        <EditableTextField
+          icon={Phone}
+          label="Teléfono"
+          value={currentUser.phone ?? ""}
+          placeholder="Ej: +54 9 299 1234567"
+          onSave={(value) => updateProfile.mutateAsync({ phone: value })}
+        />
+
+        <DocumentField currentUser={currentUser} />
+      </div>
 
       <div className="flex flex-col gap-2 border-t border-border pt-3">
         <span className="text-[11px] font-bold uppercase tracking-wide text-ink-3">Verificación</span>

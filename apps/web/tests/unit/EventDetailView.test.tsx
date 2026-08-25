@@ -207,7 +207,11 @@ describe("EventDetailView", () => {
     expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
   });
 
-  it("does not show the payment status block once the event is already approved", () => {
+  it("Etapa 11a — bug real: sigue mostrando el estado de pago pendiente aunque el evento ya esté aprobado", () => {
+    // Ver OrganizerSubscriptionBadge.tsx: antes se ocultaba apenas el
+    // evento pasaba a "approved", aunque la suscripción (pago) siguiera sin
+    // revisar — el admin perdía de vista que faltaba aprobarla en
+    // Suscripciones y el evento quedaba en "gratis" para siempre.
     const event = makeEventDetail({
       status: "approved",
       organizer_subscription: {
@@ -218,6 +222,26 @@ describe("EventDetailView", () => {
         transfer_note: "Ya transferí",
         created_at: "2099-01-01T00:00:00Z",
         reviewed_at: null,
+      },
+    });
+
+    renderWithClient(event);
+
+    expect(screen.getByText(/pendiente de revisión/)).toBeInTheDocument();
+  });
+
+  it("does not show the payment status block once the subscription is already active", () => {
+    const event = makeEventDetail({
+      status: "approved",
+      plan: "dest",
+      organizer_subscription: {
+        status: "active",
+        payment_method: "transfer",
+        plan_name: "Destacado",
+        plan_type: "dest",
+        transfer_note: "Ya transferí",
+        created_at: "2099-01-01T00:00:00Z",
+        reviewed_at: "2099-01-02T00:00:00Z",
       },
     });
 

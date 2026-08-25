@@ -71,4 +71,11 @@ describe("LoginForm", () => {
 
     expect(await screen.findByText("Credenciales inválidas")).toBeInTheDocument();
   });
+
+  it("has a link to recover the password", () => {
+    renderWithClient();
+
+    const link = screen.getByRole("link", { name: /Olvidaste tu contraseña/ });
+    expect(link).toHaveAttribute("href", "/recuperar-contrasena");
+  });
 });

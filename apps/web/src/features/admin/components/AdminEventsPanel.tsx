@@ -12,19 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCities } from "@/features/auth/hooks/useCities";
-import { PlanBadge } from "@/features/events/components/EventCard";
 import {
   isRelevantOrganizerSubscription,
   OrganizerSubscriptionBadge,
 } from "@/features/events/components/OrganizerSubscriptionBadge";
 import { useAdminEvents } from "@/features/events/hooks/useAdminEvents";
 import { useDeleteEvent } from "@/features/events/hooks/useDeleteEvent";
+import { useUpdateEventPlan } from "@/features/events/hooks/useUpdateEventPlan";
 import { useUpdateEventStatus } from "@/features/events/hooks/useUpdateEventStatus";
 import {
   EVENT_CATEGORIES,
+  PLAN_OPTIONS,
   STATUS_OPTIONS,
   type AdminEvent,
   type AdminEventFilters,
+  type EventPlan,
   type EventStatus,
 } from "@/features/events/types";
 
@@ -48,6 +50,7 @@ function StatusBadge({ status }: { status: EventStatus }) {
 
 function AdminEventRow({ event }: { event: AdminEvent }) {
   const updateStatus = useUpdateEventStatus();
+  const updatePlan = useUpdateEventPlan();
   const deleteEvent = useDeleteEvent();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -69,18 +72,42 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-bold text-foreground">{event.title}</p>
           <StatusBadge status={event.status} />
-          <PlanBadge plan={event.plan} />
           {!event.is_active && <Badge variant="muted">Eliminado</Badge>}
         </div>
         <p className="mt-1 text-xs text-ink-4">
           {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
         </p>
         <p className="mt-1 text-xs text-ink-5">{format(parseISO(event.date), "d MMM yyyy", { locale: es })}</p>
-        {isRelevantOrganizerSubscription(event.status, event.organizer_subscription) && (
+        {isRelevantOrganizerSubscription(event.organizer_subscription) && (
           <div className="mt-2">
             <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
           </div>
         )}
+        <div className="mt-2 flex items-center gap-2">
+          {/* Etapa 11a — BUG 3: acá es donde el admin realmente gestiona
+              eventos (incluye pendientes, a diferencia de AdminFeaturedPanel
+              que solo lista approved/vigentes vía GET /api/events público) —
+              antes solo mostraba el plan como PlanBadge de solo lectura, sin
+              ningún control para cambiarlo. Mismo patrón que
+              AdminFeaturedPanel: el Select guarda apenas se elige una
+              opción, sin botón "Guardar" separado. */}
+          <Select
+            value={event.plan}
+            onValueChange={(value) => updatePlan.mutate({ eventId: event.id, plan: value as EventPlan })}
+            disabled={updatePlan.isPending}
+          >
+            <SelectTrigger aria-label={`Plan — ${event.title}`} className="h-8 w-[150px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PLAN_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">

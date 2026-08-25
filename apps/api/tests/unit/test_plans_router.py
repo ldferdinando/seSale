@@ -1,6 +1,8 @@
+import pytest
 from httpx import AsyncClient
 from sqlmodel import Session
 
+from app.core.config import settings
 from app.models.plan import Plan
 
 
@@ -36,3 +38,27 @@ async def test_get_plans_excludes_inactive_plans(client: AsyncClient, session: S
 
     assert response.status_code == 200
     assert all(p["name"] != "Destacado" for p in response.json())
+
+
+async def test_get_plans_mercadopago_available_true_when_token_configured(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, plan_dest: Plan
+):
+    monkeypatch.setattr(settings, "mercadopago_access_token", "APP_USR-fake-token")
+
+    response = await client.get("/api/plans")
+
+    assert response.status_code == 200
+    assert all(p["mercadopago_available"] is True for p in response.json())
+
+
+async def test_get_plans_mercadopago_available_false_when_token_missing(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, plan_dest: Plan
+):
+    # Etapa 11a — BUG 2: sin token configurado (pagos manuales por ahora),
+    # el frontend usa este flag para ocultar "Contratar con MercadoPago".
+    monkeypatch.setattr(settings, "mercadopago_access_token", None)
+
+    response = await client.get("/api/plans")
+
+    assert response.status_code == 200
+    assert all(p["mercadopago_available"] is False for p in response.json())

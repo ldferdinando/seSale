@@ -50,8 +50,17 @@ class UserRead(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    """PUT /api/users/me — el propio usuario edita sus datos. `email`, `role`
+    e `is_verified` quedan afuera a propósito: `email` es el identificador
+    (no se cambia), `role`/`is_verified` solo los puede tocar un admin (ver
+    `AdminUserUpdate`)."""
+
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = None
+    # Etapa 11a — BUG 5: faltaban en el schema (el modelo y el registro ya
+    # los tenían) — sin esto, `/mi-cuenta` no podía editar el documento.
+    doc_type: str | None = None
+    doc_number: str | None = None
     public_name: str | None = Field(default=None, min_length=1, max_length=255)
     public_whatsapp: str | None = None
     city_id: UUID | None = None
@@ -103,6 +112,34 @@ class UserRoleUpdate(BaseModel):
 
 class UserActiveUpdate(BaseModel):
     is_active: bool
+
+
+class AdminUserUpdate(BaseModel):
+    """Etapa 11a — BUG 4: PATCH /api/users/{id}, admin-only. Todos los
+    campos son opcionales (`exclude_unset` en el service) — el admin puede
+    mandar solo los que cambió. `email` queda afuera a propósito (es el
+    identificador, no se edita). `role`/`is_active`/`is_verified` ya tenían
+    endpoints dedicados (`.../role`, este mismo PATCH antes solo aceptaba
+    is_active, `.../verify`) — se incluyen acá también para poder editarlos
+    junto con el resto en un solo request desde el formulario de edición."""
+
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    public_name: str | None = Field(default=None, min_length=1, max_length=255)
+    city_id: UUID | None = None
+    doc_type: str | None = None
+    doc_number: str | None = None
+    phone: str | None = None
+    public_whatsapp: str | None = None
+    is_active: bool | None = None
+    is_verified: bool | None = None
+    role: str | None = None
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is not None and value not in ("user", "admin"):
+            raise ValueError("El rol debe ser 'user' o 'admin'")
+        return value
 
 
 class UserVerifiedUpdate(BaseModel):

@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import type { EventStatus, OrganizerSubscriptionStatus } from "@/features/events/types";
+import type { OrganizerSubscriptionStatus } from "@/features/events/types";
 
 const PAYMENT_METHOD_LABEL: Record<OrganizerSubscriptionStatus["payment_method"], string> = {
   mercadopago: "MercadoPago",
@@ -18,17 +18,24 @@ const STATUS_TEXT: Record<OrganizerSubscriptionStatus["status"], string> = {
 };
 
 /**
- * Solo interesa mostrar el aviso de pago mientras el admin todavía tiene que
- * decidir si aprobar el evento, y solo para los planes que efectivamente se
- * pagan (Destacado/Destacado Plus) — el plan gratis no tiene nada que avisar
- * y una vez aprobado el evento el dato ya dejó de ser relevante para decidir.
+ * Etapa 11a — bug real reportado: el aviso se ocultaba apenas el evento
+ * pasaba a `approved` (`eventStatus === "approved" -> false`), sin importar
+ * si la suscripción seguía sin revisar. Aprobar el EVENTO (moderación) y
+ * aprobar la SUSCRIPCIÓN (pago/transferencia, la que realmente aplica el
+ * plan) son dos acciones separadas en dos tabs distintos del panel admin —
+ * al aprobar el evento el aviso desaparecía de la lista y el admin perdía
+ * de vista que todavía faltaba aprobar el pago en Suscripciones, dejando el
+ * evento en "gratis" para siempre. Ahora el criterio es solo el estado de
+ * la propia suscripción (pendiente de pago o de revisión), sin mirar el
+ * estado del evento — sigue visible aunque el evento ya esté aprobado, y
+ * deja de estarlo recién cuando la suscripción se resuelve (`active`,
+ * `expired`, `cancelled`).
  */
 export function isRelevantOrganizerSubscription(
-  eventStatus: EventStatus,
   subscription: OrganizerSubscriptionStatus | null,
 ): subscription is OrganizerSubscriptionStatus {
   if (!subscription) return false;
-  if (eventStatus === "approved") return false;
+  if (subscription.status !== "pending_approval" && subscription.status !== "pending_payment") return false;
   return subscription.plan_type === "dest" || subscription.plan_type === "pro";
 }
 

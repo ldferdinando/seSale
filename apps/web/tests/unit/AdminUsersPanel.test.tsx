@@ -194,6 +194,34 @@ describe("AdminUsersPanel", () => {
     await waitFor(() => expect(calledWith).toEqual({ is_active: false }));
   });
 
+  it("Etapa 11a — BUG 4: editing full name from the detail modal saves via PATCH /api/users/{id}", async () => {
+    let calledWith: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API_URL}/api/admin/users`, () => {
+        return HttpResponse.json([
+          makeAdminUser({ id: "u1", public_name: "El Tinglado Bar", full_name: "Nombre Viejo" }),
+        ]);
+      }),
+      http.patch(`${API_URL}/api/users/u1`, async ({ request }) => {
+        calledWith = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeUser({ full_name: calledWith.full_name as string }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await screen.findByText("El Tinglado Bar");
+    await user.click(screen.getByRole("button", { name: "Ver detalle" }));
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+
+    const fullNameInput = await screen.findByLabelText("Nombre real");
+    await user.clear(fullNameInput);
+    await user.type(fullNameInput, "Nombre Nuevo");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(calledWith?.full_name).toBe("Nombre Nuevo"));
+  });
+
   it("Etapa 9d — toggling verified calls PATCH /verify with the correct body", async () => {
     let calledWith: Record<string, unknown> | null = null;
     server.use(

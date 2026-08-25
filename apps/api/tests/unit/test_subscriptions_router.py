@@ -1,8 +1,10 @@
 from datetime import date, time, timedelta
 
+import pytest
 from httpx import AsyncClient
 from sqlmodel import Session
 
+from app.core.config import settings
 from app.models.city import City
 from app.models.event import Event, EventStatus
 from app.models.location import Location
@@ -211,3 +213,31 @@ async def test_get_my_subscriptions_without_token_returns_401(client: AsyncClien
     response = await client.get("/api/subscriptions/me")
 
     assert response.status_code == 401
+
+
+async def test_checkout_without_mercadopago_configured_returns_friendly_400(
+    client: AsyncClient,
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    plan_dest: Plan,
+    plan_price_dest,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    # Etapa 11a — BUG 2: sin MERCADOPAGO_ACCESS_TOKEN, el detalle del 400
+    # debe ser el mensaje de negocio ("usá transferencia"), nunca el error
+    # crudo de la SDK de MercadoPago ("Param access_token must be a String").
+    monkeypatch.setattr(settings, "mercadopago_access_token", None)
+    event = _make_event(session, city=city, organizer=organizer, location=location)
+
+    response = await client.post(
+        "/api/subscriptions/checkout",
+        json={"plan_id": str(plan_dest.id), "event_id": str(event.id)},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 400
+    assert "access_token" not in response.json()["detail"]
+    assert "transferencia" in response.json()["detail"].lower()

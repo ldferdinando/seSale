@@ -321,6 +321,86 @@ async def test_reset_password_weak_password_returns_422(client: AsyncClient, org
     assert response.status_code == 422
 
 
+async def test_forgot_password_requesting_twice_invalidates_first_token(
+    client: AsyncClient, session: Session, organizer: User, monkeypatch
+):
+    # Etapa 11a: pedir "olvidé mi contraseña" dos veces no debe dejar dos
+    # tokens válidos circulando — el primero queda invalidado.
+    monkeypatch.setattr(settings, "environment", "staging")
+
+    first_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    first_token = first_response.json()["reset_token"]
+
+    second_response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+    second_token = second_response.json()["reset_token"]
+
+    assert first_token != second_token
+
+    stale = await client.post(
+        "/api/auth/reset-password", json={"token": first_token, "new_password": "NuevaPassword123!"}
+    )
+    assert stale.status_code == 400
+
+    fresh = await client.post(
+        "/api/auth/reset-password", json={"token": second_token, "new_password": "NuevaPassword123!"}
+    )
+    assert fresh.status_code == 200
+
+
+async def test_forgot_password_rate_limited_after_3_attempts_per_hour(
+    client: AsyncClient, organizer: User
+):
+    for _ in range(3):
+        response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+        assert response.status_code == 200
+
+    response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+
+    assert response.status_code == 429
+
+
+async def test_forgot_password_sends_real_email_when_resend_configured(
+    client: AsyncClient, organizer: User, monkeypatch
+):
+    monkeypatch.setattr(settings, "environment", "staging")
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+
+    sent: dict = {}
+
+    async def fake_send_password_reset_email(user_email, user_name, reset_url):
+        sent["user_email"] = user_email
+        sent["user_name"] = user_name
+        sent["reset_url"] = reset_url
+
+    monkeypatch.setattr("app.routers.auth.send_password_reset_email", fake_send_password_reset_email)
+
+    response = await client.post("/api/auth/forgot-password", json={"email": organizer.email})
+
+    assert response.status_code == 200
+    # Con Resend configurado, no hay que devolver el token en la respuesta
+    # HTTP aunque estemos en staging — ya se lo mandamos por email.
+    assert response.json()["reset_token"] is None
+    assert sent["user_email"] == organizer.email
+    assert "/reset-contrasena?token=" in sent["reset_url"]
+
+
+async def test_forgot_password_unknown_email_does_not_send_email(client: AsyncClient, monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+
+    called = False
+
+    async def fake_send_password_reset_email(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("app.routers.auth.send_password_reset_email", fake_send_password_reset_email)
+
+    response = await client.post("/api/auth/forgot-password", json={"email": "no-existe@sesale.com.ar"})
+
+    assert response.status_code == 200
+    assert called is False
+
+
 async def test_reset_password_clears_active_session(client: AsyncClient, session: Session, organizer: User, monkeypatch):
     # Cambiar la password invalida cualquier sesión activa (refresh token).
     login_response = await client.post(

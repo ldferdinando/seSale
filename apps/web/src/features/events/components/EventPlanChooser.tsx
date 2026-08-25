@@ -132,14 +132,16 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
                   </Button>
                 ) : (
                   <>
-                    <Button
-                      type="button"
-                      disabled={pendingAction !== null}
-                      onClick={() => handleContratarMercadoPago(plan.id)}
-                      className="h-11 w-full rounded-xl"
-                    >
-                      {pendingAction === `mp-${plan.id}` ? "Redirigiendo..." : `Contratar ${copy.label}`}
-                    </Button>
+                    {plan.mercadopago_available && (
+                      <Button
+                        type="button"
+                        disabled={pendingAction !== null}
+                        onClick={() => handleContratarMercadoPago(plan.id)}
+                        className="h-11 w-full rounded-xl"
+                      >
+                        {pendingAction === `mp-${plan.id}` ? "Redirigiendo..." : `Contratar ${copy.label}`}
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"

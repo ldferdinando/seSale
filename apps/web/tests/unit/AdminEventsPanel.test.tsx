@@ -90,7 +90,11 @@ describe("AdminEventsPanel", () => {
     expect(within(row).getByText(/Ya transferí/)).toBeInTheDocument();
   });
 
-  it("no muestra el estado de pago una vez que el evento ya está aprobado", async () => {
+  it("Etapa 11a — bug real: sigue mostrando el estado de pago pendiente aunque el evento ya esté aprobado", async () => {
+    // Antes se ocultaba apenas el evento pasaba a "approved" — el admin
+    // aprobaba el evento (moderación) y perdía de vista que la suscripción
+    // (pago/transferencia) seguía sin revisar en la pestaña Suscripciones,
+    // dejando el evento en "gratis" para siempre.
     server.use(
       http.get(`${API_URL}/api/admin/events`, () =>
         HttpResponse.json([
@@ -105,6 +109,33 @@ describe("AdminEventsPanel", () => {
               transfer_note: "Ya transferí",
               created_at: "2099-01-01T00:00:00Z",
               reviewed_at: null,
+            },
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    const row = await screen.findByTestId("admin-event-row");
+    expect(within(row).getByText(/pendiente de revisión/)).toBeInTheDocument();
+  });
+
+  it("deja de mostrar el estado de pago una vez que la suscripción ya fue aprobada (activa)", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([
+          makeAdminEvent({
+            id: "a",
+            status: "approved",
+            plan: "dest",
+            organizer_subscription: {
+              status: "active",
+              payment_method: "transfer",
+              plan_name: "Destacado",
+              plan_type: "dest",
+              transfer_note: "Ya transferí",
+              created_at: "2099-01-01T00:00:00Z",
+              reviewed_at: "2099-01-02T00:00:00Z",
             },
           }),
         ]),
@@ -152,6 +183,28 @@ describe("AdminEventsPanel", () => {
 
     await screen.findByTestId("admin-event-row");
     expect(screen.queryByText(/pendiente de revisión/)).not.toBeInTheDocument();
+  });
+
+  it("changing the plan selector saves it immediately (Etapa 11a — BUG 3)", async () => {
+    let plan: "gratis" | "dest" | "pro" = "gratis";
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([makeAdminEvent({ id: "a", title: "Evento", status: "pending", plan })]),
+      ),
+      http.patch(`${API_URL}/api/events/:id/plan`, async ({ request }) => {
+        const body = (await request.json()) as { plan: "gratis" | "dest" | "pro" };
+        plan = body.plan;
+        return HttpResponse.json(makeAdminEvent({ id: "a", title: "Evento", status: "pending", plan }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    const select = await screen.findByRole("combobox", { name: /Plan — Evento/ });
+    await user.click(select);
+    await user.click(await screen.findByText("Destacado Plus"));
+
+    await waitFor(() => expect(plan).toBe("pro"));
   });
 
   it("deleting an event requires a confirmation click", async () => {

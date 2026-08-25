@@ -1,7 +1,17 @@
 import hashlib
 import hmac
+from datetime import date, time
 
-from app.services.payment_service import verify_mp_signature
+import pytest
+from sqlmodel import Session
+
+from app.core.config import settings
+from app.models.city import City
+from app.models.event import Event, EventStatus
+from app.models.location import Location
+from app.models.plan import Plan
+from app.models.user import User
+from app.services.payment_service import create_checkout_preference, verify_mp_signature
 
 SECRET = "test-secret"
 
@@ -55,3 +65,37 @@ def test_verify_mp_signature_rejects_empty_secret_even_with_matching_hmac():
 # Los tests de vencimiento (antes expire_subscriptions) viven ahora en
 # tests/unit/test_expiry.py — la función se movió a app/core/expiry.py
 # (expire_overdue_subscriptions) en la Etapa 8c.
+
+
+def test_create_checkout_preference_without_mp_token_raises_friendly_value_error(
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    plan_dest: Plan,
+    plan_price_dest,
+    city: City,
+    organizer: User,
+    location: Location,
+):
+    # Etapa 11a — BUG 2: sin MERCADOPAGO_ACCESS_TOKEN configurado (pagos
+    # manuales por ahora), la función no debe llegar a instanciar
+    # `mercadopago.SDK(None)` — eso lanzaría el `ValueError` interno de la
+    # librería ("Param access_token must be a String") con un mensaje que
+    # no tiene sentido para quien usa la app.
+    monkeypatch.setattr(settings, "mercadopago_access_token", None)
+    event = Event(
+        city_id=city.id,
+        organizer_id=organizer.id,
+        location_id=location.id,
+        title="Show en vivo",
+        date=date.today(),
+        time=time(21, 0),
+        time_end=time(23, 0),
+        status=EventStatus.approved,
+        is_active=True,
+    )
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+
+    with pytest.raises(ValueError, match="MercadoPago no está disponible"):
+        create_checkout_preference(session, user=organizer, plan_id=plan_dest.id, event_id=event.id)
