@@ -75,24 +75,47 @@ def test_orders_pro_before_dest_before_gratis(session, city, organizer, location
     assert [e.title for e in result] == ["pro-1", "dest-1", "gratis-1"]
 
 
-def test_orders_featured_before_non_featured_within_same_plan(session, city, organizer, location):
-    _make_event(session, city=city, organizer=organizer, location=location, title="pro-plain", plan=PlanType.pro, is_featured=False)
-    _make_event(session, city=city, organizer=organizer, location=location, title="pro-feat", plan=PlanType.pro, is_featured=True)
-    _make_event(session, city=city, organizer=organizer, location=location, title="dest-plain", plan=PlanType.dest, is_featured=False)
-    _make_event(session, city=city, organizer=organizer, location=location, title="dest-feat", plan=PlanType.dest, is_featured=True)
-    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-plain", plan=PlanType.gratis, is_featured=False)
-    _make_event(session, city=city, organizer=organizer, location=location, title="gratis-feat", plan=PlanType.gratis, is_featured=True)
+def test_is_featured_does_not_affect_order(session, city, organizer, location):
+    """Etapa 11c: is_featured ya no afecta el orden del listado público — un
+    evento gratis con is_featured=True aparece después de todos los dest, no
+    antes (ni antes de otro gratis con fecha más próxima)."""
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="dest-not-featured",
+        plan=PlanType.dest, is_featured=False, event_date=TODAY + timedelta(days=5),
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="gratis-featured",
+        plan=PlanType.gratis, is_featured=True, event_date=TODAY,
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="gratis-not-featured",
+        plan=PlanType.gratis, is_featured=False, event_date=TODAY + timedelta(days=1),
+    )
 
     result = list_public_events(session, today=TODAY)
 
-    assert [e.title for e in result] == [
-        "pro-feat",
-        "pro-plain",
-        "dest-feat",
-        "dest-plain",
-        "gratis-feat",
-        "gratis-plain",
-    ]
+    assert [e.title for e in result] == ["dest-not-featured", "gratis-featured", "gratis-not-featured"]
+
+
+def test_orders_by_date_asc_then_time_asc_within_same_plan(session, city, organizer, location):
+    """Etapa 11c: dentro del mismo plan, date ASC (más próximo primero) y,
+    a igual fecha, time ASC (más temprano primero)."""
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="mas-lejano",
+        plan=PlanType.dest, event_date=TODAY + timedelta(days=10), event_time=time(20, 0),
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="hoy-tarde",
+        plan=PlanType.dest, event_date=TODAY, event_time=time(22, 0),
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="hoy-temprano",
+        plan=PlanType.dest, event_date=TODAY, event_time=time(18, 0),
+    )
+
+    result = list_public_events(session, today=TODAY)
+
+    assert [e.title for e in result] == ["hoy-temprano", "hoy-tarde", "mas-lejano"]
 
 
 def test_ordering_is_kept_when_filters_are_active(session, city, organizer, location):
@@ -104,17 +127,6 @@ def test_ordering_is_kept_when_filters_are_active(session, city, organizer, loca
     result = list_public_events(session, today=TODAY, categories=["musica"])
 
     assert [e.title for e in result] == ["pro", "dest", "gratis"]
-
-
-def test_ties_within_same_plan_order_by_created_at_desc(session, city, organizer, location):
-    older = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    newer = datetime(2026, 1, 10, tzinfo=timezone.utc)
-    _make_event(session, city=city, organizer=organizer, location=location, title="older", plan=PlanType.dest, created_at=older)
-    _make_event(session, city=city, organizer=organizer, location=location, title="newer", plan=PlanType.dest, created_at=newer)
-
-    result = list_public_events(session, today=TODAY)
-
-    assert [e.title for e in result] == ["newer", "older"]
 
 
 def test_excludes_non_approved_events(session, city, organizer, location):
@@ -343,6 +355,34 @@ def test_get_events_for_organizer_groups_by_status(session, city, organizer, loc
     assert [e.title for e in grouped[EventStatus.pending]] == ["p"]
     assert [e.title for e in grouped[EventStatus.approved]] == ["a"]
     assert [e.title for e in grouped[EventStatus.rejected]] == ["r"]
+
+
+def test_get_events_for_organizer_approved_orders_by_date_asc(session, city, organizer, location):
+    """Etapa 11c: dentro de approved, date ASC (más próximo primero) —
+    pending/rejected siguen ordenados por created_at DESC (sin cambios)."""
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="approved-lejano",
+        status=EventStatus.approved, event_date=TODAY + timedelta(days=10),
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="approved-proximo",
+        status=EventStatus.approved, event_date=TODAY,
+    )
+    older = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    newer = datetime(2026, 1, 10, tzinfo=timezone.utc)
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="pending-viejo",
+        status=EventStatus.pending, created_at=older,
+    )
+    _make_event(
+        session, city=city, organizer=organizer, location=location, title="pending-nuevo",
+        status=EventStatus.pending, created_at=newer,
+    )
+
+    grouped = get_events_for_organizer(session, organizer.id)
+
+    assert [e.title for e in grouped[EventStatus.approved]] == ["approved-proximo", "approved-lejano"]
+    assert [e.title for e in grouped[EventStatus.pending]] == ["pending-nuevo", "pending-viejo"]
 
 
 def test_get_events_for_organizer_empty_groups_when_no_events(session, organizer):

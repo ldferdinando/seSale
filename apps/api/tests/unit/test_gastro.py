@@ -73,18 +73,23 @@ async def test_get_gastro_filters_by_type_or(client: AsyncClient, session: Sessi
     assert names == {"Solo bar", "Bar y cerveceria"}
 
 
-async def test_get_gastro_order_pro_dest_gratis_then_name(
+async def test_get_gastro_order_pro_and_dest_grouped_then_gratis_by_name(
     client: AsyncClient, session: Session, city: City
 ):
+    """Etapa 11c: pro y dest van en el mismo grupo (Grupo A, destacados),
+    ordenados alfabéticamente entre sí — no dest antes que pro. Grupo B
+    (gratis) siempre después, también por name ASC. Un lugar dest aparece
+    antes que uno gratis aunque el gratis tenga un nombre anterior en el
+    alfabeto."""
     _make_gastro_location(session, city=city, name="Z gratis", plan="gratis")
     _make_gastro_location(session, city=city, name="A gratis", plan="gratis")
     _make_gastro_location(session, city=city, name="Z dest", plan="dest")
-    _make_gastro_location(session, city=city, name="Z pro", plan="pro")
+    _make_gastro_location(session, city=city, name="B pro", plan="pro")
 
     response = await client.get("/api/gastro", params={"city_id": str(city.id)})
 
     names = [p["name"] for p in response.json()]
-    assert names == ["Z pro", "Z dest", "A gratis", "Z gratis"]
+    assert names == ["B pro", "Z dest", "A gratis", "Z gratis"]
 
 
 async def test_get_gastro_place_detail_not_gastro_returns_404(

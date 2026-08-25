@@ -818,23 +818,55 @@ Mapeadas del prototipo HTML. Se guardan como string en la DB.
 | `user` | Ver eventos públicos, crear eventos (quedan en `pending`), ver y editar sus propios eventos, ver sus suscripciones |
 | `admin` | Todo lo anterior + aprobar/rechazar eventos, marcar `is_featured`, gestionar ciudades, gestionar `ad_slots`, ver todos los usuarios |
 
-### Lógica de ordenamiento en el listado
+### Ordenamiento de eventos (GET /api/events) — Etapa 11c
 
 El orden de eventos en `GET /api/events` sigue siempre esta prioridad (implementado
-como un único `ORDER BY` en el ORM — Etapa 5), sin importar qué filtros
-(`city_id`, `category`, `date_from`, `date_to`, `search`) estén activos: los filtros
-reducen el conjunto de resultados, pero el orden interno no cambia.
+como un único `ORDER BY` en el ORM — Etapa 5, reemplazado en la Etapa 11c),
+sin importar qué filtros (`city_id`, `category`, `date_from`, `date_to`,
+`search`) estén activos: los filtros reducen el conjunto de resultados, pero
+el orden interno no cambia.
 
 ```
-1° → plan = "pro"    + is_featured = True   → más reciente primero
-2° → plan = "pro"    + is_featured = False  → más reciente primero
-3° → plan = "dest"   + is_featured = True   → más reciente primero
-4° → plan = "dest"   + is_featured = False  → más reciente primero
-5° → plan = "gratis" + is_featured = True   → más reciente primero
-6° → plan = "gratis" + is_featured = False  → más reciente primero
+Prioridad 1: plan
+  1° pro (Destacado Plus)
+  2° dest (Destacado)
+  3° gratis
 
-Dentro de cada uno de estos 6 niveles, se ordena por created_at DESC.
+Prioridad 2: date ASC (fecha del evento, más próximo primero)
+
+Prioridad 3: time ASC (hora de inicio, más temprano primero dentro del
+  mismo día)
 ```
+
+El campo `is_featured` no afecta el orden del listado público (antes de la
+Etapa 11c subía al tope dentro del mismo plan). Sigue existiendo en el
+modelo y el admin puede marcarlo, pero solo tiene efecto visual en el panel
+admin.
+
+### Ordenamiento de gastronomía (GET /api/gastro) — Etapa 11c
+
+```
+Grupo A (plan pro o dest): todos los destacados mezclados (pro y dest no se
+  distinguen entre sí en este orden), ordenados por name ASC
+Grupo B (plan gratis): todos los gratuitos, ordenados por name ASC
+```
+
+Mismo criterio en `GET /api/admin/gastro` (panel admin) — comparten el mismo
+`ORDER BY` (`_GASTRO_ORDER_RANK`, `app/services/location_service.py`).
+
+### Ordenamiento en `GET /api/events/mine` (eventos del organizador) — Etapa 11c
+
+Prioridad 1: status — la respuesta ya viene separada en tres listas
+(`pending`, `approved`, `rejected`), en ese orden fijo.
+Prioridad 2: dentro de `approved`, `date ASC` (el evento del organizador
+más próximo aparece primero) — `pending`/`rejected` no tienen una fecha
+relevante para el organizador en este contexto, así que se mantienen por
+`created_at DESC`.
+
+### Ordenamiento en `GET /api/admin/events` (panel admin) — sin cambios
+
+El admin necesita ver los `pending` primero para aprobarlos: se mantiene
+`pending` primero, luego `created_at DESC` — no se tocó en la Etapa 11c.
 
 ### Lógica de visibilidad por fecha/hora (Etapa 10b, reemplaza la Etapa 10a)
 

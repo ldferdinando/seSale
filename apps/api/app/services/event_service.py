@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, case, delete, func
+from sqlalchemy import case, delete, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -86,13 +86,10 @@ def _current_utc_now() -> datetime:
 
 
 _ORDER_RANK = case(
-    (and_(Event.plan == PlanType.pro, Event.is_featured == True), 0),  # noqa: E712
     (Event.plan == PlanType.pro, 1),
-    (and_(Event.plan == PlanType.dest, Event.is_featured == True), 2),  # noqa: E712
-    (Event.plan == PlanType.dest, 3),
-    (and_(Event.plan == PlanType.gratis, Event.is_featured == True), 4),  # noqa: E712
-    (Event.plan == PlanType.gratis, 5),
-    else_=6,
+    (Event.plan == PlanType.dest, 2),
+    (Event.plan == PlanType.gratis, 3),
+    else_=4,
 )
 
 
@@ -111,14 +108,14 @@ def list_public_events(
 ) -> list[Event]:
     """Eventos visibles al público: approved, activos y no vencidos.
 
-    Orden (siempre, independientemente de los filtros activos):
-    1. plan=pro   + is_featured=True
-    2. plan=pro   + is_featured=False
-    3. plan=dest  + is_featured=True
-    4. plan=dest  + is_featured=False
-    5. plan=gratis + is_featured=True
-    6. plan=gratis + is_featured=False
-    Dentro de cada nivel, created_at DESC.
+    Orden (siempre, independientemente de los filtros activos) — Etapa 11c:
+    1. plan (pro → dest → gratis)
+    2. date ASC (evento más próximo primero)
+    3. time ASC (dentro del mismo día, el más temprano primero)
+
+    `is_featured` ya no afecta este orden (antes subía al tope dentro del
+    mismo plan) — sigue existiendo en el modelo y el admin puede marcarlo,
+    pero solo tiene efecto en el panel admin, no en el listado público.
 
     `categories`: OR entre los valores dados (evento con AL MENOS UNA).
     `moment`: eventos que tengan ese momento entre los suyos (un evento con
@@ -181,7 +178,7 @@ def list_public_events(
     if search:
         stmt = stmt.where(Event.title.ilike(f"%{search}%"))
 
-    stmt = stmt.order_by(_ORDER_RANK, Event.created_at.desc())
+    stmt = stmt.order_by(_ORDER_RANK, Event.date.asc(), Event.time.asc())
 
     events = session.exec(stmt).all()
     # El ORDER BY ya lo resolvió la DB — el filtro fino de acá abajo no lo
@@ -356,6 +353,14 @@ def create_event(
 
 
 def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatus, list[Event]]:
+    """Eventos del organizador, agrupados por status — GET /api/events/mine.
+
+    Etapa 11c: dentro de `approved`, orden por `date ASC` (el evento del
+    organizador que ocurre antes aparece primero) — `pending`/`rejected` no
+    tienen una fecha relevante para el organizador en este contexto (esperan
+    moderación o ya fueron descartados), así que se mantienen ordenados por
+    `created_at DESC` como antes.
+    """
     stmt = (
         select(Event)
         .where(Event.organizer_id == user_id)
@@ -371,6 +376,7 @@ def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatu
     }
     for event in events:
         grouped[event.status].append(event)
+    grouped[EventStatus.approved].sort(key=lambda event: event.date)
     return grouped
 
 

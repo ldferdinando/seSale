@@ -244,14 +244,18 @@ def delete_admin_location(session: Session, location_id: UUID) -> None:
 
 _GASTRO_LOAD_OPTIONS = (selectinload(Location.city), selectinload(Location.gastro_types))
 
-# Mismo ordenamiento que eventos: pro primero, luego dest, luego gratis;
-# dentro del mismo plan, por nombre (los lugares no tienen un created_at
-# relevante para el orden — ver PARTE 2 del pedido).
+# Etapa 11c: dos grupos, no tres — Grupo A (destacados: pro Y dest,
+# mezclados) primero, Grupo B (gratis) después. A diferencia de eventos,
+# gastronomía no distingue pro de dest en el orden (ambos valen 0) — dentro
+# de cada grupo, alfabético por nombre. Aplica tanto al listado público
+# (list_public_gastro_places) como al panel admin (list_admin_gastro_places)
+# — comparten esta misma constante a propósito, para que el admin vea el
+# mismo agrupamiento que el público.
 _GASTRO_ORDER_RANK = case(
     (Location.plan == "pro", 0),
-    (Location.plan == "dest", 1),
-    (Location.plan == "gratis", 2),
-    else_=3,
+    (Location.plan == "dest", 0),
+    (Location.plan == "gratis", 1),
+    else_=2,
 )
 
 
