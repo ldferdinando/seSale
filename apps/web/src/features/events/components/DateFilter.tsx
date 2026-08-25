@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -35,6 +35,18 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | undefined>();
   const [activePreset, setActivePreset] = useState<DatePreset | null>(null);
+
+  // Etapa 11b — Parte 3c: si el filtro de fecha se limpia desde afuera (ej.
+  // "Limpiar filtros" en EventFilters, que resetea todo el EventFiltersState
+  // de una), este componente no se entera solo — activePreset/selectedDay
+  // son estado local y quedaban con el preset marcado como activo aunque el
+  // filtro real ya estuviera vacío.
+  useEffect(() => {
+    if (!filters.dateFrom && !filters.dateTo) {
+      setActivePreset(null);
+      setSelectedDay(undefined);
+    }
+  }, [filters.dateFrom, filters.dateTo]);
 
   function applyPreset(preset: DatePreset) {
     const range = getDateRangeForPreset(preset);

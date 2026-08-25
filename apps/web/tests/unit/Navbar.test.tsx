@@ -22,17 +22,22 @@ describe("Navbar", () => {
     clearToken();
   });
 
-  it("shows 'Ingresar' and 'Registrarse' when there is no active session", async () => {
+  it("does not show 'Ingresar'/'Registrarse' when there is no active session (Etapa 11b: acceso solo desde el botón inferior)", async () => {
     renderWithClient(<Navbar />);
 
-    const login = await screen.findByRole("link", { name: /Ingresar/ });
-    expect(login).toHaveAttribute("href", "/login");
-    const register = await screen.findByRole("link", { name: /Registrarse/ });
-    expect(register).toHaveAttribute("href", "/registro");
-
+    await screen.findByRole("button", { name: /Gral\. Roca/ });
+    expect(screen.queryByRole("link", { name: /Ingresar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Registrarse/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Mi cuenta/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Cerrar sesión/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Panel admin/)).not.toBeInTheDocument();
+  });
+
+  it("shows the '¿Qué es seSALE?' link regardless of session state", async () => {
+    renderWithClient(<Navbar />);
+
+    const link = await screen.findByRole("link", { name: /¿Qué es seSALE\?/ });
+    expect(link).toHaveAttribute("href", "/que-es-sesale");
   });
 
   it("shows public_name, 'Publicar evento' and 'Cerrar sesión' for a logged in user", async () => {

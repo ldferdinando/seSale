@@ -50,7 +50,7 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
         <div className="container mx-auto max-w-2xl">
           <p className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-            Alto Valle · Patagonia
+            ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!
           </p>
           <h1 className="mb-2.5 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
             Todo lo que pasa en <em className="text-primary not-italic">{activeCity?.name ?? "tu ciudad"}</em>,
@@ -91,7 +91,12 @@ export default function HomePage() {
               <EventFilters filters={filters} onChange={setFilters} />
               <EventList filters={effectiveFilters} enabled={!isDetecting} />
             </div>
-            <AdSlotsGrid />
+            {/* Etapa 11b — Parte 4: separación visual entre el listado y los
+                banners de abajo (mismo patrón border-t + pt-4 que StatsBar). */}
+            <div className="mx-4 mt-5 border-t border-border">
+              <AdSlotsGrid />
+            </div>
+
             <ShareBanner />
           </>
         ) : isDetecting || mapEvents.isLoading || !activeCity ? (

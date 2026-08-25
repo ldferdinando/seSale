@@ -133,6 +133,7 @@ root/
 │   │   ├── src/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
 │   │   │   │   ├── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
+│   │   │   │   ├── que-es-sesale/     # Página informativa "¿Qué es seSALE?", linkeada desde el Navbar — Etapa 11b
 │   │   │   │   └── admin/layout.tsx   # Guard de /admin: redirige si no hay sesión o role≠"admin" — Etapa 9e
 │   │   │   ├── middleware.ts       # Modo mantenimiento (NEXT_PUBLIC_MAINTENANCE_MODE, edge runtime) — Etapa 9d;
 │   │   │   │                      #   + AUTH_REQUIRED_PATHS (redirige a /login?redirect= sin cookie has_session) — Etapa 9e

@@ -57,7 +57,7 @@ export function AdSlotsGrid() {
   const rotationIntervalSeconds = grid.slots[0]?.rotation_interval_seconds ?? 5;
 
   return (
-    <div className="px-4 pb-3.5">
+    <div className="pt-4 pb-3.5">
       {grid.isLoading ? (
         <div className="grid grid-cols-2 gap-2.5" data-testid="ad-slots-grid-loading">
           <Skeleton className="aspect-square w-full rounded-xl md:aspect-[6/5]" />

@@ -136,22 +136,12 @@ export function Navbar() {
           <div className="flex flex-wrap items-center gap-2">
             <CitySelector />
 
-            {!currentUser && (
-              <>
-                <Link
-                  href="/login"
-                  className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-bold text-foreground"
-                >
-                  Ingresar
-                </Link>
-                <Link
-                  href="/registro"
-                  className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground"
-                >
-                  Registrarse
-                </Link>
-              </>
-            )}
+            <Link
+              href="/que-es-sesale"
+              className="text-[11px] font-semibold text-ink-4 underline-offset-2 hover:text-ink-2 hover:underline"
+            >
+              ¿Qué es seSALE?
+            </Link>
 
             {currentUser && (
               <>

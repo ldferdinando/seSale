@@ -68,4 +68,11 @@ describe("HomePage", () => {
       expect(eventCard.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
   });
+
+  // Etapa 11b — Parte 5
+  it("shows the 'ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!' legend", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    expect(await screen.findByText("ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!")).toBeInTheDocument();
+  });
 });
