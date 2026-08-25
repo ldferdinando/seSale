@@ -6,6 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
+from app.core.config import settings
 from app.core.deps import get_session
 from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password
@@ -195,4 +196,20 @@ class FakeMPSDK:
 def fake_mp_sdk_fixture(monkeypatch: pytest.MonkeyPatch) -> FakeMPSDK:
     sdk = FakeMPSDK()
     monkeypatch.setattr("app.services.payment_service._get_mp_sdk", lambda: sdk)
+    # Bug de aislamiento encontrado corriendo la suite en el pipeline de
+    # deploy (ci-backend.yml fija MERCADOPAGO_ACCESS_TOKEN="" para el job de
+    # tests): `create_checkout_preference` (app/services/payment_service.py)
+    # chequea `settings.mercadopago_access_token` ANTES de llamar a
+    # `_get_mp_sdk()` — mockear solo el SDK no alcanza, si el token real no
+    # está cargado (como en CI, o cualquier entorno sin un .env con un token
+    # real) el checkout devuelve 400 sin llegar a usar el SDK falso.
+    # Localmente estos tests pasaban de pura casualidad porque
+    # apps/api/.env tiene un MERCADOPAGO_ACCESS_TOKEN real cargado — no
+    # deberían depender de eso. Los tests que sí necesitan probar el caso
+    # "sin token" (test_subscriptions_router.py, test_payment_service.py,
+    # test_plans_router.py) lo pisan explícitamente con
+    # `monkeypatch.setattr(settings, "mercadopago_access_token", None)`
+    # dentro del propio test, después de esta fixture — siguen funcionando
+    # igual.
+    monkeypatch.setattr(settings, "mercadopago_access_token", "TEST-fake-access-token")
     return sdk
