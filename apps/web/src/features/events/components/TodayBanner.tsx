@@ -31,7 +31,7 @@ export function TodayBanner({ onClick }: TodayBannerProps) {
     <button
       type="button"
       onClick={onClick}
-      className="mx-4 mt-3.5 flex items-center gap-3 rounded-2xl bg-primary p-4 text-left"
+      className="mx-4 mt-3.5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-primary p-4 text-left"
     >
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/20">
         <CalendarDays className="h-5 w-5 text-white" aria-hidden />

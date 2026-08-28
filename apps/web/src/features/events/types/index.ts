@@ -61,7 +61,10 @@ export interface Event {
   contact_facebook: string | null; // Etapa 12a
   contact_web: string | null;
   contact_email: string | null;
-  flyer_url: string | null;
+  // Etapa 12b — flyer dual. `flyer_url_mobile` null => se usa el de desktop
+  // para todas las resoluciones (el <picture> cae al <img> de desktop).
+  flyer_url_desktop: string | null;
+  flyer_url_mobile: string | null;
   location: EventLocation;
   // Etapa 10b-2: expuesto también al organizador dueño (antes solo en
   // AdminEventRead) — autoservicio "Dar de baja"/"Volver a publicar".
@@ -106,6 +109,10 @@ export interface EventDetail extends Event {
 /** "diurno" 07:00–19:59 hs · "nocturno" 20:00–06:59 hs — filtro resuelto en el backend. */
 export type EventMoment = "diurno" | "nocturno";
 
+/** Etapa 12b — filtro de tipo de entrada en el home. "pago" incluye
+ * eventos con ticket_type "pago" o "anticipo" (lo resuelve el backend). */
+export type TicketTypeFilter = "gratis" | "pago";
+
 export interface EventFiltersState {
   cityId?: string;
   category?: string;
@@ -113,6 +120,7 @@ export interface EventFiltersState {
   dateTo?: string;
   search?: string;
   moment?: EventMoment;
+  ticketType?: TicketTypeFilter;
 }
 
 export interface EventCreateInput {

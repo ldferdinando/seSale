@@ -5,7 +5,7 @@ import pytest
 from sqlmodel import Session, select
 
 from app.core.security import hash_password
-from app.models import City, Event, EventCategory, EventMoment, EventStatus, Location, PlanType, User
+from app.models import City, Event, EventCategory, EventMoment, EventStatus, Location, PlanType, TicketType, User
 from app.schemas.event import EventUpdate
 from app.schemas.location import LocationCreate
 from app.services.event_service import (
@@ -742,3 +742,95 @@ def test_list_public_events_excludes_todays_event_already_ended(session, city, o
     result = list_public_events(session, now=NOW)
 
     assert result == []
+
+
+# ─── Etapa 12b — búsqueda ampliada y filtro ticket_type ──────────────────
+
+def _set_ticket_type(session: Session, event: Event, ticket_type: TicketType) -> None:
+    event.ticket_type = ticket_type
+    session.add(event)
+    session.commit()
+
+
+def test_search_matches_location_name(session, city, organizer, location):
+    munich = Location(name="Resto Bar Munich", address="Calle 9", city_id=city.id)
+    session.add(munich)
+    session.commit()
+    session.refresh(munich)
+
+    _make_event(session, city=city, organizer=organizer, location=munich, title="Show sin match en titulo")
+    _make_event(session, city=city, organizer=organizer, location=location, title="Otro evento")
+
+    result = list_public_events(session, today=TODAY, search="munich")
+
+    assert [e.title for e in result] == ["Show sin match en titulo"]
+
+
+def test_search_matches_category(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="Evento de musica", category="musica")
+    _make_event(session, city=city, organizer=organizer, location=location, title="Evento de teatro", category="teatro")
+
+    result = list_public_events(session, today=TODAY, search="musica")
+
+    titles = {e.title for e in result}
+    assert "Evento de musica" in titles
+    assert "Evento de teatro" not in titles
+
+
+def test_search_matches_description(session, city, organizer, location):
+    ev = _make_event(session, city=city, organizer=organizer, location=location, title="Titulo neutro")
+    ev.description = "Una noche con la mejor cumbia del valle"
+    session.add(ev)
+    session.commit()
+
+    result = list_public_events(session, today=TODAY, search="cumbia")
+
+    assert [e.title for e in result] == ["Titulo neutro"]
+
+
+def test_search_multi_category_event_not_duplicated(session, city, organizer, location):
+    ev = _make_event(session, city=city, organizer=organizer, location=location, title="Multi cat", category="musica")
+    session.add(EventCategory(event_id=ev.id, category="fiesta"))
+    session.add(EventCategory(event_id=ev.id, category="dj"))
+    session.commit()
+
+    result = list_public_events(session, today=TODAY, search="Multi cat")
+
+    assert len(result) == 1
+
+
+def test_filter_ticket_type_gratis(session, city, organizer, location):
+    g = _make_event(session, city=city, organizer=organizer, location=location, title="gratis")
+    p = _make_event(session, city=city, organizer=organizer, location=location, title="pago")
+    a = _make_event(session, city=city, organizer=organizer, location=location, title="anticipo")
+    _set_ticket_type(session, g, TicketType.gratis)
+    _set_ticket_type(session, p, TicketType.pago)
+    _set_ticket_type(session, a, TicketType.anticipo)
+
+    result = list_public_events(session, today=TODAY, ticket_type="gratis")
+
+    assert {e.title for e in result} == {"gratis"}
+
+
+def test_filter_ticket_type_pago_includes_anticipo(session, city, organizer, location):
+    g = _make_event(session, city=city, organizer=organizer, location=location, title="gratis")
+    p = _make_event(session, city=city, organizer=organizer, location=location, title="pago")
+    a = _make_event(session, city=city, organizer=organizer, location=location, title="anticipo")
+    _set_ticket_type(session, g, TicketType.gratis)
+    _set_ticket_type(session, p, TicketType.pago)
+    _set_ticket_type(session, a, TicketType.anticipo)
+
+    result = list_public_events(session, today=TODAY, ticket_type="pago")
+
+    assert {e.title for e in result} == {"pago", "anticipo"}
+
+
+def test_filter_ticket_type_none_returns_all(session, city, organizer, location):
+    g = _make_event(session, city=city, organizer=organizer, location=location, title="gratis")
+    p = _make_event(session, city=city, organizer=organizer, location=location, title="pago")
+    _set_ticket_type(session, g, TicketType.gratis)
+    _set_ticket_type(session, p, TicketType.pago)
+
+    result = list_public_events(session, today=TODAY)
+
+    assert {e.title for e in result} == {"gratis", "pago"}

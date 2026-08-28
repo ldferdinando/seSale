@@ -60,11 +60,11 @@ describe("EventFilters", () => {
     expect(screen.queryByRole("button", { name: "Limpiar filtros" })).not.toBeInTheDocument();
   });
 
-  it("shows 'Limpiar filtros' with more than one active filter and resets category, date and moment", () => {
+  it("shows 'Limpiar filtros' with more than one active filter and resets category, date, moment and ticketType", () => {
     const onChange = vi.fn();
     render(
       <EventFilters
-        filters={{ category: "musica", dateFrom: "2026-03-01", dateTo: "2026-03-01", moment: "nocturno" }}
+        filters={{ category: "musica", dateFrom: "2026-03-01", dateTo: "2026-03-01", moment: "nocturno", ticketType: "pago" }}
         onChange={onChange}
       />,
     );
@@ -76,7 +76,40 @@ describe("EventFilters", () => {
       dateFrom: undefined,
       dateTo: undefined,
       moment: undefined,
+      ticketType: undefined,
     });
+  });
+
+  // Etapa 12b — filtro de tipo de entrada
+  it("passes ticketType='gratis' when clicking the 'Gratis' chip", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Gratis" }));
+
+    expect(onChange).toHaveBeenCalledWith({ ticketType: "gratis" });
+  });
+
+  it("passes ticketType=undefined when clicking 'Todos'", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{ ticketType: "pago" }} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Todos" }));
+
+    expect(onChange).toHaveBeenCalledWith({ ticketType: undefined });
+  });
+
+  it("marks the active ticket-type chip as pressed", () => {
+    render(<EventFilters filters={{ ticketType: "pago" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Pago" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Gratis" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("counts ticketType as an active filter for 'Limpiar filtros'", () => {
+    render(<EventFilters filters={{ category: "musica", ticketType: "gratis" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Limpiar filtros" })).toBeInTheDocument();
   });
 
   // Etapa 11b — Parte 3c: DateFilter guardaba el preset activo ("Este finde",

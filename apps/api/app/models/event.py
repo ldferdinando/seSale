@@ -66,8 +66,15 @@ class Event(SQLModel, table=True):
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 
-    # Media
-    flyer_url: str | None = Field(default=None)
+    # Media — Etapa 12b: flyer dual. `flyer_url_desktop` reemplaza al viejo
+    # `flyer_url` (rename directo en la migración, sin pérdida de datos:
+    # todo lo que estaba en flyer_url queda acá). `flyer_url_mobile` es
+    # opcional — si es None, el frontend usa el de desktop para todas las
+    # resoluciones (Opción A). Ambos exclusivos del plan Destacado Plus
+    # para el organizador; el admin puede subir cualquiera sin importar el
+    # plan (ver _check_flyer_permission_and_plan en event_service.py).
+    flyer_url_desktop: str | None = Field(default=None)
+    flyer_url_mobile: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

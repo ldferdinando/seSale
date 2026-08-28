@@ -39,7 +39,8 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     contact_facebook: null,
     contact_web: null,
     contact_email: null,
-    flyer_url: null,
+    flyer_url_desktop: null,
+    flyer_url_mobile: null,
     location: {
       id: "33333333-3333-3333-3333-333333333333",
       name: "El Tinglado Bar",
@@ -389,6 +390,17 @@ export const handlers = [
   }),
   http.delete(`${API_URL}/api/events/:id`, () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+  // Etapa 12b — flyer dual (desktop/mobile)
+  http.post(`${API_URL}/api/events/:id/flyer/:size`, ({ params }) => {
+    const size = params.size as "desktop" | "mobile";
+    return HttpResponse.json({
+      flyer_url_desktop: size === "desktop" ? "https://storage.example.com/d.jpg" : null,
+      flyer_url_mobile: size === "mobile" ? "https://storage.example.com/m.jpg" : null,
+    });
+  }),
+  http.delete(`${API_URL}/api/events/:id/flyer/:size`, () => {
+    return HttpResponse.json({ flyer_url_desktop: null, flyer_url_mobile: null });
   }),
   http.get(`${API_URL}/api/admin/events`, () => {
     return HttpResponse.json([makeAdminEvent()]);

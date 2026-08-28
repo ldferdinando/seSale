@@ -413,7 +413,7 @@ def seed() -> None:
         events_data = [
             # Etapa 10a: todos los eventos del seed tienen time_end (ya es
             # obligatorio en el modelo).
-            dict(title="Noche de Rock Nacional", categories=["musica", "recital"], plan=PlanType.pro, days_offset=3, location=locations[0], time=time(21, 0), time_end=time(23, 30), flyer_url="https://picsum.photos/800/450?random=1"),
+            dict(title="Noche de Rock Nacional", categories=["musica", "recital"], plan=PlanType.pro, days_offset=3, location=locations[0], time=time(21, 0), time_end=time(23, 30), flyer_url_desktop="https://picsum.photos/800/450?random=1", flyer_url_mobile="https://picsum.photos/450/800?random=1"),
             dict(title="Feria de Artesanos del Valle", categories=["feria"], plan=PlanType.dest, days_offset=5, location=locations[2], time=time(11, 0), time_end=time(19, 0)),
             dict(title="Obra: La Casa de Bernarda Alba", categories=["teatro"], plan=PlanType.gratis, days_offset=7, location=locations[1], time=time(20, 30), time_end=time(22, 30)),
             # Etapa 10b: cruza medianoche — date_end explícito (days_offset+1).
@@ -421,7 +421,7 @@ def seed() -> None:
             dict(title="Milonga de los Jueves", categories=["milonga"], plan=PlanType.gratis, days_offset=1, location=locations[1], time=time(18, 0), time_end=time(22, 0)),
             # Etapa 8b: plan=pro con flyer de prueba — permite probar el detalle
             # de evento (imagen + lightbox) sin subir un archivo real.
-            dict(title="Stand Up: Risas del Alto Valle", categories=["standup"], plan=PlanType.pro, days_offset=14, location=locations[0], time=time(21, 30), time_end=time(23, 0), flyer_url="https://picsum.photos/800/450?random=2"),
+            dict(title="Stand Up: Risas del Alto Valle", categories=["standup"], plan=PlanType.pro, days_offset=14, location=locations[0], time=time(21, 30), time_end=time(23, 0), flyer_url_desktop="https://picsum.photos/800/450?random=2"),
             dict(title="Recital Solidario", categories=["recital", "musica"], plan=PlanType.gratis, days_offset=-2, location=locations[2], time=time(17, 0), time_end=time(19, 0)),
             dict(title="Peña Folclórica de Otoño", categories=["pena", "musica", "fiesta"], plan=PlanType.dest, days_offset=-10, location=locations[1], time=time(21, 0), time_end=time(23, 30)),
             # Etapa 10a/10b: evento de AYER que cruza medianoche — permite
@@ -451,7 +451,8 @@ def seed() -> None:
                 status=EventStatus.approved,
                 plan=data["plan"],
                 ticket_type=TicketType.gratis,
-                flyer_url=data.get("flyer_url"),
+                flyer_url_desktop=data.get("flyer_url_desktop"),
+                flyer_url_mobile=data.get("flyer_url_mobile"),
                 created_at=datetime.now(timezone.utc) - timedelta(days=data["days_offset"]),
             )
             session.add(event)

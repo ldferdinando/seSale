@@ -166,14 +166,15 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   // GastroPlaceCard.tsx/GastroDetailView.tsx en la Etapa 10b-1).
   const locationMapUrl = buildLocationMapUrl(event.location);
 
-  // Etapa 8b — el flyer es exclusivo del plan Destacado Plus (ver
-  // a_revisar.md): "pro" con flyer_url es clickable (lightbox), "dest" con
-  // flyer_url (caso raro: downgrade de plan sin borrar el flyer) se muestra
-  // sin lightbox, y "gratis" nunca muestra imagen aunque flyer_url tenga
-  // valor (no debería pasar, pero el backend no lo garantiza).
-  const flyerUrl = resolveMediaUrl(event.flyer_url);
-  const showFlyerImage = event.plan !== "gratis" && Boolean(flyerUrl);
-  const flyerClickable = event.plan === "pro" && Boolean(flyerUrl);
+  // Etapa 8b/12b — el bloque de imagen/placeholder es exclusivo del plan
+  // Destacado Plus (`pro`). Para `dest`/`gratis` no se renderiza nada (ni
+  // espacio reservado), aunque tuvieran un flyer_url cargado (caso raro de
+  // downgrade sin borrar el flyer). Flyer dual: `<picture>` con el de mobile
+  // en viewport <768px si existe, el de desktop en el resto.
+  const isProEvent = event.plan === "pro";
+  const flyerDesktop = resolveMediaUrl(event.flyer_url_desktop);
+  const flyerMobile = resolveMediaUrl(event.flyer_url_mobile);
+  const hasFlyer = Boolean(flyerDesktop);
 
   // Etapa 8c — aviso de vencimiento del plan pagado, solo para el
   // organizador dueño del evento. featured_until=null (plan activo sin
@@ -187,32 +188,35 @@ export function EventDetailView({ event }: EventDetailViewProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-surface-0">
-        {showFlyerImage ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={flyerUrl ?? undefined}
-              alt={event.title}
-              onClick={flyerClickable ? () => setLightboxOpen(true) : undefined}
-              className={`h-full w-full object-cover ${flyerClickable ? "cursor-pointer" : ""}`}
-            />
-            {flyerClickable && (
+      {isProEvent && (
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-surface-0">
+          {hasFlyer ? (
+            <>
+              <picture>
+                {flyerMobile && <source media="(max-width: 767px)" srcSet={flyerMobile} />}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={flyerDesktop ?? undefined}
+                  alt={event.title}
+                  onClick={() => setLightboxOpen(true)}
+                  className="h-full w-full cursor-pointer object-cover"
+                />
+              </picture>
               <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white">
                 <ZoomIn className="h-3.5 w-3.5" aria-hidden />
                 Ver flyer
               </div>
-            )}
-          </>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center" data-testid="flyer-placeholder">
-            <ImageIcon className="h-10 w-10 text-ink-5" aria-hidden />
-          </div>
-        )}
-      </div>
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center" data-testid="flyer-placeholder">
+              <ImageIcon className="h-10 w-10 text-ink-5" aria-hidden />
+            </div>
+          )}
+        </div>
+      )}
 
-      {flyerClickable && lightboxOpen && flyerUrl && (
-        <ImageLightbox src={flyerUrl} alt={event.title} onClose={() => setLightboxOpen(false)} />
+      {isProEvent && hasFlyer && lightboxOpen && flyerDesktop && (
+        <ImageLightbox src={flyerDesktop} alt={event.title} onClose={() => setLightboxOpen(false)} />
       )}
 
       <div className="flex flex-col gap-4">

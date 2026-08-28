@@ -55,37 +55,44 @@ async def upload_flyer(
     filename: str,
     content_type: str,
     event_id: UUID,
+    size_type: str,
 ) -> str:
-    """Sube el flyer a Supabase Storage. Path en el bucket: flyers/{event_id}/{filename}.
+    """Sube el flyer a Supabase Storage. Path en el bucket:
+    flyers/{event_id}/{size_type}/{filename}.
+
+    `size_type` (Etapa 12b): "desktop" | "mobile" — cada tamaño vive en su
+    propia subcarpeta, así subir/borrar uno no toca al otro.
 
     Devuelve la URL pública del archivo. En development sin Supabase
-    configurado: guarda en apps/api/uploads/flyers/{event_id}/ y devuelve la
-    ruta relativa.
+    configurado: guarda en apps/api/uploads/flyers/{event_id}/{size_type}/ y
+    devuelve la ruta relativa.
 
-    Si el evento ya tenía un flyer, el caller (`event_service.upload_event_flyer`)
-    es responsable de llamar a `delete_flyer` antes para no acumular archivos
-    huérfanos.
+    Si el evento ya tenía un flyer de ese tamaño, el caller
+    (`event_service.upload_event_flyer`) es responsable de llamar a
+    `delete_flyer` antes para no acumular archivos huérfanos.
     """
     validate_flyer_file(content_type, len(file_content))
     object_name = f"{event_id}{_extension_for(content_type, filename)}"
 
     if _supabase_configured():
-        return _upload_to_supabase(file_content, object_name, content_type, event_id)
-    return _upload_to_local_disk(file_content, object_name, event_id)
+        return _upload_to_supabase(file_content, object_name, content_type, event_id, size_type)
+    return _upload_to_local_disk(file_content, object_name, event_id, size_type)
 
 
-def _upload_to_supabase(file_content: bytes, object_name: str, content_type: str, event_id: UUID) -> str:
+def _upload_to_supabase(
+    file_content: bytes, object_name: str, content_type: str, event_id: UUID, size_type: str
+) -> str:
     from supabase import create_client  # import diferido — opcional en dev sin Supabase
 
     client = create_client(settings.supabase_url, settings.supabase_service_key)
     bucket = client.storage.from_(settings.supabase_storage_bucket)
-    path = f"{event_id}/{object_name}"
+    path = f"{event_id}/{size_type}/{object_name}"
     bucket.upload(path, file_content, {"content-type": content_type, "upsert": "true"})
     return bucket.get_public_url(path)
 
 
-def _upload_to_local_disk(file_content: bytes, object_name: str, event_id: UUID) -> str:
-    event_dir = _UPLOADS_DIR / str(event_id)
+def _upload_to_local_disk(file_content: bytes, object_name: str, event_id: UUID, size_type: str) -> str:
+    event_dir = _UPLOADS_DIR / str(event_id) / size_type
     event_dir.mkdir(parents=True, exist_ok=True)
     for old_file in event_dir.iterdir():
         if old_file.is_file():
@@ -98,7 +105,7 @@ def _upload_to_local_disk(file_content: bytes, object_name: str, event_id: UUID)
     # responsabilidad del frontend resolverla contra NEXT_PUBLIC_API_URL al
     # momento de mostrarla (misma variable que ya usa para toda la API) —
     # ver apps/web/src/lib/media.ts, resolveMediaUrl().
-    return f"/uploads/flyers/{event_id}/{object_name}"
+    return f"/uploads/flyers/{event_id}/{size_type}/{object_name}"
 
 
 def validate_banner_file(content_type: str, file_size: int) -> None:
@@ -273,25 +280,27 @@ def _delete_cover_from_local_disk(location_id: UUID) -> None:
         pass
 
 
-def delete_flyer(flyer_url: str, event_id: UUID) -> None:
-    """Elimina el flyer existente del storage correspondiente (Supabase o disco local)."""
+def delete_flyer(flyer_url: str, event_id: UUID, size_type: str) -> None:
+    """Elimina el flyer de un tamaño (`size_type`: "desktop" | "mobile") del
+    storage correspondiente (Supabase o disco local). Etapa 12b — borra solo
+    la subcarpeta de ese tamaño, no toca el otro."""
     if _supabase_configured():
-        _delete_from_supabase(flyer_url, event_id)
+        _delete_from_supabase(flyer_url, event_id, size_type)
     else:
-        _delete_from_local_disk(event_id)
+        _delete_from_local_disk(event_id, size_type)
 
 
-def _delete_from_supabase(flyer_url: str, event_id: UUID) -> None:
+def _delete_from_supabase(flyer_url: str, event_id: UUID, size_type: str) -> None:
     from supabase import create_client
 
     client = create_client(settings.supabase_url, settings.supabase_service_key)
     bucket = client.storage.from_(settings.supabase_storage_bucket)
     filename = flyer_url.rstrip("/").split("/")[-1]
-    bucket.remove([f"{event_id}/{filename}"])
+    bucket.remove([f"{event_id}/{size_type}/{filename}"])
 
 
-def _delete_from_local_disk(event_id: UUID) -> None:
-    event_dir = _UPLOADS_DIR / str(event_id)
+def _delete_from_local_disk(event_id: UUID, size_type: str) -> None:
+    event_dir = _UPLOADS_DIR / str(event_id) / size_type
     if not event_dir.exists():
         return
     for f in event_dir.iterdir():

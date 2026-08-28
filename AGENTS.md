@@ -139,13 +139,14 @@ root/
 │   │   │   │                      #   + AUTH_REQUIRED_PATHS (redirige a /login?redirect= sin cookie has_session) — Etapa 9e
 │   │   │   ├── components/         # Componentes reutilizables globales
 │   │   │   │   ├── MapPicker.tsx      # Mapa Leaflet reutilizable (form de evento + admin lugares) — Etapa 7b
-│   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar flyer o portada — prop type:"flyer"|"cover" — Etapa 8b, generalizado en Etapa 8e
+│   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar una imagen — prop type:"flyer-desktop"|"flyer-mobile"|"cover" — Etapa 8b, generalizado en Etapa 8e, flyer dual en Etapa 12b
 │   │   │   │   ├── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
 │   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b;
-│   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a
+│   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a;
+│   │   │   │   │                  #   + FlyerUpload.tsx (dos zonas desktop/mobile, wrapper de MediaUpload) — Etapa 12b
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d;
 │   │   │   │   │                  #   hooks useAdminUsers/useUpdateUserRole/useUpdateUserActive — Etapa 9b
@@ -231,7 +232,7 @@ root/
 │       │   │   │                  #   ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d, ABM gastro — Etapa 8e;
 │       │   │   │                  #   ABM categorías/tipos gastronómicos — Etapa 12a
 │       │   │   ├── auth.py
-│       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b; + filtro location_id en GET /api/events — Etapa 8e
+│       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer/{desktop|mobile} (flyer dual) — Etapa 8b/12b; + filtro location_id en GET /api/events — Etapa 8e; + search ampliado (lugar/categoría) + ?ticket_type — Etapa 12b
 │       │   │   ├── categories.py   # GET /api/categories, público — Etapa 12a
 │       │   │   ├── gastro_types.py # GET /api/gastro-types, público — Etapa 12a
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5

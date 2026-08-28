@@ -6,10 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { MediaUpload } from "@/components/MediaUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { EventForm } from "@/features/events/components/EventForm";
+import { FlyerUpload } from "@/features/events/components/FlyerUpload";
 import { useEvent } from "@/features/events/hooks/useEvent";
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
 import { argentinaTodayIso, utcTimeToLocal } from "@/lib/date-helpers";
@@ -123,17 +123,18 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
         disabledReason={lockedForOwner ? "Este evento ya pasó y no se puede editar." : undefined}
       />
 
-      {/* Etapa 8b — el flyer es exclusivo del plan Destacado Plus, ver
-          a_revisar.md. La subida ocurre acá (no en /planes): el evento recién
-          pasa a plan="pro" cuando se confirma el pago. */}
-      {event.plan === "pro" && (
+      {/* Etapa 8b/12b — flyer dual (desktop + mobile), exclusivo del plan
+          Destacado Plus para el organizador; el admin lo puede gestionar con
+          cualquier plan. La subida ocurre acá (no en /planes): el evento
+          recién pasa a plan="pro" cuando se confirma el pago. */}
+      {(event.plan === "pro" || isAdmin) && (
         <div className="rounded-2xl border border-border bg-card p-4">
-          <MediaUpload
-            type="flyer"
-            entityId={eventId}
-            currentUrl={event.flyer_url}
-            onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
-            onDeleteSuccess={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
+          <FlyerUpload
+            eventId={eventId}
+            flyerUrlDesktop={event.flyer_url_desktop}
+            flyerUrlMobile={event.flyer_url_mobile}
+            canUpload={isAdmin || event.plan === "pro"}
+            onChange={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
           />
         </div>
       )}

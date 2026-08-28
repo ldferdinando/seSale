@@ -145,7 +145,8 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
                     │ contact_facebook (str|null)     │  │ │  ← Etapa 12a
                     │ contact_web (str|null)          │  │ │
                     │ contact_email (str|null)        │  │ │
-                    │ flyer_url (str|null)            │  │ │
+                    │ flyer_url_desktop (str|null)    │  │ │  ← Etapa 12b (era flyer_url)
+                    │ flyer_url_mobile (str|null)     │  │ │  ← Etapa 12b (opcional)
                     │ is_active                       │  │ │
                     │ created_at / updated_at         │  │ │
                     └─────────────────────────────────┘  │ │
@@ -352,18 +353,34 @@ class Event(SQLModel, table=True):
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 
-    # Media
-    # Etapa 8b: exclusivo del plan pro (Destacado Plus) — dest y gratis
-    # nunca lo suben (ver a_revisar.md, sigue seSALE_primario.html al pie de
-    # la letra). Se sube/borra vía POST/DELETE /api/events/{id}/flyer
-    # (app/core/storage.py). Con Supabase configurado, guarda una URL
-    # absoluta (pública). Sin Supabase (fallback de development), guarda una
-    # ruta RELATIVA (`/uploads/flyers/{id}/...`) — el backend no puede saber
-    # en qué origen es alcanzable públicamente (localhost, un túnel, prod).
-    # El frontend la resuelve al momento de mostrarla con
-    # resolveMediaUrl() (apps/web/src/lib/media.ts), anteponiendo
-    # NEXT_PUBLIC_API_URL solo si no es ya absoluta.
-    flyer_url: str | None = Field(default=None)    # Supabase Storage
+    # Media — Etapa 12b: flyer dual (mobile + desktop). Reemplaza el campo
+    # único `flyer_url` de la Etapa 8b (rename directo en la migración
+    # `0023`, sin pérdida de datos: lo que estaba en `flyer_url` quedó en
+    # `flyer_url_desktop`).
+    #
+    # - `flyer_url_desktop`: flyer horizontal/cuadrado (desktop y tablet).
+    # - `flyer_url_mobile`: flyer vertical/cuadrado (mobile), OPCIONAL. Si es
+    #   None, el frontend usa el de desktop para todas las resoluciones
+    #   (Opción A). Se muestra con `<picture>` + `<source media="(max-width:
+    #   767px)">` en EventCard.tsx y EventDetailView.tsx.
+    #
+    # Permisos de subida (POST/DELETE /api/events/{id}/flyer/{desktop|mobile}):
+    # el organizador dueño solo con plan `pro` (Destacado Plus); el admin
+    # con cualquier plan (Etapa 12b). Cualquier otro → 403.
+    #
+    # El bloque de imagen/placeholder en el frontend es exclusivo de `pro`:
+    # `dest`/`gratis` no muestran ni imagen ni espacio reservado, aunque
+    # tuvieran una URL cargada.
+    #
+    # Storage (app/core/storage.py): Supabase Storage con path
+    # `{event_id}/{desktop|mobile}/{filename}` (URL absoluta pública), o
+    # disco local en dev con ruta RELATIVA `/uploads/flyers/{id}/{size}/...`
+    # — el backend no puede saber en qué origen es alcanzable (localhost,
+    # túnel, prod), lo resuelve el frontend con resolveMediaUrl()
+    # (apps/web/src/lib/media.ts), anteponiendo NEXT_PUBLIC_API_URL solo si
+    # no es ya absoluta.
+    flyer_url_desktop: str | None = Field(default=None)
+    flyer_url_mobile: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -1266,6 +1283,7 @@ GET    /api/events                     Listar eventos aprobados y activos      �
                                                 con event_moments — un evento
                                                 dual aparece en ambos),
                                                 date_from, date_to, plan, search,
+                                                ticket_type (Etapa 12b),
                                                 location_id (Etapa 8e — eventos
                                                 de un lugar puntual, usado por
                                                 el detalle de gastronomía)
@@ -1273,6 +1291,19 @@ GET    /api/events                     Listar eventos aprobados y activos      �
                                        evento (event_categories); el filtro
                                        sigue devolviendo eventos con AL MENOS
                                        UNA de las categorías/momento pedidos
+                                       search (Etapa 12b — ampliado): matchea
+                                       (ilike, case-insensitive) contra el
+                                       título, la descripción, el nombre del
+                                       lugar (locations.name) y las categorías
+                                       (event_categories.category). Se resuelve
+                                       con subqueries EXISTS (no JOIN+DISTINCT,
+                                       que rompería el ORDER BY por _ORDER_RANK
+                                       en Postgres) — sin duplicados para
+                                       eventos multi-categoría
+                                       ticket_type (Etapa 12b): "gratis" →
+                                       solo ticket_type=gratis; "pago" →
+                                       ticket_type IN (pago, anticipo);
+                                       ausente → sin filtro
 GET    /api/events/{id}                Detalle completo de un evento     ✓ Etapa 4
                                        (evento + ubicación + ciudad + datos
                                        públicos del organizador). approved+activo:
@@ -1375,26 +1406,31 @@ POST   /api/events/{id}/report         Reportar un evento (público, sin login) 
                                        y envía un email al admin (Resend) — si el
                                        email falla, se loguea pero no se falla el
                                        endpoint (el reporte ya quedó guardado)
-POST   /api/events/{id}/flyer          Sube/reemplaza el flyer del evento     ✓ Etapa 8b
+POST   /api/events/{id}/flyer/desktop  Sube/reemplaza el flyer de desktop     ✓ Etapa 12b
+POST   /api/events/{id}/flyer/mobile   Sube/reemplaza el flyer de mobile      ✓ Etapa 12b
                                        (multipart/form-data, campo "file").
-                                       Organizador dueño o admin — 403 si no,
-                                       404 si el evento no existe. Exclusivo
-                                       del plan pro (Destacado Plus) — 400 si
-                                       el plan es gratis o dest (ver
-                                       a_revisar.md, sigue
-                                       seSALE_primario.html). 422 si el
+                                       Reemplazan al POST /api/events/{id}/flyer
+                                       único de la Etapa 8b. Permisos: el
+                                       organizador dueño solo con plan pro
+                                       (Destacado Plus) — 400 si es gratis o
+                                       dest; el ADMIN con cualquier plan
+                                       (Etapa 12b). 403 para cualquier otro,
+                                       404 si el evento no existe. 422 si el
                                        archivo no es JPG/PNG/WEBP o supera
-                                       5MB. Si ya había un flyer, se
-                                       reemplaza en el storage (no quedan
-                                       archivos huérfanos). Devuelve
-                                       { flyer_url } — relativo en dev sin
-                                       Supabase, el frontend lo resuelve con
+                                       5MB. Si ya había un flyer de ESE
+                                       tamaño, se reemplaza en el storage (el
+                                       otro tamaño no se toca). Devuelve
+                                       { flyer_url_desktop, flyer_url_mobile }
+                                       — relativos en dev sin Supabase, el
+                                       frontend los resuelve con
                                        resolveMediaUrl() (lib/media.ts)
-DELETE /api/events/{id}/flyer          Elimina el flyer del evento            ✓ Etapa 8b
+DELETE /api/events/{id}/flyer/desktop  Elimina el flyer de desktop            ✓ Etapa 12b
+DELETE /api/events/{id}/flyer/mobile   Elimina el flyer de mobile             ✓ Etapa 12b
                                        Organizador dueño o admin — 403 si no,
-                                       404 si el evento no existe. Borra el
-                                       archivo del storage y pone
-                                       flyer_url=null. Devuelve { flyer_url }
+                                       404 si el evento no existe. Borra solo
+                                       ese tamaño del storage y pone su campo
+                                       en null. Devuelve
+                                       { flyer_url_desktop, flyer_url_mobile }
 ```
 
 ### Usuarios (`/api/users`)
@@ -1873,6 +1909,7 @@ GET    /api/health                       Público, sin datos sensibles.
 | **10a** | `time_end` obligatorio en `Event` + selector de hora corregido. | ✓ Completa: `Event.time_end: time` (antes `time \| None`), migración `0018` (backfillea `time_start + 2h`, o `23:59` si eso cruza medianoche, antes del `NOT NULL`); `EventCreate.time_end` requerido, `EventUpdate.time_end` sigue opcional (edición parcial); `@model_validator` de coherencia horaria en ambos (mínimo 15' si no cruza medianoche, siempre válido si cruza, 422 si son iguales) — mismo criterio en Zod (`event-schema.ts`); `is_event_currently_visible()` nuevo en `event_service.py` (CONDICIÓN C: evento de ayer que cruza medianoche y sigue en curso, ver § "Lógica de visibilidad" arriba); bug real del selector de hora (verificado en vivo, no era el patrón del selector de ciudades de la Etapa 9b — ver `a_revisar.md`): `SelectContent` (`ui/select.tsx`) no limitaba su altura al espacio disponible de Radix, la lista de 24 horas se salía del viewport sin scroll posible — fix genérico (`max-height: var(--radix-select-content-available-height)` + `overflow-y-auto`), corrige todo `<Select>` del sitio, no solo `TimePicker.tsx`; `EventForm.tsx` — hora fin ahora requerida, junto a hora inicio en el layout; `EventCard.tsx` muestra la hora (antes no mostraba ninguna) |
 | **10b** | `date_end` (fecha de fin) explícito en `Event`, con defaults automáticos en el formulario. | ✓ Completa: `Event.date_end: date \| None` (migración `0019`, nullable/retrocompatible — `None` = mismo día que `date`); `EventCreate.date_end` opcional (se completa con `date` si falta), `EventUpdate.date_end` opcional; el validador de coherencia de la Etapa 10a (mínimo 15', "cruza medianoche" inferido de `time_end < time_start`) se reemplaza por uno solo: `datetime(date_end, time_end) > datetime(date, time)`; `is_event_currently_visible()` se simplifica a una sola condición (`datetime_fin >= ahora`, ver § "Lógica de visibilidad" arriba) — cambio de comportamiento real: un evento de HOY ya terminado deja de listarse (antes quedaba visible todo el día); `EventForm.tsx` — segundo selector de fecha ("Fecha fin"), layout en 2 columnas (fecha y hora, inicio/fin), autocompletado de "Hora fin" (+1h) y "Fecha fin" al elegir "Hora inicio" (con `useRef` para no pisar una "Hora fin" ya editada a mano), "Fecha fin" se corrige sola si queda antes que "Fecha inicio" al mover la fecha de inicio |
 | **12a** | Categorías de eventos y tipos gastronómicos gestionables por el admin (tablas catálogo, reemplazan los sets hardcodeados); links de contacto de eventos (WhatsApp/Instagram/Facebook/Web/Email) disponibles para todos los planes. | ✓ Completa: `event_categories_catalog`/`gastro_types_catalog` (migración `0021`, seedeadas con los 13/10 valores que antes eran `VALID_CATEGORIES`/`GASTRO_TYPES` hardcodeados — ver sección 3); `GET /api/categories`/`GET /api/gastro-types` (público, solo activos) + CRUD completo bajo `/api/admin/categories`/`/api/admin/gastro-types` (crear, editar nombre/emoji/color/sort_order sin tocar `key`, toggle con 409 si hay eventos futuros usando esa categoría/tipo); la validación de pertenencia se movió de los `field_validator` de Pydantic (sin acceso a DB) a `event_service.py`/`location_service.py` (con sesión); `Event.contact_facebook` nuevo (migración `0022`); frontend: `useCategoryCatalog`/`useGastroTypeCatalog` (TanStack Query, `staleTime` 10min, fallback hardcodeado si la API falla) reemplazan las listas estáticas en `CategoryMultiSelect.tsx`/`CategoryChips.tsx`/`EventCard.tsx`/`EventSummaryView.tsx`/`EventDetailView.tsx`/`GastroForm.tsx`/`GastroTypeChips.tsx`; `EventForm.tsx` — input real de WhatsApp (antes solo un checkbox sin campo, ver `a_revisar.md`) y nuevo input de Facebook, formulario completo deshabilitado si el evento ya pasó y quien edita es el organizador (no admin); `EventDetailView.tsx` — WhatsApp con prefijo `549`, link de Facebook nuevo; `AdminCategoriesPanel.tsx`/`AdminGastroTypesPanel.tsx` nuevos en `/admin` |
+| **12b** | Fixes de UI: filtro "¿Qué hay hoy?" a ancho completo; búsqueda de eventos ampliada (lugar + categoría) y filtro por tipo de entrada; placeholder de flyer solo para Destacado Plus; flyer dual mobile/desktop. | ✓ Completa. **Búsqueda:** `GET /api/events?search=` ahora matchea (ilike) título + descripción + `locations.name` + `event_categories.category` vía subqueries EXISTS (sin duplicados). Nuevo `?ticket_type=gratis\|pago` (`pago` incluye `anticipo`). Frontend: chips "Todos/Gratis/Pago" en `EventFilters.tsx`, `EventFiltersState.ticketType`, "Limpiar filtros" lo resetea. **Placeholder:** `EventDetailView.tsx` solo renderiza el bloque imagen/placeholder si `plan==="pro"` (`dest`/`gratis` no muestran ni espacio); `EventCard.tsx` ya cumplía. **Flyer dual:** modelo `Event.flyer_url` → `flyer_url_desktop` + `flyer_url_mobile` (migración `0023`, rename directo sin pérdida de datos); `POST/DELETE /api/events/{id}/flyer` → `.../flyer/desktop` y `.../flyer/mobile`; el admin puede subir con cualquier plan (antes 400); `storage.upload_flyer(size_type)` path `{event_id}/{desktop\|mobile}/`; frontend `FlyerUpload.tsx` nuevo (dos zonas, prop `canUpload`), `MediaUpload` tipos `flyer-desktop\|flyer-mobile\|cover`, `<picture>` con `<source media="(max-width:767px)">` en `EventCard`/`EventDetailView`. Ver `a_revisar.md`. |
 
 ---
 

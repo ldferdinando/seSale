@@ -69,8 +69,8 @@ describe("EventCard", () => {
     expect(card.className).toContain("linear-gradient(135deg,#E91E8C22,#E91E8C0d)");
   });
 
-  it("plan='pro' with flyer_url shows the thumbnail image", () => {
-    const event = makeEvent({ plan: "pro", flyer_url: "/uploads/flyers/1/flyer.jpg" });
+  it("plan='pro' with flyer_url_desktop shows the thumbnail image", () => {
+    const event = makeEvent({ plan: "pro", flyer_url_desktop: "/uploads/flyers/1/desktop/flyer.jpg" });
 
     const { container } = renderCard(<EventCard event={event} />);
 
@@ -80,8 +80,53 @@ describe("EventCard", () => {
     expect(img).toHaveAttribute("src", expect.stringContaining("flyer.jpg"));
   });
 
-  it("plan='pro' without flyer_url shows an image placeholder", () => {
-    const event = makeEvent({ plan: "pro", flyer_url: null });
+  it("plan='pro' with a mobile flyer renders a <picture> with a max-width source", () => {
+    const event = makeEvent({
+      plan: "pro",
+      flyer_url_desktop: "/uploads/flyers/1/desktop/d.jpg",
+      flyer_url_mobile: "/uploads/flyers/1/mobile/m.jpg",
+    });
+
+    const { container } = renderCard(<EventCard event={event} />);
+
+    const source = container.querySelector("picture source");
+    expect(source).toHaveAttribute("media", "(max-width: 767px)");
+    expect(source?.getAttribute("srcset")).toContain("m.jpg");
+  });
+
+  it("plan='pro' without a mobile flyer has no <source> (falls back to desktop)", () => {
+    const event = makeEvent({
+      plan: "pro",
+      flyer_url_desktop: "/uploads/flyers/1/desktop/d.jpg",
+      flyer_url_mobile: null,
+    });
+
+    const { container } = renderCard(<EventCard event={event} />);
+
+    expect(container.querySelector("picture source")).toBeNull();
+    expect(container.querySelector("img")).toHaveAttribute("src", expect.stringContaining("d.jpg"));
+  });
+
+  it("plan='pro' without any flyer shows an image placeholder", () => {
+    const event = makeEvent({ plan: "pro", flyer_url_desktop: null, flyer_url_mobile: null });
+
+    const { container } = renderCard(<EventCard event={event} />);
+
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+  });
+
+  it("plan='gratis' without flyer shows the category icon, never a placeholder", () => {
+    const event = makeEvent({ plan: "gratis", flyer_url_desktop: null });
+
+    const { container } = renderCard(<EventCard event={event} />);
+
+    // el ícono de categoría es un <svg>, no un <img>; y no hay ImageIcon de placeholder
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeNull();
+  });
+
+  it("plan='dest' without flyer shows the category icon, never a placeholder", () => {
+    const event = makeEvent({ plan: "dest", flyer_url_desktop: null });
 
     const { container } = renderCard(<EventCard event={event} />);
 

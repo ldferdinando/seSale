@@ -23,6 +23,7 @@ export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> 
     date_from: filters.dateFrom,
     date_to: filters.dateTo,
     search: filters.search,
+    ticket_type: filters.ticketType,
   });
 }
 
@@ -102,17 +103,26 @@ export async function deleteEvent(eventId: string): Promise<void> {
   return apiDelete<void>(`/api/events/${eventId}`);
 }
 
-interface FlyerUploadResponse {
-  flyer_url: string | null;
+export interface FlyerUploadResponse {
+  flyer_url_desktop: string | null;
+  flyer_url_mobile: string | null;
 }
 
-/** Etapa 8b — flyer exclusivo del plan Destacado Plus, ver a_revisar.md. */
-export async function uploadEventFlyer(eventId: string, file: File): Promise<FlyerUploadResponse> {
-  return apiPostFile<FlyerUploadResponse>(`/api/events/${eventId}/flyer`, file);
+export type FlyerSize = "desktop" | "mobile";
+
+/** Etapa 12b — flyer dual. Para el organizador dueño sigue siendo exclusivo
+ * del plan Destacado Plus; el admin puede subir con cualquier plan (lo
+ * valida el backend). */
+export async function uploadEventFlyer(
+  eventId: string,
+  size: FlyerSize,
+  file: File,
+): Promise<FlyerUploadResponse> {
+  return apiPostFile<FlyerUploadResponse>(`/api/events/${eventId}/flyer/${size}`, file);
 }
 
-export async function deleteEventFlyer(eventId: string): Promise<FlyerUploadResponse> {
-  return apiDelete<FlyerUploadResponse>(`/api/events/${eventId}/flyer`);
+export async function deleteEventFlyer(eventId: string, size: FlyerSize): Promise<FlyerUploadResponse> {
+  return apiDelete<FlyerUploadResponse>(`/api/events/${eventId}/flyer/${size}`);
 }
 
 export async function fetchAdminEvents(filters: AdminEventFilters): Promise<AdminEvent[]> {

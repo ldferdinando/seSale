@@ -27,7 +27,7 @@ describe("MediaUpload", () => {
 
   it("shows the upload dropzone when there is no current media", () => {
     render(
-      <MediaUpload type="flyer" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
+      <MediaUpload type="flyer-desktop" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
     );
 
     expect(screen.getByTestId("media-drop-zone")).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe("MediaUpload", () => {
   it("shows the current media preview with Cambiar/Eliminar when currentUrl is set", () => {
     render(
       <MediaUpload
-        type="flyer"
+        type="flyer-desktop"
         entityId={EVENT_ID}
         currentUrl="https://example.com/flyer.jpg"
         onUploadSuccess={vi.fn()}
@@ -54,7 +54,7 @@ describe("MediaUpload", () => {
   it("shows an inline error when the file is larger than 5MB, without calling the API", async () => {
     const user = userEvent.setup();
     render(
-      <MediaUpload type="flyer" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
+      <MediaUpload type="flyer-desktop" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
     );
 
     const tooBig = makeFile("flyer.png", "image/png", 5 * 1024 * 1024 + 1);
@@ -67,7 +67,7 @@ describe("MediaUpload", () => {
   it("shows an inline error for a disallowed format, without calling the API", async () => {
     const user = userEvent.setup({ applyAccept: false });
     render(
-      <MediaUpload type="flyer" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
+      <MediaUpload type="flyer-desktop" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={vi.fn()} onDeleteSuccess={vi.fn()} />,
     );
 
     const pdf = makeFile("flyer.pdf", "application/pdf", 1024);
@@ -76,17 +76,17 @@ describe("MediaUpload", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Formato no permitido/i);
   });
 
-  it("shows an immediate preview and uploads a flyer on a valid file (POST /api/events/{id}/flyer)", async () => {
+  it("shows an immediate preview and uploads a flyer on a valid file (POST /api/events/{id}/flyer/desktop)", async () => {
     const user = userEvent.setup();
     const onUploadSuccess = vi.fn();
     server.use(
-      http.post(`${API_URL}/api/events/${EVENT_ID}/flyer`, () =>
-        HttpResponse.json({ flyer_url: "https://storage.example.com/flyer.jpg" }),
+      http.post(`${API_URL}/api/events/${EVENT_ID}/flyer/desktop`, () =>
+        HttpResponse.json({ flyer_url_desktop: "https://storage.example.com/flyer.jpg", flyer_url_mobile: null }),
       ),
     );
 
     render(
-      <MediaUpload type="flyer" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={onUploadSuccess} onDeleteSuccess={vi.fn()} />,
+      <MediaUpload type="flyer-desktop" entityId={EVENT_ID} currentUrl={null} onUploadSuccess={onUploadSuccess} onDeleteSuccess={vi.fn()} />,
     );
 
     const valid = makeFile("flyer.png", "image/png", 1024);
@@ -124,11 +124,11 @@ describe("MediaUpload", () => {
   it("asks for confirmation before deleting a flyer, and calls onDeleteSuccess after confirming", async () => {
     const user = userEvent.setup();
     const onDeleteSuccess = vi.fn();
-    server.use(http.delete(`${API_URL}/api/events/${EVENT_ID}/flyer`, () => HttpResponse.json({ flyer_url: null })));
+    server.use(http.delete(`${API_URL}/api/events/${EVENT_ID}/flyer/desktop`, () => HttpResponse.json({ flyer_url_desktop: null, flyer_url_mobile: null })));
 
     render(
       <MediaUpload
-        type="flyer"
+        type="flyer-desktop"
         entityId={EVENT_ID}
         currentUrl="https://example.com/flyer.jpg"
         onUploadSuccess={vi.fn()}

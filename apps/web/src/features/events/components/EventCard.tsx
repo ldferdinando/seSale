@@ -140,14 +140,24 @@ export function EventCard({ event }: EventCardProps) {
               en seSALE.html). Los demás niveles siguen mostrando el ícono de
               categoría (dest/gratis nunca suben flyer, ver ARCHITECTURE.md). */}
           {isPro ? (
-            event.flyer_url ? (
+            event.flyer_url_desktop ? (
               <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={resolveMediaUrl(event.flyer_url) ?? undefined}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                {/* Etapa 12b — flyer dual: mobile en viewport <768px si existe,
+                    desktop en el resto (y como fallback si no hay mobile). */}
+                <picture>
+                  {event.flyer_url_mobile && (
+                    <source
+                      media="(max-width: 767px)"
+                      srcSet={resolveMediaUrl(event.flyer_url_mobile) ?? undefined}
+                    />
+                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveMediaUrl(event.flyer_url_desktop) ?? undefined}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </picture>
               </div>
             ) : (
               <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-surface-2">
