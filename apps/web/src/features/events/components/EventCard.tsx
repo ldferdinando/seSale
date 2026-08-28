@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
 import { resolveMediaUrl } from "@/lib/media";
@@ -98,8 +99,9 @@ interface EventCardProps {
 export function EventCard({ event }: EventCardProps) {
   const eventDate = parseISO(event.date);
   const category = event.categories[0];
+  const { categories } = useCategoryCatalog();
   const style = CATEGORY_STYLES[category] ?? DEFAULT_CATEGORY_STYLE;
-  const categoryLabel = EVENT_CATEGORIES.find((c) => c.value === category)?.label ?? category;
+  const categoryLabel = categories.find((c) => c.key === category)?.name ?? category;
   const Icon = style.icon;
   const isPro = event.plan === "pro";
 

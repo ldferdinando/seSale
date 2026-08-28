@@ -58,6 +58,7 @@ export interface Event {
   available_on_site: boolean;
   contact_whatsapp: string | null;
   contact_instagram: string | null;
+  contact_facebook: string | null; // Etapa 12a
   contact_web: string | null;
   contact_email: string | null;
   flyer_url: string | null;
@@ -134,6 +135,7 @@ export interface EventCreateInput {
   available_on_site?: boolean;
   contact_whatsapp?: string;
   contact_instagram?: string;
+  contact_facebook?: string; // Etapa 12a
   contact_web?: string;
   contact_email?: string;
   /** Solo tiene efecto si quien publica es admin: crea el evento en nombre de este organizador. */
@@ -196,6 +198,34 @@ export const TICKET_TYPE_OPTIONS: { value: TicketType; label: string }[] = [
   { value: "anticipo", label: "Con anticipo" },
 ];
 
+/** Categoría del catálogo dinámico (GET /api/categories) — Etapa 12a. */
+export interface Category {
+  id: string;
+  key: string;
+  name: string;
+  emoji: string | null;
+  color: string | null;
+  sort_order: number;
+}
+
+export interface CategoryAdmin extends Category {
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CategoryCreateInput {
+  key: string;
+  name: string;
+  emoji?: string;
+  color?: string;
+  sort_order?: number;
+}
+
+export type CategoryUpdateInput = Omit<CategoryCreateInput, "key">;
+
+/** Fallback hardcodeado — usado si GET /api/categories falla (degradación
+ * elegante, ver useCategoryCatalog) y en los pocos lugares que todavía no
+ * migraron a la lista dinámica. */
 export const EVENT_CATEGORIES: { value: string; label: string }[] = [
   { value: "musica", label: "Música en vivo" },
   { value: "fiesta", label: "Fiesta / Baile" },

@@ -1,14 +1,25 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import { EventCard } from "@/features/events/components/EventCard";
 import { makeEvent } from "./mocks/handlers";
 
+// Etapa 12a: EventCard usa useCategoryCatalog() (TanStack Query) para el
+// label de categoría — necesita un QueryClientProvider en el árbol, aunque
+// el hook ya devuelve el fallback hardcodeado de forma síncrona mientras la
+// query real está en vuelo (ver useCategoryCatalog.ts).
+function renderCard(ui: ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 describe("EventCard", () => {
   it("renders title and location", () => {
     const event = makeEvent({ title: "Feria de Artesanos" });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     expect(screen.getByText("Feria de Artesanos")).toBeInTheDocument();
     expect(screen.getByText("El Tinglado Bar")).toBeInTheDocument();
@@ -18,21 +29,21 @@ describe("EventCard", () => {
   // "Destacado Plus" — el plan pago se distingue solo por fondo/borde/
   // miniatura, nunca por texto en la card pública.
   it("does not render any plan text badge, for any plan", () => {
-    render(<EventCard event={makeEvent({ plan: "gratis" })} />);
+    renderCard(<EventCard event={makeEvent({ plan: "gratis" })} />);
     expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
     expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
 
-    render(<EventCard event={makeEvent({ plan: "dest" })} />);
+    renderCard(<EventCard event={makeEvent({ plan: "dest" })} />);
     expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
 
-    render(<EventCard event={makeEvent({ plan: "pro" })} />);
+    renderCard(<EventCard event={makeEvent({ plan: "pro" })} />);
     expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
   });
 
   it("renders the category label above the title, in text form", () => {
     const event = makeEvent({ categories: ["musica", "recital"] });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     expect(screen.getByText("Música en vivo")).toBeInTheDocument();
   });
@@ -40,7 +51,7 @@ describe("EventCard", () => {
   it("plan='gratis' has no accent border nor thumbnail", () => {
     const event = makeEvent({ plan: "gratis" });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     const card = screen.getByTestId("event-card");
     expect(card.className).not.toContain("border-l-[6px]");
@@ -51,7 +62,7 @@ describe("EventCard", () => {
   it("plan='dest' has the gradient background and the 1.5px accent border", () => {
     const event = makeEvent({ plan: "dest" });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     const card = screen.getByTestId("event-card");
     expect(card.className).toContain("border-[1.5px]");
@@ -61,7 +72,7 @@ describe("EventCard", () => {
   it("plan='pro' with flyer_url shows the thumbnail image", () => {
     const event = makeEvent({ plan: "pro", flyer_url: "/uploads/flyers/1/flyer.jpg" });
 
-    const { container } = render(<EventCard event={event} />);
+    const { container } = renderCard(<EventCard event={event} />);
 
     const card = screen.getByTestId("event-card");
     expect(card.className).toContain("border-l-[6px]");
@@ -72,7 +83,7 @@ describe("EventCard", () => {
   it("plan='pro' without flyer_url shows an image placeholder", () => {
     const event = makeEvent({ plan: "pro", flyer_url: null });
 
-    const { container } = render(<EventCard event={event} />);
+    const { container } = renderCard(<EventCard event={event} />);
 
     expect(container.querySelector("img")).not.toBeInTheDocument();
   });
@@ -83,7 +94,7 @@ describe("EventCard", () => {
   it("shows the start time in 24hs format, converted to hora argentina", () => {
     const event = makeEvent({ date: "2099-01-01", date_end: "2099-01-01", time: "21:00:00" });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     // 21:00 UTC -3h = 18:00 hora Argentina
     expect(screen.getByTestId("event-card").textContent).toContain("18:00");
@@ -98,7 +109,7 @@ describe("EventCard", () => {
       time_end: "23:00:00",
     });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     // 21:00/23:00 UTC -3h = 18:00/20:00 hora Argentina
     expect(screen.getByTestId("event-card").textContent).toContain("18:00 – 20:00 hs");
@@ -113,7 +124,7 @@ describe("EventCard", () => {
       time_end: "06:00:00",
     });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     const card = screen.getByTestId("event-card");
     expect(card.textContent).toContain("19:00 – 03:00");
@@ -130,7 +141,7 @@ describe("EventCard", () => {
       time_end: "05:00:00",
     });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     expect(screen.getByTestId("event-card").textContent).toContain("20:00 1/1 – 02:00 3/1 hs");
   });
@@ -140,7 +151,7 @@ describe("EventCard", () => {
   it("shows a faded card and a badge when is_active is false", () => {
     const event = makeEvent({ is_active: false });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     expect(screen.getByTestId("event-inactive-badge")).toBeInTheDocument();
     expect(screen.getByTestId("event-card").className).toContain("opacity-50");
@@ -149,7 +160,7 @@ describe("EventCard", () => {
   it("does not show the inactive badge when is_active is true", () => {
     const event = makeEvent({ is_active: true });
 
-    render(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
     expect(screen.queryByTestId("event-inactive-badge")).not.toBeInTheDocument();
     expect(screen.getByTestId("event-card").className).not.toContain("opacity-50");

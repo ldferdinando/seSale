@@ -14,29 +14,15 @@ from app.schemas.subscription import OrganizerSubscriptionRead
 MIN_CATEGORIES = 1
 MAX_CATEGORIES = 3
 
-VALID_CATEGORIES = {
-    "musica",
-    "fiesta",
-    "teatro",
-    "feria",
-    "dj",
-    "milonga",
-    "pena",
-    "standup",
-    "arte",
-    "recital",
-    "cine",
-    "infantil",
-    "deportes",
-}
-
 
 def _validate_categories(value: list[str]) -> list[str]:
+    """Solo valida forma (sin duplicados). La pertenencia a categorías
+    activas (antes, un set VALID_CATEGORIES hardcodeado) se valida en
+    app.services.event_service (create_event/update_event) contra la tabla
+    event_categories_catalog — Etapa 12a: requiere la sesión de DB, que un
+    field_validator de Pydantic no tiene."""
     if len(value) != len(set(value)):
         raise ValueError("No se pueden repetir categorías")
-    invalid = [v for v in value if v not in VALID_CATEGORIES]
-    if invalid:
-        raise ValueError(f"Categoría inválida: {invalid[0]}")
     return value
 
 
@@ -93,6 +79,7 @@ class EventRead(BaseModel):
     available_on_site: bool
     contact_whatsapp: str | None
     contact_instagram: str | None
+    contact_facebook: str | None  # Etapa 12a
     contact_web: str | None
     contact_email: str | None
     flyer_url: str | None
@@ -217,6 +204,7 @@ class EventCreate(BaseModel):
 
     contact_whatsapp: str | None = None
     contact_instagram: str | None = None
+    contact_facebook: str | None = None  # Etapa 12a
     contact_web: str | None = None
     contact_email: str | None = None
 
@@ -278,6 +266,7 @@ class EventUpdate(BaseModel):
 
     contact_whatsapp: str | None = None
     contact_instagram: str | None = None
+    contact_facebook: str | None = None  # Etapa 12a
     contact_web: str | None = None
     contact_email: str | None = None
 

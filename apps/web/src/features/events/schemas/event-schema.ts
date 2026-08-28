@@ -1,9 +1,7 @@
 import { z } from "zod";
 
-import { EVENT_CATEGORIES, MAX_EVENT_CATEGORIES, MIN_EVENT_CATEGORIES } from "@/features/events/types";
+import { MAX_EVENT_CATEGORIES, MIN_EVENT_CATEGORIES } from "@/features/events/types";
 import { argentinaTodayIso } from "@/lib/date-helpers";
-
-const CATEGORY_VALUES = EVENT_CATEGORIES.map((c) => c.value) as [string, ...string[]];
 
 // El día de hoy en Argentina, no en UTC — cerca de la medianoche argentina
 // (21:00–23:59 ART) el día UTC ya cambió y usar new Date().toISOString()
@@ -25,8 +23,12 @@ export const eventFormSchema = z
     // Etapa 10b: fecha de fin — obligatoria, con default automático
     // (EventForm.tsx la completa sola cuando se elige la hora de inicio).
     date_end: z.string().min(1, "La fecha de fin es obligatoria"),
+    // Etapa 12a: ya no es un z.enum fijo — las categorías son dinámicas
+    // (GET /api/categories, gestionables por el admin), así que el frontend
+    // solo valida cantidad; la pertenencia a una categoría activa la valida
+    // el backend (única fuente de verdad, ver a_revisar.md).
     categories: z
-      .array(z.enum(CATEGORY_VALUES))
+      .array(z.string())
       .min(MIN_EVENT_CATEGORIES, "Elegí al menos una categoría")
       .max(MAX_EVENT_CATEGORIES, "Máximo 3 categorías"),
     city_id: z.string().optional().or(z.literal("")),
@@ -41,7 +43,9 @@ export const eventFormSchema = z
     price_at_door: z.string().optional().or(z.literal("")),
     price_advance: z.string().optional().or(z.literal("")),
     available_on_site: z.boolean().optional(),
+    contact_whatsapp: z.string().max(50).optional().or(z.literal("")),
     contact_instagram: z.string().max(100).optional().or(z.literal("")),
+    contact_facebook: z.string().max(500).optional().or(z.literal("")),
     contact_web: z.string().max(255).optional().or(z.literal("")),
     contact_email: z.string().email("Email inválido").optional().or(z.literal("")),
   })

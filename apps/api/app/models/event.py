@@ -62,6 +62,7 @@ class Event(SQLModel, table=True):
     # Contacto
     contact_whatsapp: str | None = Field(default=None)
     contact_instagram: str | None = Field(default=None)
+    contact_facebook: str | None = Field(default=None, max_length=500)  # Etapa 12a
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 

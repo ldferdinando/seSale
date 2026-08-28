@@ -2,8 +2,8 @@
 
 import { LayoutGrid } from "lucide-react";
 
+import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
-import { GASTRO_TYPE_OPTIONS } from "@/features/gastro/types";
 import { cn } from "@/lib/utils";
 
 interface GastroTypeChipsProps {
@@ -15,9 +15,12 @@ interface GastroTypeChipsProps {
  * Chips de tipo gastronómico — calcados de #s-lugares .tipo-chips en
  * seSALE.html (setTipo()), scrolleables horizontalmente en una sola fila
  * (pedido explícito de la Etapa 8e — ver a_revisar.md sobre la diferencia
- * con el CSS del HTML, que en cambio hace flex-wrap).
+ * con el CSS del HTML, que en cambio hace flex-wrap). Etapa 12a: tipos
+ * cargados dinámicamente desde GET /api/gastro-types (ver useGastroTypeCatalog).
  */
 export function GastroTypeChips({ gastroType, onChange }: GastroTypeChipsProps) {
+  const { types } = useGastroTypeCatalog();
+
   return (
     <div className="flex gap-2 overflow-x-auto px-4 pb-1" data-testid="gastro-type-chips">
       <button
@@ -32,22 +35,26 @@ export function GastroTypeChips({ gastroType, onChange }: GastroTypeChipsProps) 
         Todos
       </button>
 
-      {GASTRO_TYPE_OPTIONS.map((option) => {
-        const style = GASTRO_TYPE_STYLES[option.value] ?? DEFAULT_GASTRO_TYPE_STYLE;
+      {types.map((option) => {
+        const style = GASTRO_TYPE_STYLES[option.key] ?? DEFAULT_GASTRO_TYPE_STYLE;
         const Icon = style.icon;
-        const on = gastroType === option.value;
+        const on = gastroType === option.key;
         return (
           <button
-            key={option.value}
+            key={option.key}
             type="button"
-            onClick={() => onChange(on ? null : option.value)}
+            onClick={() => onChange(on ? null : option.key)}
             className={cn(
               "flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
               on ? "on bg-primary text-primary-foreground" : "border border-border bg-card text-ink-2",
             )}
           >
-            <Icon className="h-4 w-4" style={{ color: on ? "#fff" : style.color }} aria-hidden />
-            {option.label}
+            {option.emoji ? (
+              <span aria-hidden>{option.emoji}</span>
+            ) : (
+              <Icon className="h-4 w-4" style={{ color: on ? "#fff" : style.color }} aria-hidden />
+            )}
+            {option.name}
           </button>
         );
       })}

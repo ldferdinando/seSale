@@ -105,9 +105,33 @@ export interface GastroPlaceCreateInput {
 
 export type GastroPlaceUpdateInput = Partial<GastroPlaceCreateInput> & { is_active?: boolean };
 
-/** Mapeados 1:1 a GASTRO_TYPES (app/models/location_gastro_type.py) — ver
- * a_revisar.md, Etapa 8e: los chips de seSALE.html tienen solo 6 tipos, este
- * pedido pide los 10 completos. */
+/** Tipo gastronómico del catálogo dinámico (GET /api/gastro-types) — Etapa 12a. */
+export interface GastroType {
+  id: string;
+  key: string;
+  name: string;
+  emoji: string | null;
+  sort_order: number;
+}
+
+export interface GastroTypeAdmin extends GastroType {
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface GastroTypeCreateInput {
+  key: string;
+  name: string;
+  emoji?: string;
+  sort_order?: number;
+}
+
+export type GastroTypeUpdateInput = Omit<GastroTypeCreateInput, "key">;
+
+/** Fallback hardcodeado — usado si GET /api/gastro-types falla (ver
+ * useGastroTypeCatalog) y en los pocos lugares que todavía no migraron a la
+ * lista dinámica. Mapeados 1:1 a los valores que hasta la Etapa 12a vivían
+ * hardcodeados como GASTRO_TYPES (app/models/location_gastro_type.py). */
 export const GASTRO_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "cerveceria", label: "Cervecerías" },
   { value: "restaurante", label: "Restaurantes" },

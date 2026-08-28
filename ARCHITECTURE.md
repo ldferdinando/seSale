@@ -142,6 +142,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
                     │ price_advance (int|null)        │  │ │
                     │ contact_whatsapp (str|null)     │  │ │
                     │ contact_instagram (str|null)    │  │ │
+                    │ contact_facebook (str|null)     │  │ │  ← Etapa 12a
                     │ contact_web (str|null)          │  │ │
                     │ contact_email (str|null)        │  │ │
                     │ flyer_url (str|null)            │  │ │
@@ -347,6 +348,7 @@ class Event(SQLModel, table=True):
     # Contacto (el organizador elige cuáles completar)
     contact_whatsapp: str | None = Field(default=None)
     contact_instagram: str | None = Field(default=None)
+    contact_facebook: str | None = Field(default=None, max_length=500)  # Etapa 12a
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 
@@ -539,19 +541,68 @@ class LocationGastroType(SQLModel, table=True):
     location: "Location" = Relationship(back_populates="gastro_types")
 ```
 
-`gastro_type` es un string libre — validado en el schema Pydantic (Etapa 8e)
-contra la constante `GASTRO_TYPES` de `app/models/location_gastro_type.py`,
-sin tabla maestra de tipos todavía:
+`gastro_type` es un string libre — hasta la Etapa 12a se validaba en el
+schema Pydantic contra una constante `GASTRO_TYPES` hardcodeada en
+`app/models/location_gastro_type.py`. Esa constante se eliminó: ahora se
+valida (en `app/services/location_service.py::_validate_gastro_types_active`)
+contra los `key` activos de la tabla catálogo `gastro_types_catalog` — ver
+más abajo.
+
+#### `event_categories_catalog` / `gastro_types_catalog` (Etapa 12a)
+
+Catálogo editable por el admin para las categorías de eventos y los tipos
+gastronómicos — reemplaza los sets/listas hardcodeadas (`VALID_CATEGORIES`
+en `app/schemas/event.py`, `GASTRO_TYPES` en
+`app/models/location_gastro_type.py`) como fuente de verdad. Las tablas
+intermedias `event_categories`/`location_gastro_types` **no cambian**: siguen
+guardando el `category`/`gastro_type` como string suelto — el `key` de estas
+tablas catálogo es exactamente ese mismo string, por eso la migración es
+retrocompatible sin tocar ninguna fila existente.
 
 ```python
-GASTRO_TYPES = [
-    "cerveceria", "restaurante", "parrilla", "bar", "cafe",
-    "pizzeria", "heladeria", "rotiseria", "vinoteca", "otro",
-]
+class EventCategoryCatalog(SQLModel, table=True):
+    __tablename__ = "event_categories_catalog"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    key: str = Field(max_length=50, unique=True)      # "musica" — no cambia nunca
+    name: str = Field(max_length=100)                 # "Música en vivo" — editable
+    emoji: str | None = Field(default=None, max_length=10)
+    color: str | None = Field(default=None, max_length=20)  # acento en EventCard
+    sort_order: int = Field(default=99)
+    is_active: bool = Field(default=True)             # False = baja lógica
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class GastroTypeCatalog(SQLModel, table=True):
+    __tablename__ = "gastro_types_catalog"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    key: str = Field(max_length=50, unique=True)
+    name: str = Field(max_length=100)
+    emoji: str | None = Field(default=None, max_length=10)
+    # Sin campo `color` — los tipos gastronómicos no tienen color de acento.
+    sort_order: int = Field(default=99)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 ```
 
-Cuando el admin pueda cargar tipos nuevos (etapa futura), se agrega una
-tabla maestra y esta validación se relaja — ver `a_revisar.md`.
+**Validación dinámica:** la pertenencia de una categoría/tipo a un `key`
+activo ya no se valida en el `field_validator` de Pydantic (que no tiene
+acceso a una sesión de DB) — se movió a la capa de servicio
+(`event_service.py::_validate_categories_active`,
+`location_service.py::_validate_gastro_types_active`), llamada desde
+`create_event`/`update_event` y `create_gastro_place`/`update_gastro_place`.
+Los schemas (`schemas/event.py::_validate_categories`,
+`schemas/location.py::_validate_gastro_types`) solo verifican que no haya
+duplicados.
+
+**Eliminación lógica con protección:** desactivar una categoría/tipo
+(`PATCH /api/admin/categories/{id}/toggle`,
+`PATCH /api/admin/gastro-types/{id}/toggle`) se rechaza con 409 si existen
+eventos futuros (`date >= hoy`, `status=approved`, `is_active=True`) que la
+usan — directamente para categorías (`event_categories`), o a través del
+lugar para tipos gastronómicos (`location_gastro_types` → `locations` →
+`events`). Activar nunca tiene restricción.
 
 #### `plans`
 
@@ -791,11 +842,15 @@ class Report(SQLModel, table=True):
     status: str = Field(default="pending")          # "pending" | "reviewed" | "dismissed"
 ```
 
-### Categorías de eventos (enum)
+### Categorías de eventos
 
-Mapeadas del prototipo HTML. Se guardan como string en la DB.
+Hasta la Etapa 12a era un enum hardcodeado (`VALID_CATEGORIES`,
+`app/schemas/event.py`). Desde la Etapa 12a viven en la tabla catálogo
+`event_categories_catalog` (gestionable por el admin — ver arriba), seedeada
+con estos mismos 13 valores por la migración. Se siguen guardando como
+string en `event_categories.category` (sin cambios en esa tabla).
 
-| Key | Nombre público |
+| Key | Nombre público (default, editable por el admin) |
 |---|---|
 | `musica` | Música en vivo |
 | `fiesta` | Fiesta / Baile |
@@ -1548,6 +1603,55 @@ DELETE /api/admin/gastro/{id}/cover    Elimina cover_img_url y el archivo
 como `BackgroundTask` en `GET /api/gastro`
 (`run_expire_overdue_gastro_plans_task`).
 
+### Categorías (`/api/categories`, `/api/admin/categories`) ✓ Etapa 12a
+
+```
+GET    /api/categories                 Público. Solo is_active=True.
+                                       Orden: sort_order ASC, luego name ASC
+
+GET    /api/admin/categories           Admin. Todas (activas e inactivas).
+                                       Filtro: is_active. Mismo orden
+POST   /api/admin/categories           Admin. Body: CategoryCreate (key,
+                                       name, emoji?, color?, sort_order?).
+                                       409 si key ya existe. key: solo
+                                       minúsculas/números/guiones, sin
+                                       espacios (422 si no cumple)
+PUT    /api/admin/categories/{id}      Admin. Edita name/emoji/color/
+                                       sort_order — nunca key
+PATCH  /api/admin/categories/{id}/toggle
+                                       Admin. Alterna is_active. Al
+                                       desactivar (True→False): 409 si hay
+                                       eventos con esa categoría con
+                                       date >= hoy, status=approved,
+                                       is_active=True. Activar (False→True)
+                                       sin restricción
+```
+
+### Tipos gastronómicos (`/api/gastro-types`, `/api/admin/gastro-types`) ✓ Etapa 12a
+
+Misma estructura que categorías, sin campo `color`.
+
+```
+GET    /api/gastro-types               Público. Solo is_active=True.
+                                       Orden: sort_order ASC, luego name ASC
+
+GET    /api/admin/gastro-types         Admin. Todas. Filtro: is_active
+POST   /api/admin/gastro-types         Admin. Body: GastroTypeCreate (key,
+                                       name, emoji?, sort_order?). 409 si
+                                       key ya existe, 422 si key inválida
+PUT    /api/admin/gastro-types/{id}    Admin. Edita name/emoji/sort_order
+PATCH  /api/admin/gastro-types/{id}/toggle
+                                       Admin. Al desactivar: 409 si hay
+                                       lugares con ese tipo con eventos
+                                       futuros activos (location_gastro_types
+                                       → locations → events)
+```
+
+Ambos catálogos reemplazan `VALID_CATEGORIES`/`GASTRO_TYPES` (sets
+hardcodeados) como validación de `EventCreate.categories`/
+`LocationGastroCreate.gastro_types` — ver `_validate_categories_active`/
+`_validate_gastro_types_active` en la sección 3 (modelo de datos).
+
 ### Estadísticas (`/api/stats`)
 ```
 GET    /api/stats                      Estadísticas agregadas (público)         ✓ Etapa 4.5
@@ -1768,6 +1872,7 @@ GET    /api/health                       Público, sin datos sensibles.
 | **9** | App mobile (Expo) — consume la misma API. | |
 | **10a** | `time_end` obligatorio en `Event` + selector de hora corregido. | ✓ Completa: `Event.time_end: time` (antes `time \| None`), migración `0018` (backfillea `time_start + 2h`, o `23:59` si eso cruza medianoche, antes del `NOT NULL`); `EventCreate.time_end` requerido, `EventUpdate.time_end` sigue opcional (edición parcial); `@model_validator` de coherencia horaria en ambos (mínimo 15' si no cruza medianoche, siempre válido si cruza, 422 si son iguales) — mismo criterio en Zod (`event-schema.ts`); `is_event_currently_visible()` nuevo en `event_service.py` (CONDICIÓN C: evento de ayer que cruza medianoche y sigue en curso, ver § "Lógica de visibilidad" arriba); bug real del selector de hora (verificado en vivo, no era el patrón del selector de ciudades de la Etapa 9b — ver `a_revisar.md`): `SelectContent` (`ui/select.tsx`) no limitaba su altura al espacio disponible de Radix, la lista de 24 horas se salía del viewport sin scroll posible — fix genérico (`max-height: var(--radix-select-content-available-height)` + `overflow-y-auto`), corrige todo `<Select>` del sitio, no solo `TimePicker.tsx`; `EventForm.tsx` — hora fin ahora requerida, junto a hora inicio en el layout; `EventCard.tsx` muestra la hora (antes no mostraba ninguna) |
 | **10b** | `date_end` (fecha de fin) explícito en `Event`, con defaults automáticos en el formulario. | ✓ Completa: `Event.date_end: date \| None` (migración `0019`, nullable/retrocompatible — `None` = mismo día que `date`); `EventCreate.date_end` opcional (se completa con `date` si falta), `EventUpdate.date_end` opcional; el validador de coherencia de la Etapa 10a (mínimo 15', "cruza medianoche" inferido de `time_end < time_start`) se reemplaza por uno solo: `datetime(date_end, time_end) > datetime(date, time)`; `is_event_currently_visible()` se simplifica a una sola condición (`datetime_fin >= ahora`, ver § "Lógica de visibilidad" arriba) — cambio de comportamiento real: un evento de HOY ya terminado deja de listarse (antes quedaba visible todo el día); `EventForm.tsx` — segundo selector de fecha ("Fecha fin"), layout en 2 columnas (fecha y hora, inicio/fin), autocompletado de "Hora fin" (+1h) y "Fecha fin" al elegir "Hora inicio" (con `useRef` para no pisar una "Hora fin" ya editada a mano), "Fecha fin" se corrige sola si queda antes que "Fecha inicio" al mover la fecha de inicio |
+| **12a** | Categorías de eventos y tipos gastronómicos gestionables por el admin (tablas catálogo, reemplazan los sets hardcodeados); links de contacto de eventos (WhatsApp/Instagram/Facebook/Web/Email) disponibles para todos los planes. | ✓ Completa: `event_categories_catalog`/`gastro_types_catalog` (migración `0021`, seedeadas con los 13/10 valores que antes eran `VALID_CATEGORIES`/`GASTRO_TYPES` hardcodeados — ver sección 3); `GET /api/categories`/`GET /api/gastro-types` (público, solo activos) + CRUD completo bajo `/api/admin/categories`/`/api/admin/gastro-types` (crear, editar nombre/emoji/color/sort_order sin tocar `key`, toggle con 409 si hay eventos futuros usando esa categoría/tipo); la validación de pertenencia se movió de los `field_validator` de Pydantic (sin acceso a DB) a `event_service.py`/`location_service.py` (con sesión); `Event.contact_facebook` nuevo (migración `0022`); frontend: `useCategoryCatalog`/`useGastroTypeCatalog` (TanStack Query, `staleTime` 10min, fallback hardcodeado si la API falla) reemplazan las listas estáticas en `CategoryMultiSelect.tsx`/`CategoryChips.tsx`/`EventCard.tsx`/`EventSummaryView.tsx`/`EventDetailView.tsx`/`GastroForm.tsx`/`GastroTypeChips.tsx`; `EventForm.tsx` — input real de WhatsApp (antes solo un checkbox sin campo, ver `a_revisar.md`) y nuevo input de Facebook, formulario completo deshabilitado si el evento ya pasó y quien edita es el organizador (no admin); `EventDetailView.tsx` — WhatsApp con prefijo `549`, link de Facebook nuevo; `AdminCategoriesPanel.tsx`/`AdminGastroTypesPanel.tsx` nuevos en `/admin` |
 
 ---
 

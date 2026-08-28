@@ -118,6 +118,45 @@ describe("EventDetailView", () => {
     expect(screen.getByText("Email")).toBeInTheDocument();
   });
 
+  // Etapa 12a — links de contacto: target="_blank" + prefijo 549 en WhatsApp.
+  it("WhatsApp link opens in a new tab with the 549 (Argentina) prefix", () => {
+    const event = makeEventDetail({ contact_whatsapp: "2984123456" });
+
+    renderWithClient(event);
+
+    const link = screen.getByTestId("ticket-whatsapp-link");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("href", "https://wa.me/5492984123456");
+  });
+
+  it("Instagram link opens in a new tab with the correct href", () => {
+    const event = makeEventDetail({ contact_instagram: "mi_cuenta" });
+
+    renderWithClient(event);
+
+    const link = screen.getByText("Instagram").closest("a");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("href", "https://instagram.com/mi_cuenta");
+  });
+
+  it("shows a Facebook link, opening in a new tab, when contact_facebook is set", () => {
+    const event = makeEventDetail({ contact_facebook: "MiPaginaFacebook" });
+
+    renderWithClient(event);
+
+    const link = screen.getByTestId("ticket-facebook-link");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("href", "https://facebook.com/MiPaginaFacebook");
+  });
+
+  it("does not show a Facebook link when contact_facebook is null", () => {
+    const event = makeEventDetail({ contact_facebook: null });
+
+    renderWithClient(event);
+
+    expect(screen.queryByTestId("ticket-facebook-link")).not.toBeInTheDocument();
+  });
+
   it("uses the Web Share API when available", async () => {
     const shareMock = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", { value: shareMock, configurable: true });

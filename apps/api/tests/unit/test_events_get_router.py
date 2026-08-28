@@ -30,6 +30,17 @@ def _make_event(session: Session, *, city: City, organizer: User, location: Loca
     return event
 
 
+async def test_get_event_detail_includes_contact_facebook(
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, contact_facebook="MiPagina")
+
+    response = await client.get(f"/api/events/{event.id}")
+
+    assert response.status_code == 200
+    assert response.json()["contact_facebook"] == "MiPagina"
+
+
 async def test_get_event_approved_returns_200_with_full_data(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location
 ):

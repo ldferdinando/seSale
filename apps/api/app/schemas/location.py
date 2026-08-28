@@ -4,8 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.location_gastro_type import GASTRO_TYPES
-
 MIN_GASTRO_TYPES = 1
 MAX_GASTRO_TYPES = 5
 
@@ -34,11 +32,13 @@ def _validate_opening_hours(value: dict | None) -> dict | None:
 
 
 def _validate_gastro_types(value: list[str]) -> list[str]:
+    """Solo valida forma (sin duplicados). La pertenencia a tipos activos
+    (antes, la constante GASTRO_TYPES hardcodeada) se valida en
+    app.services.location_service (create_gastro_place/update_gastro_place)
+    contra la tabla gastro_types_catalog — Etapa 12a: requiere la sesión de
+    DB, que un field_validator de Pydantic no tiene."""
     if len(value) != len(set(value)):
         raise ValueError("No se pueden repetir tipos gastronómicos")
-    invalid = [v for v in value if v not in GASTRO_TYPES]
-    if invalid:
-        raise ValueError(f"Tipo gastronómico inválido: {invalid[0]}")
     return value
 
 

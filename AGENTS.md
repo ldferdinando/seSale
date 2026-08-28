@@ -144,7 +144,8 @@ root/
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
 │   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
-│   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b
+│   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b;
+│   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d;
 │   │   │   │   │                  #   hooks useAdminUsers/useUpdateUserRole/useUpdateUserActive — Etapa 9b
@@ -152,13 +153,15 @@ root/
 │   │   │   │   │                  #   types/services/hooks admin (toggle, sort-order) — Etapa 8a
 │   │   │   │   ├── locations/      # Lugares precargados: selector, ABM admin — Etapa 7b
 │   │   │   │   ├── gastro/         # Gastronomía: types/services/hooks + GastroPlaceCard.tsx/GastroTypeChips.tsx/
-│   │   │   │   │                  #   GastroDetailView.tsx/GastroDetailPage.tsx + lib (gastroTypeStyles, openingHours) — Etapa 8e
+│   │   │   │   │                  #   GastroDetailView.tsx/GastroDetailPage.tsx + lib (gastroTypeStyles, openingHours) — Etapa 8e;
+│   │   │   │                      #   + useGastroTypeCatalog.ts/useAdminGastroTypes.ts (catálogo dinámico) — Etapa 12a
 │   │   │   │   ├── ads/            # Banners: types/services/hooks/schemas + AdItemFormModal.tsx/AdSlotCard.tsx (admin) — Etapa 8d
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b,
 │   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e;
-│   │   │   │                      #   listado de usuarios — AdminUsersTable.tsx/UserDetailModal.tsx — Etapa 9b)
+│   │   │   │                      #   listado de usuarios — AdminUsersTable.tsx/UserDetailModal.tsx — Etapa 9b;
+│   │   │   │                      #   + AdminCategoriesPanel.tsx/AdminGastroTypesPanel.tsx (catálogos) — Etapa 12a)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers
 │   │   │   │   ├── city-detection.ts  # Haversine, detección por GPS + localStorage — Etapa 7a
 │   │   │   │   ├── nominatim.ts       # Geocoding/reverse geocoding (OpenStreetMap Nominatim) — Etapa 7b
@@ -201,28 +204,36 @@ root/
 │       │   ├── models/             # SQLModel — modelos de base de datos
 │       │   │   ├── city.py
 │       │   │   ├── user.py
-│       │   │   ├── event.py
+│       │   │   ├── event.py        # + contact_facebook — Etapa 12a
 │       │   │   ├── category.py     # EventCategory (event_categories) — Etapa 6.5
+│       │   │   ├── event_category_catalog.py  # EventCategoryCatalog (event_categories_catalog) — Etapa 12a
+│       │   │   ├── gastro_type_catalog.py     # GastroTypeCatalog (gastro_types_catalog) — Etapa 12a
 │       │   │   ├── moment.py       # EventMoment (event_moments) — Etapa 6.5
 │       │   │   ├── report.py       # Report — Etapa 6.5
 │       │   │   ├── location.py     # +description/hours/place_type/is_verified/is_public — Etapa 7b; +campos gastronómicos/opening_hours — Etapa 8e-pre;
 │       │   │   │                  #   +is_active/created_at — Etapa 8e (huecos encontrados al planificar, ver a_revisar.md)
-│       │   │   ├── location_gastro_type.py  # LocationGastroType (location_gastro_types) + GASTRO_TYPES — Etapa 8e-pre
+│       │   │   ├── location_gastro_type.py  # LocationGastroType (location_gastro_types) — Etapa 8e-pre; GASTRO_TYPES hardcodeado
+│       │   │   │                  #   eliminado en Etapa 12a (reemplazado por gastro_types_catalog)
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
 │       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre
 │       │   │   └── ad_item.py      # AdItem (pieza publicitaria) — Etapa 8d-pre
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
 │       │   │   ├── location.py     # Etapa 7b; +LocationGastroRead/AdminRead/Create/Update — Etapa 8e
+│       │   │   ├── category_catalog.py    # CategoryRead/AdminRead/Create/Update — Etapa 12a
+│       │   │   ├── gastro_type_catalog.py # GastroTypeRead/AdminRead/Create/Update — Etapa 12a
 │       │   │   ├── plan.py         # Etapa 6
 │       │   │   ├── subscription.py # Etapa 6
 │       │   │   ├── report.py       # Etapa 6.5
 │       │   │   └── ad_slot.py      # AdSlotRead/AdItemPublicRead/AdItemAdminRead/AdItemCreate/AdItemUpdate — Etapa 8d
 │       │   ├── routers/            # Endpoints organizados por recurso
 │       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5,
-│       │   │   │                  #   ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d, ABM gastro — Etapa 8e
+│       │   │   │                  #   ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d, ABM gastro — Etapa 8e;
+│       │   │   │                  #   ABM categorías/tipos gastronómicos — Etapa 12a
 │       │   │   ├── auth.py
 │       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer — Etapa 8b; + filtro location_id en GET /api/events — Etapa 8e
+│       │   │   ├── categories.py   # GET /api/categories, público — Etapa 12a
+│       │   │   ├── gastro_types.py # GET /api/gastro-types, público — Etapa 12a
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d; PATCH .../verify acepta body {is_verified} — Etapa 9d
 │       │   │   ├── setup.py        # POST /api/setup/admin — setup del primer admin, público hasta que exista uno — Etapa 9d
@@ -235,8 +246,11 @@ root/
 │       │   │   ├── stats.py
 │       │   │   └── webhooks.py
 │       │   └── services/           # Lógica de negocio desacoplada
-│       │       ├── event_service.py
-│       │       ├── location_service.py  # Etapa 7b; + funciones de gastronomía (list/get/create/update/delete/verify/set_plan/cover) — Etapa 8e
+│       │       ├── event_service.py  # + _validate_categories_active() contra event_categories_catalog — Etapa 12a
+│       │       ├── location_service.py  # Etapa 7b; + funciones de gastronomía (list/get/create/update/delete/verify/set_plan/cover) — Etapa 8e;
+│       │       │                  #   + _validate_gastro_types_active() contra gastro_types_catalog — Etapa 12a
+│       │       ├── category_catalog_service.py     # ABM + validación de categorías — Etapa 12a
+│       │       ├── gastro_type_catalog_service.py  # ABM + validación de tipos gastronómicos — Etapa 12a
 │       │       ├── user_service.py
 │       │       ├── city_service.py
 │       │       ├── payment_service.py

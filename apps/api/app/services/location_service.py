@@ -21,6 +21,7 @@ from app.schemas.location import (
     LocationGastroUpdate,
     LocationRead,
 )
+from app.services.gastro_type_catalog_service import get_active_gastro_type_keys
 
 _LOCATION_LOAD_OPTIONS = (selectinload(Location.city),)
 
@@ -323,6 +324,17 @@ def _sync_gastro_types(session: Session, location_id: UUID, gastro_types: list[s
         session.add(LocationGastroType(location_id=location_id, gastro_type=gastro_type))
 
 
+def _validate_gastro_types_active(session: Session, gastro_types: list[str]) -> None:
+    """Etapa 12a: valida que cada tipo exista y esté activo en
+    gastro_types_catalog. Reemplaza el chequeo contra la constante
+    GASTRO_TYPES hardcodeada que vivía en app.schemas.location — acá sí hay
+    sesión de DB disponible."""
+    active_keys = get_active_gastro_type_keys(session)
+    invalid = [t for t in gastro_types if t not in active_keys]
+    if invalid:
+        raise ValueError(f"Tipo gastronómico inválido: {invalid[0]}")
+
+
 def list_public_gastro_places(
     session: Session,
     *,
@@ -424,6 +436,8 @@ def create_gastro_place(session: Session, data: LocationGastroCreate) -> Locatio
     if city is None:
         raise LookupError("Ciudad no encontrada")
 
+    _validate_gastro_types_active(session, data.gastro_types)
+
     location = Location(
         name=data.name.strip(),
         address=data.address.strip(),
@@ -466,6 +480,9 @@ def update_gastro_place(
         city = session.get(City, updates["city_id"])
         if city is None:
             raise LookupError("Ciudad no encontrada")
+
+    if data.gastro_types is not None:
+        _validate_gastro_types_active(session, data.gastro_types)
 
     for field, value in updates.items():
         setattr(location, field, value)

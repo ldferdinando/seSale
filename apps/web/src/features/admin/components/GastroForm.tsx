@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { useCreateGastroPlace, useUpdateGastroPlace } from "@/features/gastro/hooks/useAdminGastro";
+import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
 import {
-  GASTRO_TYPE_OPTIONS,
   WEEKDAYS,
   WEEKDAY_LABELS,
   type AdminGastroPlace,
@@ -44,6 +44,7 @@ export function GastroForm({ place, onSaved, onCancel }: GastroFormProps) {
 
   const [name, setName] = useState(place?.name ?? "");
   const [cityId, setCityId] = useState(place?.city_id ?? "");
+  const { types: gastroTypeOptions } = useGastroTypeCatalog();
   const [gastroTypes, setGastroTypes] = useState<string[]>(place?.gastro_types ?? []);
   const [description, setDescription] = useState(place?.description ?? "");
   const [hours, setHours] = useState(place?.hours ?? "");
@@ -157,21 +158,22 @@ export function GastroForm({ place, onSaved, onCancel }: GastroFormProps) {
           Tipos gastronómicos * (entre {MIN_TYPES} y {MAX_TYPES})
         </Label>
         <div className="flex flex-wrap gap-2">
-          {GASTRO_TYPE_OPTIONS.map((option) => {
-            const checked = gastroTypes.includes(option.value);
+          {gastroTypeOptions.map((option) => {
+            const checked = gastroTypes.includes(option.key);
             return (
               <label
-                key={option.value}
+                key={option.key}
                 className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink-2"
               >
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={() => toggleType(option.value)}
+                  onChange={() => toggleType(option.key)}
                   disabled={!checked && gastroTypes.length >= MAX_TYPES}
                   className="h-3.5 w-3.5 accent-primary"
                 />
-                {option.label}
+                {option.emoji ? `${option.emoji} ` : ""}
+                {option.name}
               </label>
             );
           })}

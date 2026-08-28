@@ -36,6 +36,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     available_on_site: false,
     contact_whatsapp: null,
     contact_instagram: null,
+    contact_facebook: null,
     contact_web: null,
     contact_email: null,
     flyer_url: null,
@@ -607,5 +608,132 @@ export const handlers = [
   }),
   http.delete(`${API_URL}/api/admin/gastro/:id/cover`, () => {
     return HttpResponse.json({ cover_img_url: null });
+  }),
+
+  // ── Etapa 12a — categorías y tipos gastronómicos (catálogo dinámico) ────
+  http.get(`${API_URL}/api/categories`, () => {
+    return HttpResponse.json([
+      { id: "cat-musica", key: "musica", name: "Música en vivo", emoji: "🎵", color: "#7F77DD", sort_order: 1 },
+      { id: "cat-fiesta", key: "fiesta", name: "Fiesta / Baile", emoji: "🎉", color: "#E91E8C", sort_order: 2 },
+      { id: "cat-teatro", key: "teatro", name: "Teatro", emoji: "🎭", color: "#EF9F27", sort_order: 3 },
+      { id: "cat-feria", key: "feria", name: "Feria", emoji: "🛍️", color: "#1D9E75", sort_order: 4 },
+      { id: "cat-dj", key: "dj", name: "DJ / Electrónica", emoji: "🎧", color: "#378ADD", sort_order: 5 },
+      { id: "cat-milonga", key: "milonga", name: "Milonga / Tango", emoji: "💃", color: "#378ADD", sort_order: 6 },
+      { id: "cat-pena", key: "pena", name: "Peña folclórica", emoji: "🪗", color: "#D85A30", sort_order: 7 },
+      { id: "cat-standup", key: "standup", name: "Stand up", emoji: "🎤", color: "#888888", sort_order: 8 },
+      { id: "cat-arte", key: "arte", name: "Exposición / Arte", emoji: "🎨", color: "#7F77DD", sort_order: 9 },
+      { id: "cat-recital", key: "recital", name: "Recital", emoji: "🎸", color: "#7F77DD", sort_order: 10 },
+      { id: "cat-cine", key: "cine", name: "Cine", emoji: "🎬", color: "#888888", sort_order: 11 },
+      { id: "cat-infantil", key: "infantil", name: "Infantil", emoji: "🧸", color: "#FF8FA3", sort_order: 12 },
+      { id: "cat-deportes", key: "deportes", name: "Deportes", emoji: "⚽", color: "#14B8A6", sort_order: 13 },
+    ]);
+  }),
+  http.get(`${API_URL}/api/admin/categories`, () => {
+    return HttpResponse.json([
+      {
+        id: "cat-musica",
+        key: "musica",
+        name: "Música en vivo",
+        emoji: "🎵",
+        color: "#7F77DD",
+        sort_order: 1,
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+  }),
+  http.post(`${API_URL}/api/admin/categories`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      { id: "new-cat", is_active: true, created_at: "2026-01-01T00:00:00Z", sort_order: 99, emoji: null, color: null, ...body },
+      { status: 201 },
+    );
+  }),
+  http.put(`${API_URL}/api/admin/categories/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params.id,
+      key: "musica",
+      is_active: true,
+      created_at: "2026-01-01T00:00:00Z",
+      emoji: null,
+      color: null,
+      sort_order: 99,
+      ...body,
+    });
+  }),
+  http.patch(`${API_URL}/api/admin/categories/:id/toggle`, ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      key: "musica",
+      name: "Música en vivo",
+      emoji: "🎵",
+      color: "#7F77DD",
+      sort_order: 1,
+      is_active: false,
+      created_at: "2026-01-01T00:00:00Z",
+    });
+  }),
+
+  http.get(`${API_URL}/api/gastro-types`, () => {
+    // Etapa 12a: mismos keys/labels que el fallback hardcodeado
+    // (GASTRO_TYPE_OPTIONS, features/gastro/types/index.ts) — así el swap
+    // fallback→datos reales no le mueve el piso a los tests que ya
+    // asumían esas 10 opciones plurales.
+    return HttpResponse.json([
+      { id: "gt-cerveceria", key: "cerveceria", name: "Cervecerías", emoji: null, sort_order: 1 },
+      { id: "gt-restaurante", key: "restaurante", name: "Restaurantes", emoji: null, sort_order: 2 },
+      { id: "gt-parrilla", key: "parrilla", name: "Parrillas", emoji: null, sort_order: 3 },
+      { id: "gt-bar", key: "bar", name: "Bares", emoji: null, sort_order: 4 },
+      { id: "gt-cafe", key: "cafe", name: "Cafés", emoji: null, sort_order: 5 },
+      { id: "gt-pizzeria", key: "pizzeria", name: "Pizzerías", emoji: null, sort_order: 6 },
+      { id: "gt-heladeria", key: "heladeria", name: "Heladerías", emoji: null, sort_order: 7 },
+      { id: "gt-rotiseria", key: "rotiseria", name: "Rotiserías", emoji: null, sort_order: 8 },
+      { id: "gt-vinoteca", key: "vinoteca", name: "Vinotecas", emoji: null, sort_order: 9 },
+      { id: "gt-otro", key: "otro", name: "Otros", emoji: null, sort_order: 10 },
+    ]);
+  }),
+  http.get(`${API_URL}/api/admin/gastro-types`, () => {
+    return HttpResponse.json([
+      {
+        id: "gt-bar",
+        key: "bar",
+        name: "Bar",
+        emoji: "🍸",
+        sort_order: 1,
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+  }),
+  http.post(`${API_URL}/api/admin/gastro-types`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      { id: "new-gt", is_active: true, created_at: "2026-01-01T00:00:00Z", sort_order: 99, emoji: null, ...body },
+      { status: 201 },
+    );
+  }),
+  http.put(`${API_URL}/api/admin/gastro-types/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params.id,
+      key: "bar",
+      is_active: true,
+      created_at: "2026-01-01T00:00:00Z",
+      emoji: null,
+      sort_order: 99,
+      ...body,
+    });
+  }),
+  http.patch(`${API_URL}/api/admin/gastro-types/:id/toggle`, ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      key: "bar",
+      name: "Bar",
+      emoji: "🍸",
+      sort_order: 1,
+      is_active: false,
+      created_at: "2026-01-01T00:00:00Z",
+    });
   }),
 ];

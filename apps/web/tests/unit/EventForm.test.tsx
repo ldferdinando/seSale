@@ -1,3 +1,4 @@
+import { HttpResponse, http } from "msw";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { format } from "date-fns";
@@ -5,6 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
 import { renderWithActiveCity } from "./test-utils";
+import { server } from "./mocks/server";
+
+const API_URL = "http://localhost:8000";
 
 function renderWithClient(onContinue = vi.fn()) {
   renderWithActiveCity(<EventForm onContinue={onContinue} />);
@@ -52,8 +56,14 @@ async function fillRequiredFieldsExceptCategory(user: ReturnType<typeof userEven
   if (mapContainer) await user.click(mapContainer);
 }
 
+// Etapa 12a: las categorías se cargan de forma asíncrona (GET
+// /api/categories) — CategoryMultiSelect muestra un skeleton hasta que
+// resuelve, así que hay que esperar el checkbox con findByLabelText en vez
+// de asumirlo presente de entrada. Además, si la categoría tiene emoji, el
+// label ahora es "🎵 Música en vivo" (no solo el nombre) — se matchea con
+// una regex parcial para no depender del emoji exacto.
 async function toggleCategory(user: ReturnType<typeof userEvent.setup>, label: string) {
-  await user.click(screen.getByLabelText(label));
+  await user.click(await screen.findByLabelText(new RegExp(label)));
 }
 
 describe("EventForm", () => {
@@ -67,7 +77,9 @@ describe("EventForm", () => {
 
     expect(screen.getByLabelText(/Nombre del evento/)).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Categorías" })).toBeInTheDocument();
+    // Etapa 12a: categorías cargadas de forma asíncrona — CategoryMultiSelect
+    // muestra un skeleton hasta que resuelve GET /api/categories.
+    expect(await screen.findByRole("group", { name: "Categorías" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fecha inicio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fecha fin" })).toBeInTheDocument();
     expect(screen.getByLabelText("Hora inicio — hora")).toBeInTheDocument();
@@ -149,10 +161,10 @@ describe("EventForm", () => {
     await toggleCategory(user, "Fiesta / Baile");
     await toggleCategory(user, "Teatro");
 
-    const feriaCheckbox = screen.getByLabelText("Feria") as HTMLInputElement;
+    const feriaCheckbox = screen.getByLabelText(/Feria/) as HTMLInputElement;
     expect(feriaCheckbox).toBeDisabled();
 
-    const musicaCheckbox = screen.getByLabelText("Música en vivo") as HTMLInputElement;
+    const musicaCheckbox = screen.getByLabelText(/Música en vivo/) as HTMLInputElement;
     expect(musicaCheckbox).not.toBeDisabled();
     expect(musicaCheckbox.checked).toBe(true);
   });
@@ -333,5 +345,27 @@ describe("EventForm", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("La fecha y hora de fin debe ser posterior al inicio")).toBeInTheDocument();
+  });
+
+  // Etapa 12a — categorías dinámicas (GET /api/categories).
+  it("shows a checkbox skeleton while categories are loading", async () => {
+    server.use(
+      http.get(`${API_URL}/api/categories`, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return HttpResponse.json([{ id: "1", key: "musica", name: "Música en vivo", emoji: "🎵", color: null, sort_order: 1 }]);
+      }),
+    );
+    renderWithClient();
+
+    expect(screen.getByTestId("category-multiselect-loading")).toBeInTheDocument();
+    expect(await screen.findByLabelText(/Música en vivo/)).toBeInTheDocument();
+  });
+
+  it("falls back to the hardcoded category list if GET /api/categories fails", async () => {
+    server.use(http.get(`${API_URL}/api/categories`, () => HttpResponse.json({ detail: "error" }, { status: 500 })));
+    renderWithClient();
+
+    expect(await screen.findByLabelText(/Música en vivo/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Deportes/)).toBeInTheDocument();
   });
 });

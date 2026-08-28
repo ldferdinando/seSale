@@ -7,9 +7,17 @@ import type {
   GastroPlaceFilters,
   GastroPlaceUpdateInput,
   GastroPlan,
+  GastroType,
+  GastroTypeAdmin,
+  GastroTypeCreateInput,
+  GastroTypeUpdateInput,
 } from "@/features/gastro/types";
 
 // ── Público ──────────────────────────────────────────────────────────────
+
+export async function fetchGastroTypes(): Promise<GastroType[]> {
+  return apiGet<GastroType[]>("/api/gastro-types");
+}
 
 export async function fetchGastroPlaces(filters: GastroPlaceFilters): Promise<GastroPlace[]> {
   return apiGet<GastroPlace[]>("/api/gastro", {
@@ -74,4 +82,24 @@ export async function uploadGastroCover(id: string, file: File): Promise<GastroC
 
 export async function deleteGastroCover(id: string): Promise<GastroCoverResponse> {
   return apiDelete<GastroCoverResponse>(`/api/admin/gastro/${id}/cover`);
+}
+
+// ── Etapa 12a — ABM de tipos gastronómicos (admin) ──────────────────────────
+
+export async function fetchAdminGastroTypes(isActive?: boolean): Promise<GastroTypeAdmin[]> {
+  return apiGet<GastroTypeAdmin[]>("/api/admin/gastro-types", {
+    is_active: isActive !== undefined ? String(isActive) : undefined,
+  });
+}
+
+export async function createGastroType(input: GastroTypeCreateInput): Promise<GastroTypeAdmin> {
+  return apiPost<GastroTypeAdmin>("/api/admin/gastro-types", input);
+}
+
+export async function updateGastroType(id: string, input: GastroTypeUpdateInput): Promise<GastroTypeAdmin> {
+  return apiPut<GastroTypeAdmin>(`/api/admin/gastro-types/${id}`, input);
+}
+
+export async function toggleGastroType(id: string): Promise<GastroTypeAdmin> {
+  return apiPatch<GastroTypeAdmin>(`/api/admin/gastro-types/${id}/toggle`, {});
 }

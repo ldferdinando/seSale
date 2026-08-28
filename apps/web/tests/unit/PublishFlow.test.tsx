@@ -42,7 +42,10 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   // guardaba sin latitude/longitude).
   const mapContainer = document.querySelector(".leaflet-container");
   if (mapContainer) await user.click(mapContainer);
-  await user.click(screen.getByLabelText("Música en vivo"));
+  // Etapa 12a: categorías dinámicas — CategoryMultiSelect muestra un
+  // skeleton hasta que resuelve GET /api/categories, y el label incluye el
+  // emoji ("🎵 Música en vivo") — se espera y matchea parcial.
+  await user.click(await screen.findByLabelText(/Música en vivo/));
 }
 
 describe("PublishFlow", () => {

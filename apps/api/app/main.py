@@ -12,9 +12,11 @@ from app.routers import (
     admin,
     ads,
     auth,
+    categories,
     cities,
     events,
     gastro,
+    gastro_types,
     locations,
     plans,
     reports,
@@ -51,6 +53,8 @@ app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
 app.include_router(ads.router)
 app.include_router(gastro.router)
+app.include_router(categories.router)
+app.include_router(gastro_types.router)
 # Etapa 9d — /api/setup solo activo hasta que exista el primer admin.
 # Después de eso devuelve 410 (o siempre, si DISABLE_SETUP_ENDPOINT=true).
 # No eliminar este router — el 410 permanente es la respuesta de seguridad

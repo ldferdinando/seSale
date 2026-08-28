@@ -23,8 +23,10 @@ from app.schemas.ad_slot import (
     AdSection,
     AdSlotAdminRead,
 )
+from app.schemas.category_catalog import CategoryAdminRead, CategoryCreate, CategoryUpdate
 from app.schemas.city import CityAdminRead, CitySortOrderUpdate
 from app.schemas.event import AdminEventRead, EventRead
+from app.schemas.gastro_type_catalog import GastroTypeAdminRead, GastroTypeCreate, GastroTypeUpdate
 from app.schemas.location import (
     LocationAdminCreate,
     LocationAdminRead,
@@ -54,12 +56,24 @@ from app.services.ad_service import (
     update_ad_item,
     upload_ad_item_image,
 )
+from app.services.category_catalog_service import (
+    create_category,
+    list_admin_categories,
+    toggle_category,
+    update_category,
+)
 from app.services.city_service import (
     count_active_future_events,
     list_all_cities_with_active_event_counts,
     update_city_sort_order,
 )
 from app.services.event_service import list_admin_events
+from app.services.gastro_type_catalog_service import (
+    create_gastro_type,
+    list_admin_gastro_types,
+    toggle_gastro_type,
+    update_gastro_type,
+)
 from app.services.location_service import (
     create_admin_location,
     create_gastro_place,
@@ -592,6 +606,8 @@ async def post_admin_gastro_place(
         return create_gastro_place(session, payload)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.put("/gastro/{location_id}", response_model=LocationGastroAdminRead)
@@ -604,6 +620,8 @@ async def put_admin_gastro_place(
         return update_gastro_place(session, location_id, payload)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.delete("/gastro/{location_id}")
@@ -676,3 +694,105 @@ async def delete_admin_gastro_cover(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return {"cover_img_url": None}
+
+
+# ── Etapa 12a — Categorías de eventos ──────────────────────────────────────
+
+
+@router.get("/categories", response_model=list[CategoryAdminRead])
+async def get_admin_categories(
+    is_active: bool | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[CategoryAdminRead]:
+    categories = list_admin_categories(session, is_active=is_active)
+    return [CategoryAdminRead.model_validate(c) for c in categories]
+
+
+@router.post("/categories", response_model=CategoryAdminRead, status_code=status.HTTP_201_CREATED)
+async def post_admin_category(
+    payload: CategoryCreate,
+    session: Session = Depends(get_session),
+) -> CategoryAdminRead:
+    try:
+        category = create_category(session, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return CategoryAdminRead.model_validate(category)
+
+
+@router.put("/categories/{category_id}", response_model=CategoryAdminRead)
+async def put_admin_category(
+    category_id: UUID,
+    payload: CategoryUpdate,
+    session: Session = Depends(get_session),
+) -> CategoryAdminRead:
+    try:
+        category = update_category(session, category_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return CategoryAdminRead.model_validate(category)
+
+
+@router.patch("/categories/{category_id}/toggle", response_model=CategoryAdminRead)
+async def patch_admin_category_toggle(
+    category_id: UUID,
+    session: Session = Depends(get_session),
+) -> CategoryAdminRead:
+    try:
+        category = toggle_category(session, category_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return CategoryAdminRead.model_validate(category)
+
+
+# ── Etapa 12a — Tipos gastronómicos ─────────────────────────────────────────
+
+
+@router.get("/gastro-types", response_model=list[GastroTypeAdminRead])
+async def get_admin_gastro_types(
+    is_active: bool | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[GastroTypeAdminRead]:
+    gastro_types = list_admin_gastro_types(session, is_active=is_active)
+    return [GastroTypeAdminRead.model_validate(t) for t in gastro_types]
+
+
+@router.post("/gastro-types", response_model=GastroTypeAdminRead, status_code=status.HTTP_201_CREATED)
+async def post_admin_gastro_type(
+    payload: GastroTypeCreate,
+    session: Session = Depends(get_session),
+) -> GastroTypeAdminRead:
+    try:
+        gastro_type = create_gastro_type(session, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return GastroTypeAdminRead.model_validate(gastro_type)
+
+
+@router.put("/gastro-types/{gastro_type_id}", response_model=GastroTypeAdminRead)
+async def put_admin_gastro_type(
+    gastro_type_id: UUID,
+    payload: GastroTypeUpdate,
+    session: Session = Depends(get_session),
+) -> GastroTypeAdminRead:
+    try:
+        gastro_type = update_gastro_type(session, gastro_type_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return GastroTypeAdminRead.model_validate(gastro_type)
+
+
+@router.patch("/gastro-types/{gastro_type_id}/toggle", response_model=GastroTypeAdminRead)
+async def patch_admin_gastro_type_toggle(
+    gastro_type_id: UUID,
+    session: Session = Depends(get_session),
+) -> GastroTypeAdminRead:
+    try:
+        gastro_type = toggle_gastro_type(session, gastro_type_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return GastroTypeAdminRead.model_validate(gastro_type)

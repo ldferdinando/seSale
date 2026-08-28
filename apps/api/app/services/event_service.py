@@ -17,9 +17,21 @@ from app.models.plan import PlanType
 from app.models.user import User
 from app.schemas.event import EventUpdate
 from app.schemas.location import LocationCreate
+from app.services.category_catalog_service import get_active_category_keys
 from app.services.location_service import create_location_from_event_data, get_location_or_404
 
 _EVENT_LOAD_OPTIONS = (selectinload(Event.location), selectinload(Event.category_links))
+
+
+def _validate_categories_active(session: Session, categories: list[str]) -> None:
+    """Etapa 12a: valida que cada categoría exista y esté activa en
+    event_categories_catalog. Reemplaza el chequeo contra el set
+    VALID_CATEGORIES hardcodeado que vivía en app.schemas.event — acá sí hay
+    sesión de DB disponible."""
+    active_keys = get_active_category_keys(session)
+    invalid = [c for c in categories if c not in active_keys]
+    if invalid:
+        raise ValueError(f"Categoría inválida: {invalid[0]}")
 
 
 def _sync_event_categories(session: Session, event: Event, categories: list[str]) -> None:
@@ -273,6 +285,7 @@ def create_event(
     available_on_site: bool = False,
     contact_whatsapp: str | None = None,
     contact_instagram: str | None = None,
+    contact_facebook: str | None = None,
     contact_web: str | None = None,
     contact_email: str | None = None,
     organizer_id: UUID | None = None,
@@ -314,6 +327,8 @@ def create_event(
     if not contact_whatsapp:
         contact_whatsapp = organizer.public_whatsapp
 
+    _validate_categories_active(session, categories)
+
     target_city_id = _resolve_target_city(session, city_id, organizer.city_id)
 
     location = _resolve_event_location(
@@ -338,6 +353,7 @@ def create_event(
         available_on_site=available_on_site,
         contact_whatsapp=contact_whatsapp,
         contact_instagram=contact_instagram,
+        contact_facebook=contact_facebook,
         contact_web=contact_web,
         contact_email=contact_email,
     )
@@ -477,6 +493,8 @@ def update_event(
     # existente: vuelve a pending.
     only_toggles_active = set(data.keys()) == {"is_active"}
     categories = data.pop("categories", None)
+    if categories is not None:
+        _validate_categories_active(session, categories)
     new_city_id = data.pop("city_id", None)
     target_city_id = _resolve_target_city(session, new_city_id, event.city_id)
 

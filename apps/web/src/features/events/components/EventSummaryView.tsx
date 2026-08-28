@@ -20,7 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventPlanChooser } from "@/features/events/components/EventPlanChooser";
-import { EVENT_CATEGORIES, TICKET_TYPE_OPTIONS, type Event, type EventCreateInput } from "@/features/events/types";
+import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
+import { TICKET_TYPE_OPTIONS, type Event, type EventCreateInput } from "@/features/events/types";
 import { useLocation } from "@/features/locations/hooks/useLocation";
 
 interface SummaryRowProps {
@@ -54,11 +55,12 @@ interface EventSummaryViewProps {
 
 export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryViewProps) {
   const { data: pickedLocation } = useLocation(payload.location_id);
+  const { categories } = useCategoryCatalog();
   const locationName = payload.location_id ? (pickedLocation?.name ?? "...") : (payload.location_data?.name || payload.location_data?.address || "");
   const locationAddress = payload.location_id ? (pickedLocation?.address ?? "...") : (payload.location_data?.address ?? "");
 
   const categoryLabels = payload.categories
-    .map((value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value)
+    .map((value) => categories.find((c) => c.key === value)?.name ?? value)
     .join(", ");
   const ticketTypeLabel = TICKET_TYPE_OPTIONS.find((t) => t.value === payload.ticket_type)?.label ?? payload.ticket_type;
   const eventDate = parseISO(payload.date);

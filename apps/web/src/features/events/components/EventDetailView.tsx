@@ -10,6 +10,7 @@ import {
   Building2,
   Calendar,
   Clock,
+  Facebook as FacebookIcon,
   Flag,
   Globe,
   Image as ImageIcon,
@@ -39,7 +40,7 @@ import {
 } from "@/features/events/components/OrganizerSubscriptionBadge";
 import { ReportEventModal } from "@/features/events/components/ReportEventModal";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
-import { EVENT_CATEGORIES } from "@/features/events/types";
+import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 import { resolveMediaUrl } from "@/lib/media";
@@ -101,10 +102,11 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const [activeActionMessage, setActiveActionMessage] = useState<string | null>(null);
   const updateActive = useUpdateEvent(event.id);
 
+  const { categories } = useCategoryCatalog();
   const style = CATEGORY_STYLES[event.categories[0]] ?? DEFAULT_CATEGORY_STYLE;
   const Icon = style.icon;
   const categoryLabels = event.categories.map(
-    (value) => EVENT_CATEGORIES.find((c) => c.value === value)?.label ?? value,
+    (value) => categories.find((c) => c.key === value)?.name ?? value,
   );
   const eventDate = parseISO(event.date);
 
@@ -142,11 +144,16 @@ export function EventDetailView({ event }: EventDetailViewProps) {
     );
   }
 
+  // Etapa 12a: 549 = código de Argentina (54) + 9 de móvil — el organizador
+  // carga el número sin +54 ni 0 (ver placeholder/helper de EventForm).
   const whatsappHref = event.contact_whatsapp
-    ? `https://wa.me/${event.contact_whatsapp.replace(/\D/g, "")}`
+    ? `https://wa.me/549${event.contact_whatsapp.replace(/\D/g, "")}`
     : null;
   const instagramHref = event.contact_instagram
     ? `https://instagram.com/${event.contact_instagram.replace(/^@/, "")}`
+    : null;
+  const facebookHref = event.contact_facebook
+    ? `https://facebook.com/${event.contact_facebook.replace(/^\//, "")}`
     : null;
   const webHref = event.contact_web
     ? event.contact_web.startsWith("http")
@@ -412,7 +419,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           )}
         </div>
 
-        {(whatsappHref || instagramHref || webHref || emailHref) && (
+        {(whatsappHref || instagramHref || facebookHref || webHref || emailHref) && (
           <div className="flex flex-col gap-2">
             {/* Etapa 10b-2: se renombra de "Contacto del organizador" a
                 "Contacto para entradas" — con el bloque Organizador ya
@@ -441,6 +448,18 @@ export function EventDetailView({ event }: EventDetailViewProps) {
               >
                 <InstagramIcon className="h-4 w-4 text-[#E91E8C]" aria-hidden />
                 Instagram
+              </a>
+            )}
+            {facebookHref && (
+              <a
+                href={facebookHref}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="ticket-facebook-link"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
+              >
+                <FacebookIcon className="h-4 w-4 text-[#1877F2]" aria-hidden />
+                Facebook
               </a>
             )}
             {webHref && (

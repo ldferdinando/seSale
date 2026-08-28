@@ -3,8 +3,10 @@ from app.models.ad_slot import AdSlot
 from app.models.category import EventCategory
 from app.models.city import City
 from app.models.event import Event, EventStatus, TicketType
+from app.models.event_category_catalog import EventCategoryCatalog
+from app.models.gastro_type_catalog import GastroTypeCatalog
 from app.models.location import Location
-from app.models.location_gastro_type import GASTRO_TYPES, LocationGastroType
+from app.models.location_gastro_type import LocationGastroType
 from app.models.moment import EventMoment
 from app.models.password_reset_token import PasswordResetToken
 from app.models.plan import Plan, PlanPrice, PlanType, PricingType
@@ -18,10 +20,11 @@ __all__ = [
     "City",
     "Event",
     "EventCategory",
+    "EventCategoryCatalog",
     "EventMoment",
     "EventStatus",
     "TicketType",
-    "GASTRO_TYPES",
+    "GastroTypeCatalog",
     "Location",
     "LocationGastroType",
     "PasswordResetToken",

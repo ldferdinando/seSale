@@ -12,7 +12,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { EventForm } from "@/features/events/components/EventForm";
 import { useEvent } from "@/features/events/hooks/useEvent";
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
-import { utcTimeToLocal } from "@/lib/date-helpers";
+import { argentinaTodayIso, utcTimeToLocal } from "@/lib/date-helpers";
 
 interface EditarEventoClientProps {
   eventId: string;
@@ -28,6 +28,11 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
   const isOwner = Boolean(currentUser && event && currentUser.id === event.organizer_id);
   const isAdmin = currentUser?.role === "admin";
   const canEdit = isOwner || isAdmin;
+  // Etapa 12a: el organizador (no admin) puede editar los links de contacto
+  // hasta el día anterior al evento — a partir de date<=hoy, el formulario
+  // completo queda deshabilitado. El admin nunca tiene esta restricción.
+  const isPastEvent = Boolean(event && event.date <= argentinaTodayIso());
+  const lockedForOwner = isOwner && !isAdmin && isPastEvent;
 
   useEffect(() => {
     if (isLoadingUser) return;
@@ -87,7 +92,9 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     price_at_door: event.price_at_door != null ? String(event.price_at_door) : "",
     price_advance: event.price_advance != null ? String(event.price_advance) : "",
     available_on_site: event.available_on_site,
+    contact_whatsapp: event.contact_whatsapp ?? "",
     contact_instagram: event.contact_instagram ?? "",
+    contact_facebook: event.contact_facebook ?? "",
     contact_web: event.contact_web ?? "",
     contact_email: event.contact_email ?? "",
   };
@@ -108,7 +115,13 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
         </div>
       </header>
 
-      <EventForm mode="edit" eventId={eventId} initialValues={initialValues} onSuccess={handleSuccess} />
+      <EventForm
+        mode="edit"
+        eventId={eventId}
+        initialValues={initialValues}
+        onSuccess={handleSuccess}
+        disabledReason={lockedForOwner ? "Este evento ya pasó y no se puede editar." : undefined}
+      />
 
       {/* Etapa 8b — el flyer es exclusivo del plan Destacado Plus, ver
           a_revisar.md. La subida ocurre acá (no en /planes): el evento recién

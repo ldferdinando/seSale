@@ -12,7 +12,24 @@ from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models import City, Location, Plan, PlanPrice, PlanType, User
+from app.models.event_category_catalog import EventCategoryCatalog
+from app.models.gastro_type_catalog import GastroTypeCatalog
 from app.models.plan import PricingType
+
+# Etapa 12a — mismos 13 keys/10 keys que antes vivían hardcodeados en
+# VALID_CATEGORIES (schemas/event.py) y GASTRO_TYPES
+# (models/location_gastro_type.py), ahora en las tablas catálogo. Los tests
+# que crean eventos/lugares gastronómicos con estas categorías/tipos
+# dependen de que existan y estén activos — mismo dato que inserta la
+# migración de la Etapa 12a en la DB real.
+_SEED_CATEGORIES = [
+    "musica", "fiesta", "teatro", "feria", "dj", "milonga", "pena",
+    "standup", "arte", "recital", "cine", "infantil", "deportes",
+]
+_SEED_GASTRO_TYPES = [
+    "cerveceria", "restaurante", "parrilla", "bar", "cafe", "pizzeria",
+    "heladeria", "rotiseria", "vinoteca", "otro",
+]
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +49,11 @@ def session_fixture() -> Generator[Session, None, None]:
     )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
+        for i, key in enumerate(_SEED_CATEGORIES):
+            session.add(EventCategoryCatalog(key=key, name=key, sort_order=i))
+        for i, key in enumerate(_SEED_GASTRO_TYPES):
+            session.add(GastroTypeCatalog(key=key, name=key, sort_order=i))
+        session.commit()
         yield session
 
 

@@ -100,6 +100,7 @@ async def post_event(
             available_on_site=payload.available_on_site,
             contact_whatsapp=payload.contact_whatsapp,
             contact_instagram=payload.contact_instagram,
+            contact_facebook=payload.contact_facebook,
             contact_web=payload.contact_web,
             contact_email=payload.contact_email,
             organizer_id=payload.organizer_id,

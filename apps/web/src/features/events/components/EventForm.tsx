@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  Facebook,
   FileText,
   Globe,
   Info,
@@ -166,6 +167,11 @@ interface EventFormProps {
   /** Modo create: pasa los datos cargados al resumen — la visibilidad
    * (plan) se elige ahí, no en este formulario (Etapa 9b). */
   onContinue?: (payload: EventCreateInput) => void;
+  /** Etapa 12a: si viene seteado, el formulario completo queda deshabilitado
+   * y se muestra este mensaje — usado por EditarEventoClient.tsx cuando el
+   * evento ya pasó (date<=hoy) y quien edita es el organizador dueño, no un
+   * admin (el admin siempre puede editar sin restricción). */
+  disabledReason?: string;
 }
 
 export function EventForm({
@@ -174,6 +180,7 @@ export function EventForm({
   initialValues,
   onSuccess,
   onContinue,
+  disabledReason,
 }: EventFormProps) {
   const updateEvent = useUpdateEvent(eventId ?? "");
   const { data: currentUser } = useCurrentUser();
@@ -190,8 +197,13 @@ export function EventForm({
   // del resumen) — no hay que pisarle un valor real ya elegido.
   const userModifiedTimeEnd = useRef(Boolean(initialValues?.time_end));
   const [acquisition, setAcquisition] = useState({
-    whatsapp: true,
+    // Etapa 12a: antes era siempre `true` sin input real detrás (ver
+    // a_revisar.md) — ahora refleja el valor cargado en edición, igual que
+    // el resto de los medios de contacto; en alta arranca abierto (`true`)
+    // porque es el canal más usado.
+    whatsapp: initialValues ? Boolean(initialValues?.contact_whatsapp) : true,
     instagram: Boolean(initialValues?.contact_instagram),
+    facebook: Boolean(initialValues?.contact_facebook),
     web: Boolean(initialValues?.contact_web),
     email: Boolean(initialValues?.contact_email),
     onSite: initialValues?.available_on_site ?? true,
@@ -222,7 +234,9 @@ export function EventForm({
       price_at_door: "",
       price_advance: "",
       available_on_site: true,
+      contact_whatsapp: "",
       contact_instagram: "",
+      contact_facebook: "",
       contact_web: "",
       contact_email: "",
       ...initialValues,
@@ -322,7 +336,9 @@ export function EventForm({
       price_at_door: values.price_at_door ? Number(values.price_at_door) : undefined,
       price_advance: values.price_advance ? Number(values.price_advance) : undefined,
       available_on_site: acquisition.onSite,
+      contact_whatsapp: acquisition.whatsapp ? values.contact_whatsapp || undefined : undefined,
       contact_instagram: acquisition.instagram ? values.contact_instagram || undefined : undefined,
+      contact_facebook: acquisition.facebook ? values.contact_facebook || undefined : undefined,
       contact_web: acquisition.web ? values.contact_web || undefined : undefined,
       contact_email: acquisition.email ? values.contact_email || undefined : undefined,
       ...(mode === "create" && currentUser?.role === "admin" ? { organizer_id: organizerId } : {}),
@@ -347,6 +363,12 @@ export function EventForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+      {disabledReason && (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+          {disabledReason}
+        </p>
+      )}
+      <fieldset disabled={Boolean(disabledReason)} className="flex flex-col gap-5 disabled:opacity-60">
       {mode === "create" && currentUser?.role === "admin" && (
         <OrganizerPicker value={organizerId} onChange={setOrganizerId} />
       )}
@@ -555,7 +577,9 @@ export function EventForm({
             <FieldLabel icon={MapPinned}>¿Dónde se consiguen?</FieldLabel>
             <p className="text-xs text-ink-4">Vos elegís el medio de contacto — seSALE no vende entradas.</p>
 
-            {/* WhatsApp y "en el lugar" son solo un check por ahora: ver informe de campos faltantes */}
+            {/* "en el lugar" es solo un check por ahora: ver informe de campos faltantes.
+                Etapa 12a: WhatsApp pasa a tener un input real (antes era solo
+                un check sin forma de cargar el número, ver a_revisar.md). */}
             <AcquisitionCheck
               icon={MessageCircle}
               iconColor="#25D366"
@@ -563,6 +587,15 @@ export function EventForm({
               checked={acquisition.whatsapp}
               onChange={(checked) => setAcquisition((a) => ({ ...a, whatsapp: checked }))}
             />
+            {acquisition.whatsapp && (
+              <div className="flex flex-col gap-1 pl-6">
+                <FieldLabel icon={MessageCircle} htmlFor="contact_whatsapp">
+                  Número de WhatsApp
+                </FieldLabel>
+                <Input id="contact_whatsapp" {...register("contact_whatsapp")} placeholder="Ej: 2984123456" />
+                <p className="text-xs text-ink-4">Sin el +54 ni el 0</p>
+              </div>
+            )}
 
             <AcquisitionCheck
               icon={Instagram}
@@ -575,7 +608,22 @@ export function EventForm({
                 <FieldLabel icon={Instagram} htmlFor="contact_instagram">
                   Usuario de Instagram
                 </FieldLabel>
-                <Input id="contact_instagram" {...register("contact_instagram")} placeholder="@tuusuario" />
+                <Input id="contact_instagram" {...register("contact_instagram")} placeholder="Ej: mi_cuenta (sin @)" />
+              </div>
+            )}
+
+            <AcquisitionCheck
+              icon={Facebook}
+              label="Facebook"
+              checked={acquisition.facebook}
+              onChange={(checked) => setAcquisition((a) => ({ ...a, facebook: checked }))}
+            />
+            {acquisition.facebook && (
+              <div className="flex flex-col gap-1 pl-6">
+                <FieldLabel icon={Facebook} htmlFor="contact_facebook">
+                  Página de Facebook
+                </FieldLabel>
+                <Input id="contact_facebook" {...register("contact_facebook")} placeholder="Ej: MiPáginaFacebook" />
               </div>
             )}
 
@@ -590,7 +638,7 @@ export function EventForm({
                 <FieldLabel icon={Globe} htmlFor="contact_web">
                   Link
                 </FieldLabel>
-                <Input id="contact_web" type="url" {...register("contact_web")} placeholder="https://..." />
+                <Input id="contact_web" type="url" {...register("contact_web")} placeholder="Ej: https://mievento.com" />
               </div>
             )}
 
@@ -605,7 +653,7 @@ export function EventForm({
                 <FieldLabel icon={Mail} htmlFor="contact_email">
                   Email
                 </FieldLabel>
-                <Input id="contact_email" type="email" {...register("contact_email")} placeholder="tu@email.com" />
+                <Input id="contact_email" type="email" {...register("contact_email")} placeholder="Ej: contacto@mievento.com" />
                 <FieldError message={errors.contact_email?.message} />
               </div>
             )}
@@ -626,10 +674,15 @@ export function EventForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-xl text-base">
+      <Button
+        type="submit"
+        disabled={isSubmitting || Boolean(disabledReason)}
+        className="h-12 w-full rounded-xl text-base"
+      >
         {isSubmitting ? "Guardando..." : mode === "edit" ? "Guardar cambios" : "Continuar"}
         <ArrowRight className="h-4 w-4" aria-hidden />
       </Button>
+      </fieldset>
     </form>
   );
 }

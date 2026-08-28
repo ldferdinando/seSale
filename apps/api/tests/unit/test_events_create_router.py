@@ -394,6 +394,27 @@ async def test_create_event_respects_explicit_contact_whatsapp(
     assert response.json()["contact_whatsapp"] == "5491199999999"
 
 
+async def test_create_event_with_contact_facebook_saves_field(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["contact_facebook"] = "MiPaginaFacebook"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["contact_facebook"] == "MiPaginaFacebook"
+
+
+async def test_create_event_without_contact_facebook_returns_null(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["contact_facebook"] is None
+
+
 async def test_create_event_with_plan_gratis_is_saved_as_gratis(
     client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
