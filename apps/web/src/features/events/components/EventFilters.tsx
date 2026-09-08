@@ -1,8 +1,9 @@
 "use client";
 
-import { Search, Ticket, X } from "lucide-react";
+import { Search, Sun, Ticket, X } from "lucide-react";
 
 import { DateFilter } from "@/features/events/components/DateFilter";
+import { MomentPills } from "@/features/events/components/MomentPills";
 import type { EventFiltersState, TicketTypeFilter } from "@/features/events/types";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,20 @@ export function EventFilters({ filters, onChange }: EventFiltersProps) {
 
       <DateFilter filters={filters} onChange={onChange} />
 
+      {/* Etapa 11b — Parte 3c: los chips de día/noche viven en la sección de
+          filtros del listado (debajo de categorías), igual que seSALE.html
+          (.fwrap "¿En qué momento?"). */}
+      <div className="flex flex-col gap-1.5">
+        <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-ink-4">
+          <Sun className="h-3 w-3 text-primary" aria-hidden />
+          ¿En qué momento?
+        </p>
+        <MomentPills
+          value={filters.moment}
+          onChange={(moment) => onChange({ ...filters, moment })}
+        />
+      </div>
+
       {/* Etapa 12b — filtro de tipo de entrada. "Pago" incluye eventos con
           anticipo (lo resuelve el backend). */}
       <div className="flex flex-col gap-1.5">
@@ -84,13 +99,13 @@ export function EventFilters({ filters, onChange }: EventFiltersProps) {
         </div>
       </div>
 
-      {countActiveFilters(filters) > 1 && (
+      {countActiveFilters(filters) >= 1 && (
         <button
           type="button"
           onClick={clearAllFilters}
-          className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold text-ink-3 hover:bg-surface-5"
+          className="flex w-fit items-center gap-1.5 rounded-[20px] bg-surface-5 px-[13px] py-[5px] text-[11px] font-semibold text-white hover:bg-surface-6"
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
+          <X className="h-3 w-3" aria-hidden />
           Limpiar filtros
         </button>
       )}

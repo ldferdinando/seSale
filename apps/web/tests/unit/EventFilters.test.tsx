@@ -15,6 +15,22 @@ describe("EventFilters", () => {
     vi.useRealTimers();
   });
 
+  it("renders the day/night moment pills inside the filters section", () => {
+    render(<EventFilters filters={{}} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /De día/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /De noche/ })).toBeInTheDocument();
+  });
+
+  it("calls onChange with moment='nocturno' when clicking 'De noche'", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+
+    expect(onChange).toHaveBeenCalledWith({ moment: "nocturno" });
+  });
+
   it("calls onChange with the search term when typing in the search box", () => {
     const onChange = vi.fn();
     render(<EventFilters filters={{}} onChange={onChange} />);
@@ -33,10 +49,11 @@ describe("EventFilters", () => {
     expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-02", dateTo: "2026-03-02" });
   });
 
-  it("clears the date range when clicking 'Limpiar'", () => {
+  it("clears the date range from the 'Limpiar' button in the calendar panel header", () => {
     const onChange = vi.fn();
     render(<EventFilters filters={{ dateFrom: "2026-03-01", dateTo: "2026-03-01" }} onChange={onChange} />);
 
+    fireEvent.click(screen.getByRole("button", { name: /Elegir fecha/ }));
     fireEvent.click(screen.getByRole("button", { name: "Limpiar" }));
 
     expect(onChange).toHaveBeenCalledWith({ dateFrom: undefined, dateTo: undefined });
@@ -53,11 +70,28 @@ describe("EventFilters", () => {
     expect(onChange).toHaveBeenCalledWith({ dateFrom: "2026-03-15", dateTo: "2026-03-15" });
   });
 
-  // Etapa 11b — Parte 3c
-  it("does not show 'Limpiar filtros' with a single active filter", () => {
-    render(<EventFilters filters={{ category: "musica" }} onChange={vi.fn()} />);
+  it("does not show 'Limpiar filtros' with no active filter", () => {
+    render(<EventFilters filters={{}} onChange={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Limpiar filtros" })).not.toBeInTheDocument();
+  });
+
+  it("shows 'Limpiar filtros' with only the category filter active", () => {
+    render(<EventFilters filters={{ category: "musica" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Limpiar filtros" })).toBeInTheDocument();
+  });
+
+  it("shows 'Limpiar filtros' with only the moment filter active", () => {
+    render(<EventFilters filters={{ moment: "nocturno" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Limpiar filtros" })).toBeInTheDocument();
+  });
+
+  it("shows 'Limpiar filtros' with only the date filter active", () => {
+    render(<EventFilters filters={{ dateFrom: "2026-03-01", dateTo: "2026-03-01" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Limpiar filtros" })).toBeInTheDocument();
   });
 
   it("shows 'Limpiar filtros' with more than one active filter and resets category, date, moment and ticketType", () => {

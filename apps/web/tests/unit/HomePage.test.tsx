@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
@@ -67,6 +67,41 @@ describe("HomePage", () => {
     for (const tile of gridTiles) {
       expect(eventCard.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
+  });
+
+  it("places the view tabs below the filters (search + day/night)", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    const searchInput = await screen.findByLabelText("Buscar");
+    const dayPill = screen.getByRole("button", { name: /De día/ });
+    const grillaTab = screen.getByRole("button", { name: "Grilla" });
+
+    // Buscar y los chips de momento vienen ANTES de la tab Grilla en el DOM.
+    expect(searchInput.compareDocumentPosition(grillaTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(dayPill.compareDocumentPosition(grillaTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows the grid list under the 'Grilla' tab and swaps to the map under 'Mapa', never above the filters", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    // Tab Grilla (default): listado visible, sin contenedor de mapa.
+    await screen.findByTestId("event-card");
+    expect(screen.queryByTestId("events-map-container")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
+
+    // El mapa (o su skeleton) aparece DESPUÉS de las tabs, en el lugar del listado.
+    const mapNode = await screen.findByTestId(
+      "events-map-container",
+      {},
+      { timeout: 3000 },
+    ).catch(() => screen.getByTestId("map-skeleton"));
+    const grillaTab = screen.getByRole("button", { name: "Grilla" });
+    const searchInput = screen.getByLabelText("Buscar");
+
+    expect(grillaTab.compareDocumentPosition(mapNode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(searchInput.compareDocumentPosition(mapNode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("event-card")).not.toBeInTheDocument();
   });
 
   // Etapa 11b — Parte 5

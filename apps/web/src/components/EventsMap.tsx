@@ -19,10 +19,10 @@ const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION = "&copy; OpenStreetMap contributors";
 const NEARBY_ZOOM = 14;
 
-const PIN_STYLE: Record<EventPlan, { color: string; size: number }> = {
-  pro: { color: "#E91E8C", size: 16 },
-  dest: { color: "#E91E8C99", size: 13 },
-  gratis: { color: "#555", size: 10 },
+const PIN_STYLE: Record<EventPlan, { color: string; width: number; height: number }> = {
+  pro: { color: "#E91E8C", width: 28, height: 42 },
+  dest: { color: "#E91E8C99", width: 22, height: 33 },
+  gratis: { color: "#555555", width: 18, height: 27 },
 };
 
 const PLAN_LEGEND: { plan: EventPlan; label: string }[] = [
@@ -31,14 +31,19 @@ const PLAN_LEGEND: { plan: EventPlan; label: string }[] = [
   { plan: "gratis", label: "Gratuito" },
 ];
 
-function createPinIcon(color: string, size: number): L.DivIcon {
+/** Pin clásico de mapa (teardrop) como DivIcon + SVG. La punta inferior
+ * (iconAnchor = [width/2, height]) cae exactamente sobre las coordenadas
+ * del evento; el popup se ancla arriba de la cabeza del pin. */
+function createPinIcon(color: string, width: number, height: number): L.DivIcon {
   return L.divIcon({
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${color}" stroke="#0d0d0d" stroke-width="2"/>
+    html: `<svg width="${width}" height="${height}" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24S24 21 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="#0d0d0d" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="4" fill="white" opacity="0.9"/>
     </svg>`,
     className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    popupAnchor: [0, -height],
   });
 }
 
@@ -129,8 +134,8 @@ export function EventsMap({ events, activeCity, onEventClick }: EventsMapProps) 
       const { latitude, longitude } = event.location;
       if (latitude == null || longitude == null) continue;
 
-      const { color, size } = PIN_STYLE[event.plan] ?? PIN_STYLE.gratis;
-      const marker = L.marker([latitude, longitude], { icon: createPinIcon(color, size) })
+      const { color, width, height } = PIN_STYLE[event.plan] ?? PIN_STYLE.gratis;
+      const marker = L.marker([latitude, longitude], { icon: createPinIcon(color, width, height) })
         .bindPopup(buildPopupHtml(event), { maxWidth: 200, className: "sesale-map-popup-wrapper" })
         .addTo(map);
       markersRef.current.push(marker);

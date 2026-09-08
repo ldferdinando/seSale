@@ -8,7 +8,6 @@ import { AdSlots, AdSlotsGrid } from "@/features/events/components/AdSlots";
 import { CategoryChips } from "@/features/events/components/CategoryChips";
 import { EventFilters } from "@/features/events/components/EventFilters";
 import { EventList } from "@/features/events/components/EventList";
-import { MomentPills } from "@/features/events/components/MomentPills";
 import { ShareBanner } from "@/features/events/components/ShareBanner";
 import { StatsBar } from "@/features/events/components/StatsBar";
 import { TodayBanner } from "@/features/events/components/TodayBanner";
@@ -74,8 +73,6 @@ export default function HomePage() {
           }
         />
 
-        <MomentPills value={filters.moment} onChange={(moment) => setFilters((f) => ({ ...f, moment }))} />
-
         <AdSlots />
 
         <CategoryChips
@@ -83,12 +80,21 @@ export default function HomePage() {
           onChange={(category) => setFilters((f) => ({ ...f, category }))}
         />
 
+        {/* Filtros (categoría se elige arriba, en CategoryChips) — siempre
+            visibles y por encima de las tabs de vista: filtran tanto la
+            grilla como el mapa. */}
+        <div className="px-4 pt-3.5">
+          <EventFilters filters={filters} onChange={setFilters} />
+        </div>
+
+        {/* Tabs de vista — DEBAJO de los filtros (orden de seSALE.html). */}
         <ViewTabs value={view} onChange={setView} />
 
+        {/* Contenido: la grilla y el mapa son vistas alternativas del mismo
+            listado filtrado — ocupan el mismo lugar del layout. */}
         {view === "lista" ? (
           <>
-            <div className="flex flex-col gap-4 px-4 pt-3.5">
-              <EventFilters filters={filters} onChange={setFilters} />
+            <div className="px-4 pt-3.5">
               <EventList filters={effectiveFilters} enabled={!isDetecting} />
             </div>
             {/* Etapa 11b — Parte 4: separación visual entre el listado y los
@@ -102,7 +108,10 @@ export default function HomePage() {
         ) : isDetecting || mapEvents.isLoading || !activeCity ? (
           <MapSkeleton />
         ) : (
-          <div className="mx-5 mb-5 mt-3.5 h-[340px] overflow-hidden rounded-[14px] border border-[#1e1e1e] bg-[#0f0f0f]">
+          <div
+            data-testid="events-map-container"
+            className="mx-5 mb-5 mt-3.5 h-[340px] overflow-hidden rounded-[14px] border border-[#1e1e1e] bg-[#0f0f0f]"
+          >
             <EventsMap
               events={mapEvents.data ?? []}
               activeCity={activeCity}

@@ -12,7 +12,7 @@ interface MomentPillsProps {
 
 export function MomentPills({ value, onChange }: MomentPillsProps) {
   return (
-    <div className="flex flex-col gap-1.5 px-4 pt-3">
+    <div className="flex flex-col gap-1.5">
       <div className="flex gap-2">
         <button
           type="button"

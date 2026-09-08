@@ -8,8 +8,10 @@ import {
   Calendar as CalendarIcon,
   CalendarPlus,
   CalendarRange,
+  CalendarSearch,
   Moon,
   Sun,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -108,20 +110,26 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
           <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
           Elegir fecha
         </button>
-
-        {(filters.dateFrom || filters.dateTo) && (
-          <button
-            type="button"
-            onClick={clearDate}
-            className="rounded-full bg-surface-5 px-3.5 py-2 text-xs font-semibold text-ink-3 hover:bg-surface-6"
-          >
-            Limpiar
-          </button>
-        )}
       </div>
 
       {showCalendar && (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-3.5">
+          {/* Header del panel de fecha — igual que .fp-hd de seSALE.html:
+              título + botón "Limpiar" (.btn-limp) que resetea solo la fecha. */}
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-[13px] font-bold text-white">
+              <CalendarSearch className="h-4 w-4 text-primary" aria-hidden />
+              Elegí un día o un rango
+            </span>
+            <button
+              type="button"
+              onClick={clearDate}
+              className="flex items-center gap-1 rounded-[20px] bg-surface-5 px-[13px] py-[5px] text-[11px] font-semibold text-white hover:bg-surface-6"
+            >
+              <X className="h-2.5 w-2.5" aria-hidden />
+              Limpiar
+            </button>
+          </div>
           <Calendar selected={selectedDay} onSelect={setSelectedDay} />
           {selectedDay && (
             <div className="flex items-center justify-between rounded-lg border border-primary bg-brand-pinkBg px-3.5 py-2.5">

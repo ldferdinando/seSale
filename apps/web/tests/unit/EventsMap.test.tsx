@@ -83,6 +83,29 @@ describe("EventsMap", () => {
     expect(widths[1]).toBeGreaterThan(widths[2]);
   });
 
+  it("renders teardrop-shaped pins (svg path), not plain circles", () => {
+    const { container } = render(
+      <EventsMap events={[eventWithCoords({ id: "e1", plan: "pro" })]} activeCity={activeCity} onEventClick={() => {}} />,
+    );
+
+    const icon = container.querySelector(".leaflet-marker-icon");
+    const path = icon?.querySelector("svg path");
+    expect(path).not.toBeNull();
+    expect(path?.getAttribute("d")).toContain("C5.373 0 0 5.373 0 12");
+  });
+
+  it("anchors the pin tip (iconAnchor = [width/2, height]) at the event coordinates", () => {
+    const { container } = render(
+      <EventsMap events={[eventWithCoords({ id: "e1", plan: "pro" })]} activeCity={activeCity} onEventClick={() => {}} />,
+    );
+
+    // Leaflet aplica el iconAnchor como margen negativo sobre el icono.
+    // plan pro => 28x42 => anchor [14, 42].
+    const icon = container.querySelector<HTMLElement>(".leaflet-marker-icon");
+    expect(icon?.style.marginLeft).toBe("-14px");
+    expect(icon?.style.marginTop).toBe("-42px");
+  });
+
   it("clicking a marker opens a popup with the title and a link to the event", async () => {
     const event = eventWithCoords({ id: "e1", title: "Noche de Jazz" });
     const { container } = render(
