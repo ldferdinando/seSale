@@ -104,6 +104,33 @@ describe("HomePage", () => {
     expect(screen.queryByTestId("event-card")).not.toBeInTheDocument();
   });
 
+  it("clicking 'Ahora' applies the moment filter and smooth-scrolls to the events list", async () => {
+    const scrollIntoView = vi.fn();
+    // jsdom no implementa scrollIntoView.
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    const requestedUrls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        requestedUrls.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderWithActiveCity(<HomePage />);
+    await screen.findByText("General Roca");
+
+    fireEvent.click(screen.getByRole("button", { name: /Ahora|Qué hay hoy/i }));
+
+    // El filtro de fecha "hoy" llega a la query del listado.
+    await waitFor(() => expect(requestedUrls.some((url) => url.includes("date_from"))).toBe(true));
+
+    // El scroll al listado se dispara tras el re-render (setTimeout 100ms).
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" }),
+    );
+  });
+
   // Etapa 11b — Parte 5
   it("shows the 'ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!' legend", async () => {
     renderWithActiveCity(<HomePage />);

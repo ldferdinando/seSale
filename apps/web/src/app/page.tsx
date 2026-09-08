@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -38,6 +38,7 @@ export default function HomePage() {
   const [view, setView] = useState<EventView>("lista");
   const { activeCity, isDetecting } = useActiveCity();
   const router = useRouter();
+  const listRef = useRef<HTMLDivElement>(null);
 
   const effectiveFilters: EventFiltersState = activeCity ? { ...filters, cityId: activeCity.id } : filters;
 
@@ -64,13 +65,19 @@ export default function HomePage() {
 
       <div className="container mx-auto max-w-2xl">
         <TodayBanner
-          onClick={() =>
+          onClick={() => {
             setFilters((f) => ({
               ...f,
               ...getDateRangeForPreset("hoy"),
               moment: new Date().getHours() >= 20 ? "nocturno" : undefined,
-            }))
-          }
+            }));
+            // Scroll al inicio del listado (sección de tabs Grilla/Mapa) —
+            // setTimeout para que React re-renderice con el filtro aplicado
+            // antes de scrollear.
+            setTimeout(() => {
+              listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+          }}
         />
 
         <AdSlots />
@@ -87,8 +94,11 @@ export default function HomePage() {
           <EventFilters filters={filters} onChange={setFilters} />
         </div>
 
-        {/* Tabs de vista — DEBAJO de los filtros (orden de seSALE.html). */}
-        <ViewTabs value={view} onChange={setView} />
+        {/* Tabs de vista — DEBAJO de los filtros (orden de seSALE.html).
+            listRef: destino del scroll al presionar "Ahora" en TodayBanner. */}
+        <div ref={listRef} data-testid="events-list-anchor" className="scroll-mt-2">
+          <ViewTabs value={view} onChange={setView} />
+        </div>
 
         {/* Contenido: la grilla y el mapa son vistas alternativas del mismo
             listado filtrado — ocupan el mismo lugar del layout. */}
