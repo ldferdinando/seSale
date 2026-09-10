@@ -134,6 +134,9 @@ root/
 │   │   │   ├── app/                # App Router de Next.js (páginas y layouts)
 │   │   │   │   ├── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
 │   │   │   │   ├── que-es-sesale/     # Página informativa "¿Qué es seSALE?", linkeada desde el Navbar — Etapa 11b
+│   │   │   │   ├── categorias/        # Sección Categorías del bottom nav — Etapa 13a: page.tsx + CategoriasContent.tsx
+│   │   │   │   │                      #   (grilla de categorías activas + counts) y [key]/page.tsx + CategoriaDetalleContent.tsx
+│   │   │   │   │                      #   (eventos filtrados por categoría, generateMetadata, notFound si key inválido)
 │   │   │   │   └── admin/layout.tsx   # Guard de /admin: redirige si no hay sesión o role≠"admin" — Etapa 9e
 │   │   │   ├── middleware.ts       # Modo mantenimiento (NEXT_PUBLIC_MAINTENANCE_MODE, edge runtime) — Etapa 9d;
 │   │   │   │                      #   + AUTH_REQUIRED_PATHS (redirige a /login?redirect= sin cookie has_session) — Etapa 9e
@@ -146,7 +149,9 @@ root/
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b;
 │   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a;
-│   │   │   │   │                  #   + FlyerUpload.tsx (dos zonas desktop/mobile, wrapper de MediaUpload) — Etapa 12b
+│   │   │   │   │                  #   + FlyerUpload.tsx (dos zonas desktop/mobile, wrapper de MediaUpload) — Etapa 12b;
+│   │   │   │   │                  #   + useCategoryCounts.ts (conteo de eventos por categoría/ciudad) — Etapa 13a;
+│   │   │   │   │                  #   EventList.tsx acepta prop opcional `emptyState` — Etapa 13a
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d;
 │   │   │   │   │                  #   hooks useAdminUsers/useUpdateUserRole/useUpdateUserActive — Etapa 9b
@@ -233,7 +238,7 @@ root/
 │       │   │   │                  #   ABM categorías/tipos gastronómicos — Etapa 12a
 │       │   │   ├── auth.py
 │       │   │   ├── events.py       # + POST/DELETE /api/events/{id}/flyer/{desktop|mobile} (flyer dual) — Etapa 8b/12b; + filtro location_id en GET /api/events — Etapa 8e; + search ampliado (lugar/categoría) + ?ticket_type — Etapa 12b
-│       │   │   ├── categories.py   # GET /api/categories, público — Etapa 12a
+│       │   │   ├── categories.py   # GET /api/categories, público — Etapa 12a; + GET /api/categories/counts?city_id= (conteo por categoría) — Etapa 13a
 │       │   │   ├── gastro_types.py # GET /api/gastro-types, público — Etapa 12a
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d; PATCH .../verify acepta body {is_verified} — Etapa 9d
@@ -250,7 +255,7 @@ root/
 │       │       ├── event_service.py  # + _validate_categories_active() contra event_categories_catalog — Etapa 12a
 │       │       ├── location_service.py  # Etapa 7b; + funciones de gastronomía (list/get/create/update/delete/verify/set_plan/cover) — Etapa 8e;
 │       │       │                  #   + _validate_gastro_types_active() contra gastro_types_catalog — Etapa 12a
-│       │       ├── category_catalog_service.py     # ABM + validación de categorías — Etapa 12a
+│       │       ├── category_catalog_service.py     # ABM + validación de categorías — Etapa 12a; + count_future_events_by_category — Etapa 13a
 │       │       ├── gastro_type_catalog_service.py  # ABM + validación de tipos gastronómicos — Etapa 12a
 │       │       ├── user_service.py
 │       │       ├── city_service.py

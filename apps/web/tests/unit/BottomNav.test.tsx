@@ -78,4 +78,29 @@ describe("BottomNav", () => {
 
     expect(screen.getByRole("link", { name: /Gastronomía/ })).not.toHaveClass("text-primary");
   });
+
+  // Etapa 13a — tab Categorías habilitado (sección propia).
+  it('links "Categorías" to /categorias and has no "Próximamente" state', () => {
+    usePathnameMock.mockReturnValue("/");
+    renderWithClient();
+
+    const link = screen.getByRole("link", { name: /Categorías/ });
+    expect(link).toHaveAttribute("href", "/categorias");
+    expect(link).not.toHaveAttribute("aria-disabled");
+    expect(link).not.toHaveAttribute("title", "Próximamente");
+  });
+
+  it('marks "Categorías" as active on /categorias', () => {
+    usePathnameMock.mockReturnValue("/categorias");
+    renderWithClient();
+
+    expect(screen.getByRole("link", { name: /Categorías/ })).toHaveClass("text-primary");
+  });
+
+  it('marks "Categorías" as active on a category detail route (/categorias/{key})', () => {
+    usePathnameMock.mockReturnValue("/categorias/musica");
+    renderWithClient();
+
+    expect(screen.getByRole("link", { name: /Categorías/ })).toHaveClass("text-primary");
+  });
 });

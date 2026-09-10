@@ -74,6 +74,28 @@ def _count_future_active_events_for_category(session: Session, key: str) -> int:
     return session.exec(query).one()
 
 
+def count_future_events_by_category(session: Session, city_id: UUID) -> dict[str, int]:
+    """Cantidad de eventos aprobados, activos y futuros (``date >= hoy`` en hora
+    Argentina) por categoría activa, para la ciudad dada. Devuelve una entrada
+    por cada categoría activa (``0`` incluido). Usado por la grilla de
+    ``/categorias`` (Etapa 13a)."""
+    today = argentina_today()
+    rows = session.exec(
+        select(EventCategory.category, func.count())
+        .join(Event, EventCategory.event_id == Event.id)
+        .where(
+            Event.city_id == city_id,
+            Event.date >= today,
+            Event.status == EventStatus.approved,
+            Event.is_active == True,  # noqa: E712
+        )
+        .group_by(EventCategory.category)
+    )
+    raw_counts = {category: count for category, count in rows}
+    active_keys = [c.key for c in list_categories(session, only_active=True)]
+    return {key: raw_counts.get(key, 0) for key in active_keys}
+
+
 def toggle_category(session: Session, category_id: UUID) -> EventCategoryCatalog:
     category = session.get(EventCategoryCatalog, category_id)
     if category is None:

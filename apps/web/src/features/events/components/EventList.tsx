@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCard } from "@/features/events/components/EventCard";
 import { useEvents } from "@/features/events/hooks/useEvents";
@@ -9,9 +11,12 @@ interface EventListProps {
   filters: EventFiltersState;
   /** false pausa el fetch (ej. mientras se detecta la ciudad activa) y muestra el skeleton. Default: true. */
   enabled?: boolean;
+  /** Etapa 13a — estado vacío custom (ej. la página de categoría muestra una
+   * card con CTA). Si no viene, se usa el texto por defecto. */
+  emptyState?: ReactNode;
 }
 
-export function EventList({ filters, enabled = true }: EventListProps) {
+export function EventList({ filters, enabled = true, emptyState }: EventListProps) {
   const { data, isLoading, isError } = useEvents(filters, { enabled });
 
   if (isLoading || !enabled) {
@@ -33,6 +38,7 @@ export function EventList({ filters, enabled = true }: EventListProps) {
   }
 
   if (!data || data.length === 0) {
+    if (emptyState) return <>{emptyState}</>;
     return <p className="text-sm text-muted-foreground">No hay eventos para mostrar con estos filtros.</p>;
   }
 

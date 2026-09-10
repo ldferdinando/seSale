@@ -640,6 +640,24 @@ export const handlers = [
       { id: "cat-deportes", key: "deportes", name: "Deportes", emoji: "⚽", color: "#14B8A6", sort_order: 13 },
     ]);
   }),
+  // Etapa 13a — conteo de eventos por categoría (grilla de /categorias)
+  http.get(`${API_URL}/api/categories/counts`, () => {
+    return HttpResponse.json({
+      musica: 3,
+      fiesta: 1,
+      teatro: 0,
+      feria: 0,
+      dj: 0,
+      milonga: 0,
+      pena: 0,
+      standup: 0,
+      arte: 0,
+      recital: 0,
+      cine: 0,
+      infantil: 0,
+      deportes: 0,
+    });
+  }),
   http.get(`${API_URL}/api/admin/categories`, () => {
     return HttpResponse.json([
       {

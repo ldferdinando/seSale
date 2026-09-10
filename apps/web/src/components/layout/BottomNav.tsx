@@ -18,12 +18,18 @@ interface NavTab {
   activeMatch?: (pathname: string) => boolean;
 }
 
-// Categorías todavía no tiene pantalla propia: ver a_revisar.md.
-// "Gastronomía y otros" (seSALE_primario.html, id="bt-lugares") apunta a
-// /lugares — habilitado desde la Etapa 9a (ABM completo desde la Etapa 8e).
+// "Categorías" (seSALE.html id="bt-categorias") → /categorias, habilitado en la
+// Etapa 13a: grilla de categorías activas + /categorias/{key} con eventos
+// filtrados. "Gastronomía y otros" (id="bt-lugares") → /lugares, habilitado
+// desde la Etapa 9a (ABM completo desde la Etapa 8e).
 const BASE_TABS: NavTab[] = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/categorias", label: "Categorías", icon: LayoutGrid, disabled: true },
+  {
+    href: "/categorias",
+    label: "Categorías",
+    icon: LayoutGrid,
+    activeMatch: (pathname) => pathname === "/categorias" || pathname.startsWith("/categorias/"),
+  },
   {
     href: "/lugares",
     label: "Gastronomía",
