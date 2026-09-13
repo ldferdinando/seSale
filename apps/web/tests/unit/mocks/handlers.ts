@@ -235,6 +235,7 @@ export function makeAdSlot(overrides: Partial<AdSlot> = {}): AdSlot {
     city_id: "22222222-2222-2222-2222-222222222222",
     section: "eventos",
     slot_position: 0,
+    category_key: null,
     rotation_mode: "sequential",
     rotation_interval_seconds: 3,
     is_active: true,
@@ -323,9 +324,12 @@ export const handlers = [
   http.get(`${API_URL}/api/ads`, ({ request }) => {
     const url = new URL(request.url);
     const section = (url.searchParams.get("section") ?? "eventos") as AdSlot["section"];
-    const positions = section === "eventos-grid" ? [0, 1] : [0, 1, 2];
+    const category_key = url.searchParams.get("category_key");
+    const positions = section === "eventos-grid" || section === "categoria-grid" || section === "categoria-wide" ? [0, 1] : [0, 1, 2];
     return HttpResponse.json(
-      positions.map((slot_position) => makeAdSlot({ section, slot_position, id: `${section}-slot-${slot_position}` })),
+      positions.map((slot_position) =>
+        makeAdSlot({ section, slot_position, category_key, id: `${section}-${category_key ?? "general"}-slot-${slot_position}` }),
+      ),
     );
   }),
   http.get(`${API_URL}/api/admin/ad-slots`, () => {

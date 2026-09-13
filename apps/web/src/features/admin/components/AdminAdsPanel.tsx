@@ -9,16 +9,32 @@ import { useAdminAdSlots } from "@/features/ads/hooks/useAdminAds";
 import { AdSlotCard } from "@/features/ads/components/AdSlotCard";
 import { AdGridPoolCard } from "@/features/ads/components/AdGridPoolCard";
 import { AD_SECTION_LABELS, type AdSection } from "@/features/ads/types";
+import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 
-const SECTIONS: AdSection[] = ["eventos", "eventos-grid", "gastronomia"];
+const SECTIONS: AdSection[] = ["eventos", "eventos-grid", "gastronomia", "categoria-wide", "categoria-grid"];
+const CATEGORY_SECTIONS: AdSection[] = ["categoria-wide", "categoria-grid"];
+const ALL_CATEGORIES_VALUE = "__all__";
 
-/** Panel admin de Banners — Etapa 8d, PARTE 8a/8b. */
+/** Panel admin de Banners — Etapa 8d, PARTE 8a/8b; selector de categoría
+ * para categoria-wide/categoria-grid — Etapa 13b, PARTE 5. */
 export function AdminAdsPanel() {
   const { data: cities } = useCities();
+  const { categories } = useCategoryCatalog();
   const [cityId, setCityId] = useState<string>("");
   const [section, setSection] = useState<AdSection>("eventos");
+  const [categoryKey, setCategoryKey] = useState<string | null>(null);
 
-  const { data: slots, isLoading, isError } = useAdminAdSlots(cityId || undefined, section);
+  const isCategorySection = CATEGORY_SECTIONS.includes(section);
+  const { data: slots, isLoading, isError } = useAdminAdSlots(
+    cityId || undefined,
+    section,
+    isCategorySection ? categoryKey : undefined,
+  );
+
+  function handleSectionChange(value: AdSection) {
+    setSection(value);
+    if (!CATEGORY_SECTIONS.includes(value)) setCategoryKey(null);
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -42,7 +58,7 @@ export function AdminAdsPanel() {
           </SelectContent>
         </Select>
 
-        <Select value={section} onValueChange={(v) => setSection(v as AdSection)}>
+        <Select value={section} onValueChange={(v) => handleSectionChange(v as AdSection)}>
           <SelectTrigger aria-label="Sección" className="w-44">
             <SelectValue />
           </SelectTrigger>
@@ -54,7 +70,30 @@ export function AdminAdsPanel() {
             ))}
           </SelectContent>
         </Select>
+
+        {isCategorySection && (
+          <Select value={categoryKey ?? ALL_CATEGORIES_VALUE} onValueChange={(v) => setCategoryKey(v === ALL_CATEGORIES_VALUE ? null : v)}>
+            <SelectTrigger aria-label="Categoría" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CATEGORIES_VALUE}>Todas las categorías</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.key} value={c.key}>
+                  {c.emoji ? `${c.emoji} ` : ""}
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
+      {isCategorySection && categoryKey === null && (
+        <p className="text-xs text-muted-foreground">
+          Estos banners aparecen en la página principal de Categorías (/categorias).
+        </p>
+      )}
 
       {!cityId && <p className="text-sm text-muted-foreground">Elegí una ciudad para ver sus banners.</p>}
 
@@ -73,7 +112,7 @@ export function AdminAdsPanel() {
 
       {cityId && slots && (
         <div className="flex flex-col gap-4">
-          {section === "eventos-grid" ? (
+          {section === "eventos-grid" || section === "categoria-grid" ? (
             slots.length > 0 && <AdGridPoolCard slots={slots} />
           ) : (
             slots

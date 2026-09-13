@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.models.event import TicketType
 from app.models.plan import PricingType
+from app.services.ad_service import BASE_AD_SLOT_SPECS
 
 SEED_PASSWORD = "Password123!"
 
@@ -41,20 +42,18 @@ def _wipe(session: Session) -> None:
 
 
 def _ad_slots_for_city(city_id: UUID) -> list[AdSlot]:
-    """8 AdSlot por ciudad (espacio publicitario — la posición fija, sin
-    contenido todavía). Etapa 8d-pre — ver ARCHITECTURE.md."""
+    """10 AdSlot base por ciudad (espacio publicitario — la posición fija,
+    sin contenido todavía): 3 "eventos" + 2 "eventos-grid" + 3 "gastronomia"
+    (Etapa 8d-pre) + 2 "categoria-wide" generales, category_key=None (Etapa
+    13b — banners arriba del grid de /categorias; los slots específicos por
+    categoría, category_key=<key>, NO se siembran acá: los crea el admin al
+    dar de alta cada categoría — ver
+    category_catalog_service.py::create_category).
+    Usa BASE_AD_SLOT_SPECS (app/services/ad_service.py) como única fuente de
+    verdad, compartida con ensure_base_ad_slots_for_city."""
     return [
-        # Sección Eventos — 3 carruseles wide (rotación secuencial)
-        AdSlot(city_id=city_id, section="eventos", slot_position=0, rotation_mode="sequential"),
-        AdSlot(city_id=city_id, section="eventos", slot_position=1, rotation_mode="sequential"),
-        AdSlot(city_id=city_id, section="eventos", slot_position=2, rotation_mode="sequential"),
-        # Sección Eventos — tiles grid (rotación random)
-        AdSlot(city_id=city_id, section="eventos-grid", slot_position=0, rotation_mode="random"),
-        AdSlot(city_id=city_id, section="eventos-grid", slot_position=1, rotation_mode="random"),
-        # Sección Gastronomía — 3 carruseles wide (rotación secuencial)
-        AdSlot(city_id=city_id, section="gastronomia", slot_position=0, rotation_mode="sequential"),
-        AdSlot(city_id=city_id, section="gastronomia", slot_position=1, rotation_mode="sequential"),
-        AdSlot(city_id=city_id, section="gastronomia", slot_position=2, rotation_mode="sequential"),
+        AdSlot(city_id=city_id, section=section, slot_position=position, rotation_mode=rotation_mode)
+        for section, position, rotation_mode in BASE_AD_SLOT_SPECS
     ]
 
 

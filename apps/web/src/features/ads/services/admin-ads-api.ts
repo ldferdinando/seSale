@@ -9,8 +9,16 @@ import type {
   AdSlotAdmin,
 } from "@/features/ads/types";
 
-export async function fetchAdminAdSlots(cityId: string, section?: AdSection): Promise<AdSlotAdmin[]> {
-  return apiGet<AdSlotAdmin[]>("/api/admin/ad-slots", { city_id: cityId, section });
+export async function fetchAdminAdSlots(
+  cityId: string,
+  section?: AdSection,
+  categoryKey?: string | null,
+): Promise<AdSlotAdmin[]> {
+  return apiGet<AdSlotAdmin[]>("/api/admin/ad-slots", {
+    city_id: cityId,
+    section,
+    ...(categoryKey ? { category_key: categoryKey } : {}),
+  });
 }
 
 export async function fetchAdminAdItems(filters: AdminAdItemFilters): Promise<AdItemAdmin[]> {

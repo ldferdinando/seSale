@@ -133,3 +133,47 @@ async def test_get_ads_triggers_expire_overdue_ad_items_in_background(client: As
 
     assert response.status_code == 200
     mock_task.assert_called_once()
+
+
+# ── Etapa 13b — category_key ────────────────────────────────────────────────
+
+
+async def test_get_ads_categoria_wide_without_category_key_returns_only_null_ones(
+    client: AsyncClient, session: Session, city: City
+):
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    response = await client.get("/api/ads", params={"city_id": str(city.id), "section": "categoria-wide"})
+
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["category_key"] is None
+
+
+async def test_get_ads_categoria_wide_with_category_key_returns_only_that_category(
+    client: AsyncClient, session: Session, city: City
+):
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    response = await client.get(
+        "/api/ads", params={"city_id": str(city.id), "section": "categoria-wide", "category_key": "musica"}
+    )
+
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["category_key"] == "musica"
+
+
+async def test_get_ads_categoria_wide_with_category_key_without_slots_returns_empty_list(
+    client: AsyncClient, session: Session, city: City
+):
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+
+    response = await client.get(
+        "/api/ads", params={"city_id": str(city.id), "section": "categoria-wide", "category_key": "teatro"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []

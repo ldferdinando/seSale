@@ -1,4 +1,4 @@
-export type AdSection = "eventos" | "eventos-grid" | "gastronomia";
+export type AdSection = "eventos" | "eventos-grid" | "gastronomia" | "categoria-wide" | "categoria-grid";
 export type AdRotationMode = "sequential" | "random";
 export type AdItemStatus = "active" | "paused" | "expired";
 
@@ -15,6 +15,7 @@ export interface AdSlot {
   city_id: string;
   section: AdSection;
   slot_position: number;
+  category_key: string | null;
   rotation_mode: AdRotationMode;
   rotation_interval_seconds: number;
   is_active: boolean;
@@ -71,4 +72,6 @@ export const AD_SECTION_LABELS: Record<AdSection, string> = {
   eventos: "Eventos",
   "eventos-grid": "Eventos (grilla)",
   gastronomia: "Gastronomía",
+  "categoria-wide": "Categorías (banners)",
+  "categoria-grid": "Categorías (grilla)",
 };

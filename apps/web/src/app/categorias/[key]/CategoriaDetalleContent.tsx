@@ -2,13 +2,17 @@
 
 import { CalendarX, Sun } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { AdGridPool } from "@/components/AdGridPool";
+import { BannerSlot } from "@/components/BannerSlot";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DateFilter } from "@/features/events/components/DateFilter";
 import { EventList } from "@/features/events/components/EventList";
 import { MomentPills } from "@/features/events/components/MomentPills";
 import type { Category, EventFiltersState } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
+import { useBannerSlots } from "@/hooks/useBannerSlots";
 
 interface CategoriaDetalleContentProps {
   category: Category;
@@ -33,10 +37,24 @@ function CategoriaVacia({ categoryName, cityName }: { categoryName: string; city
 }
 
 /** Etapa 13a — eventos de una categoría. Reutiliza EventList + los filtros de
- * momento/fecha del home (sin el filtro de categoría, ya fijado por la ruta). */
+ * momento/fecha del home (sin el filtro de categoría, ya fijado por la ruta).
+ * Etapa 13b — banners de la categoría (BANS_CAT[key]/ADS_GRID_CAT[key] en
+ * seSALE.html, ver verCat()): banners wide específicos arriba de los
+ * filtros, y tiles de grilla que reemplazan el listado mientras no haya
+ * ningún filtro elegido (igual que verCat(): "Elegí un filtro para ver los
+ * eventos" — antes de elegir, se muestra la publicidad de la categoría). */
 export function CategoriaDetalleContent({ category }: CategoriaDetalleContentProps) {
   const { activeCity, isDetecting } = useActiveCity();
   const [filters, setFilters] = useState<EventFiltersState>({});
+  const cityId = activeCity?.id ?? null;
+
+  const wideBanners = useBannerSlots({ cityId, section: "categoria-wide", category_key: category.key });
+  const gridBanners = useBannerSlots({ cityId, section: "categoria-grid", category_key: category.key });
+  const gridPool = useMemo(() => gridBanners.slots.flatMap((slot) => slot.items), [gridBanners.slots]);
+  const gridRotationIntervalSeconds = gridBanners.slots[0]?.rotation_interval_seconds ?? 5;
+
+  const hasActiveFilters = Boolean(filters.moment || filters.dateFrom || filters.dateTo);
+  const showGridInsteadOfList = !hasActiveFilters && !gridBanners.isLoading && gridPool.length > 0;
 
   const effectiveFilters: EventFiltersState = {
     ...filters,
@@ -56,6 +74,19 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         </p>
       </header>
 
+      {/* Banners específicos de la categoría — sin placeholder si no hay
+       * ninguno cargado (a diferencia de home/gastronomía/CategoriasContent):
+       * es normal que una categoría todavía no tenga anunciantes propios. */}
+      {wideBanners.isLoading ? (
+        <div className="flex flex-col gap-2" data-testid="categoria-det-bans-loading">
+          <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+        </div>
+      ) : (
+        wideBanners.slots
+          .filter((slot) => slot.items.length > 0)
+          .map((slot) => <BannerSlot key={slot.id} slot={slot} className="mb-1" />)
+      )}
+
       <div className="flex flex-col gap-4">
         <DateFilter filters={filters} onChange={setFilters} />
 
@@ -71,11 +102,15 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         </div>
       </div>
 
-      <EventList
-        filters={effectiveFilters}
-        enabled={!isDetecting}
-        emptyState={<CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />}
-      />
+      {showGridInsteadOfList ? (
+        <AdGridPool items={gridPool} rotationIntervalSeconds={gridRotationIntervalSeconds} />
+      ) : (
+        <EventList
+          filters={effectiveFilters}
+          enabled={!isDetecting}
+          emptyState={<CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />}
+        />
+      )}
     </div>
   );
 }

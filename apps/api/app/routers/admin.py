@@ -460,9 +460,13 @@ async def patch_admin_city_sort_order(
 async def get_admin_ad_slots(
     city_id: UUID = Query(...),
     section: AdSection | None = Query(default=None),
+    category_key: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> list[AdSlotAdminRead]:
-    return list_admin_ad_slots(session, city_id=city_id, section=section)
+    """`category_key` (Etapa 13b) solo filtra si `section` viene junto —
+    sigue la misma convención que GET /api/ads (sin `category_key`: slots
+    generales; con `category_key`: los de esa categoría)."""
+    return list_admin_ad_slots(session, city_id=city_id, section=section, category_key=category_key)
 
 
 @router.get("/ad-items", response_model=list[AdItemAdminRead])

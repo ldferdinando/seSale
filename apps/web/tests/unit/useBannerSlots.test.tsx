@@ -37,4 +37,37 @@ describe("useBannerSlots", () => {
     await waitFor(() => expect(result.current.slots).toHaveLength(1));
     expect(result.current.slots[0].id).toBe("s1");
   });
+
+  it("passes category_key through to GET /api/ads — Etapa 13b", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("section")).toBe("categoria-wide");
+        expect(url.searchParams.get("category_key")).toBe("musica");
+        return HttpResponse.json([makeAdSlot({ id: "s1", section: "categoria-wide", category_key: "musica" })]);
+      }),
+    );
+
+    const { result } = renderHook(
+      () => useBannerSlots({ cityId: "city-1", section: "categoria-wide", category_key: "musica" }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.slots).toHaveLength(1));
+    expect(result.current.slots[0].category_key).toBe("musica");
+  });
+
+  it("omits category_key when not provided (banners generales)", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.has("category_key")).toBe(false);
+        return HttpResponse.json([makeAdSlot({ id: "s1", section: "categoria-wide", category_key: null })]);
+      }),
+    );
+
+    const { result } = renderHook(() => useBannerSlots({ cityId: "city-1", section: "categoria-wide" }), { wrapper });
+
+    await waitFor(() => expect(result.current.slots).toHaveLength(1));
+  });
 });

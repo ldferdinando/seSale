@@ -10,6 +10,7 @@ function makeSlot(overrides: Partial<AdSlot> = {}): AdSlot {
     city_id: "city-1",
     section: "eventos",
     slot_position: 0,
+    category_key: null,
     rotation_mode: "sequential",
     rotation_interval_seconds: 3,
     is_active: true,

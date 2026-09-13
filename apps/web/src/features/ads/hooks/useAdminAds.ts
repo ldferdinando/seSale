@@ -18,10 +18,14 @@ function invalidateAds(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["banners"] });
 }
 
-export function useAdminAdSlots(cityId: string | undefined, section: AdSection | undefined) {
+export function useAdminAdSlots(
+  cityId: string | undefined,
+  section: AdSection | undefined,
+  categoryKey?: string | null,
+) {
   return useQuery({
-    queryKey: [ADMIN_AD_SLOTS_KEY, cityId, section],
-    queryFn: () => fetchAdminAdSlots(cityId as string, section),
+    queryKey: [ADMIN_AD_SLOTS_KEY, cityId, section, categoryKey ?? null],
+    queryFn: () => fetchAdminAdSlots(cityId as string, section, categoryKey),
     enabled: !!cityId,
     staleTime: 0,
   });

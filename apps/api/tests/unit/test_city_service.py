@@ -159,3 +159,74 @@ def test_update_city_sort_order_updates_value(session, city):
 def test_update_city_sort_order_nonexistent_raises_lookup_error(session):
     with pytest.raises(LookupError):
         update_city_sort_order(session, uuid4(), 1)
+
+
+# Etapa 13b — activar una ciudad crea sus AdSlot base + los de categoría
+
+
+def test_toggle_city_active_enabling_creates_base_ad_slots(session, city):
+    from app.models.ad_slot import AdSlot
+    from sqlmodel import select
+
+    city.is_active = False
+    session.add(city)
+    session.commit()
+
+    toggle_city_active(session, city.id)
+
+    slots = session.exec(select(AdSlot).where(AdSlot.city_id == city.id)).all()
+    base_sections = {(s.section, s.slot_position) for s in slots if s.category_key is None}
+    assert ("eventos", 0) in base_sections
+    assert ("eventos", 1) in base_sections
+    assert ("eventos", 2) in base_sections
+    assert ("eventos-grid", 0) in base_sections
+    assert ("gastronomia", 0) in base_sections
+    assert ("categoria-wide", 0) in base_sections
+    assert ("categoria-wide", 1) in base_sections
+
+
+def test_toggle_city_active_enabling_creates_category_ad_slots_for_active_categories(session, city):
+    from app.models.ad_slot import AdSlot
+    from app.models.event_category_catalog import EventCategoryCatalog
+    from sqlmodel import select
+
+    session.add(EventCategoryCatalog(key="categoria-de-prueba", name="Categoría de prueba", is_active=True))
+    city.is_active = False
+    session.add(city)
+    session.commit()
+
+    toggle_city_active(session, city.id)
+
+    slots = session.exec(
+        select(AdSlot).where(AdSlot.city_id == city.id, AdSlot.category_key == "categoria-de-prueba")
+    ).all()
+    positions = {(s.section, s.slot_position) for s in slots}
+    assert positions == {
+        ("categoria-wide", 0),
+        ("categoria-wide", 1),
+        ("categoria-grid", 0),
+        ("categoria-grid", 1),
+    }
+
+
+def test_toggle_city_active_enabling_is_idempotent_for_ad_slots(session, city):
+    from app.models.ad_slot import AdSlot
+    from sqlmodel import func, select
+
+    city.is_active = False
+    session.add(city)
+    session.commit()
+    toggle_city_active(session, city.id)
+    count_after_first = session.exec(
+        select(func.count()).select_from(AdSlot).where(AdSlot.city_id == city.id)
+    ).one()
+
+    city.is_active = False
+    session.add(city)
+    session.commit()
+    toggle_city_active(session, city.id)
+    count_after_second = session.exec(
+        select(func.count()).select_from(AdSlot).where(AdSlot.city_id == city.id)
+    ).one()
+
+    assert count_after_first == count_after_second

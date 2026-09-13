@@ -68,6 +68,107 @@ async def test_get_admin_ad_slots_by_user_returns_403(client: AsyncClient, city:
     assert response.status_code == 403
 
 
+# ── GET /api/admin/ad-slots?category_key= (Etapa 13b) ────────────────────
+
+
+async def test_get_admin_ad_slots_categoria_wide_without_category_key_returns_only_null_ones(
+    client: AsyncClient, session: Session, city: City, admin_token_headers
+):
+    # slot_position=1 general falta a propósito: el self-heal del endpoint
+    # (fix del bug "no aparece Agregar banner") lo crea antes de listar.
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "categoria-wide"},
+        headers=admin_token_headers,
+    )
+
+    body = response.json()
+    assert len(body) == 2
+    assert all(slot["category_key"] is None for slot in body)
+
+
+async def test_get_admin_ad_slots_categoria_wide_with_category_key_returns_only_that_category(
+    client: AsyncClient, session: Session, city: City, admin_token_headers
+):
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "categoria-wide", "category_key": "musica"},
+        headers=admin_token_headers,
+    )
+
+    # El self-heal completa el combo de 4 slots de "musica" (2 categoria-wide
+    # + 2 categoria-grid) — este endpoint filtra por section="categoria-wide",
+    # así que devuelve las 2 posiciones (0 ya existía, 1 la crea el self-heal).
+    body = response.json()
+    assert len(body) == 2
+    assert all(slot["category_key"] == "musica" for slot in body)
+
+
+# ── GET /api/admin/ad-slots self-heal (fix: "no aparece Agregar banner"
+# cuando no existe ningún AdSlot para la combinación pedida) ─────────────
+
+
+async def test_get_admin_ad_slots_self_heals_missing_base_slots(
+    client: AsyncClient, city: City, admin_token_headers
+):
+    """Ciudad sin ningún AdSlot de 'eventos' (nunca se sembraron/crearon) —
+    el endpoint los crea antes de listar, en vez de devolver una lista vacía
+    que deja al panel admin sin el botón 'Agregar banner'."""
+    response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "eventos"},
+        headers=admin_token_headers,
+    )
+
+    body = response.json()
+    assert sorted(s["slot_position"] for s in body) == [0, 1, 2]
+
+
+async def test_get_admin_ad_slots_self_heals_missing_category_slots(
+    client: AsyncClient, city: City, admin_token_headers
+):
+    """Categoría ya existente (ej. seedeada antes de la Etapa 13b) que nunca
+    tuvo sus AdSlot creados — el bug real reportado por la usuaria."""
+    response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "categoria-wide", "category_key": "musica"},
+        headers=admin_token_headers,
+    )
+
+    body = response.json()
+    assert len(body) == 2
+    assert sorted(s["slot_position"] for s in body) == [0, 1]
+
+    # El combo completo (categoria-grid también) queda creado, no solo la
+    # sección pedida en este request.
+    grid_response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "categoria-grid", "category_key": "musica"},
+        headers=admin_token_headers,
+    )
+    assert len(grid_response.json()) == 2
+
+
+async def test_get_admin_ad_slots_categoria_grid_without_category_key_stays_empty(
+    client: AsyncClient, city: City, admin_token_headers
+):
+    """No hay slots generales de categoria-grid por diseño — el self-heal no
+    inventa ninguno, la lista vacía es el resultado correcto."""
+    response = await client.get(
+        "/api/admin/ad-slots",
+        params={"city_id": str(city.id), "section": "categoria-grid"},
+        headers=admin_token_headers,
+    )
+
+    assert response.json() == []
+
+
 # ── POST /api/admin/ad-items ─────────────────────────────────────────────
 
 

@@ -58,4 +58,39 @@ describe("CategoriasContent (/categorias)", () => {
     const card = musica.closest("[data-testid='categoria-card']") as HTMLElement;
     await waitFor(() => expect(within(card).getByText("Sin eventos activos")).toBeInTheDocument());
   });
+
+  // Etapa 13b — banners generales (BANS_CATEGORIAS)
+
+  it("shows 2 wide BannerSlot above the grid, requesting section=categoria-wide without category_key", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("section")).toBe("categoria-wide");
+        expect(url.searchParams.has("category_key")).toBe(false);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderWithActiveCity(<CategoriasContent />);
+
+    await screen.findAllByTestId("categoria-card");
+    expect(screen.queryAllByTestId("banner-slot")).toHaveLength(0);
+  });
+
+  it("shows a placeholder for each empty general banner slot (like home)", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("section") !== "categoria-wide") return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json([
+          { id: "b1", city_id: "c1", section: "categoria-wide", slot_position: 0, category_key: null, rotation_mode: "sequential", rotation_interval_seconds: 3, is_active: true, items: [] },
+          { id: "b2", city_id: "c1", section: "categoria-wide", slot_position: 1, category_key: null, rotation_mode: "sequential", rotation_interval_seconds: 3, is_active: true, items: [] },
+        ]);
+      }),
+    );
+
+    renderWithActiveCity(<CategoriasContent />);
+
+    await waitFor(() => expect(screen.getAllByTestId("banner-slot-empty")).toHaveLength(2));
+  });
 });

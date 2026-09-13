@@ -15,7 +15,9 @@ interface BannerSlotProps {
 const SECTION_ASPECT: Record<AdSlot["section"], string> = {
   eventos: "aspect-[3.2/1] md:aspect-[3.88/1]",
   gastronomia: "aspect-[3.2/1] md:aspect-[3.88/1]",
+  "categoria-wide": "aspect-[3.2/1] md:aspect-[3.88/1]",
   "eventos-grid": "aspect-square md:aspect-[6/5]",
+  "categoria-grid": "aspect-square md:aspect-[6/5]",
 };
 
 function EmptyBannerState() {

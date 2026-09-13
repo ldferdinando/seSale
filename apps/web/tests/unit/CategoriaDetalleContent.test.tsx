@@ -93,4 +93,118 @@ describe("CategoriaDetalleContent (/categorias/[key])", () => {
 
     await waitFor(() => expect(urls.some((u) => u.includes("date_from"))).toBe(true));
   });
+
+  // Etapa 13b — banners específicos de la categoría (BANS_CAT/ADS_GRID_CAT)
+
+  it("requests category-wide and category-grid banners scoped to this category's key", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    await waitFor(() =>
+      expect(urls.some((u) => u.includes("section=categoria-wide") && u.includes("category_key=musica"))).toBe(true),
+    );
+    expect(urls.some((u) => u.includes("section=categoria-grid") && u.includes("category_key=musica"))).toBe(true);
+  });
+
+  it("shows the wide banner when there is an AdItem for this category", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("section") !== "categoria-wide") return HttpResponse.json([]);
+        return HttpResponse.json([
+          {
+            id: "b1",
+            city_id: "c1",
+            section: "categoria-wide",
+            slot_position: 0,
+            category_key: "musica",
+            rotation_mode: "sequential",
+            rotation_interval_seconds: 3,
+            is_active: true,
+            items: [{ id: "i1", img_url: "https://example.com/a.jpg", link_url: null, alt_text: null, display_order: 0 }],
+          },
+        ]);
+      }),
+    );
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    await waitFor(() => expect(screen.getAllByTestId("banner-slot")).toHaveLength(1));
+  });
+
+  it("does NOT show a placeholder when this category has no wide banners loaded", async () => {
+    server.use(http.get(`${API_URL}/api/ads`, () => HttpResponse.json([])));
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+    await screen.findByText(/Eventos de Música en vivo/);
+
+    expect(screen.queryByTestId("banner-slot-empty")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("banner-slot")).not.toBeInTheDocument();
+  });
+
+  it("shows the grid tiles instead of the event list when there are no active filters and the category-grid pool has items", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("section") !== "categoria-grid") return HttpResponse.json([]);
+        return HttpResponse.json([
+          {
+            id: "g1",
+            city_id: "c1",
+            section: "categoria-grid",
+            slot_position: 0,
+            category_key: "musica",
+            rotation_mode: "random",
+            rotation_interval_seconds: 5,
+            is_active: true,
+            items: [{ id: "i1", img_url: "https://example.com/a.jpg", link_url: null, alt_text: null, display_order: 0 }],
+          },
+        ]);
+      }),
+      http.get(`${API_URL}/api/events`, () => HttpResponse.json([makeEvent()])),
+    );
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    await waitFor(() => expect(screen.getByTestId("ad-grid-pool")).toBeInTheDocument());
+    expect(screen.queryByText(/No hay eventos/)).not.toBeInTheDocument();
+  });
+
+  it("shows the event list (not the grid tiles) once a filter is active, even with a category-grid pool", async () => {
+    server.use(
+      http.get(`${API_URL}/api/ads`, ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("section") !== "categoria-grid") return HttpResponse.json([]);
+        return HttpResponse.json([
+          {
+            id: "g1",
+            city_id: "c1",
+            section: "categoria-grid",
+            slot_position: 0,
+            category_key: "musica",
+            rotation_mode: "random",
+            rotation_interval_seconds: 5,
+            is_active: true,
+            items: [{ id: "i1", img_url: "https://example.com/a.jpg", link_url: null, alt_text: null, display_order: 0 }],
+          },
+        ]);
+      }),
+      http.get(`${API_URL}/api/events`, () => HttpResponse.json([])),
+    );
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+    await waitFor(() => expect(screen.getByTestId("ad-grid-pool")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+
+    await waitFor(() => expect(screen.queryByTestId("ad-grid-pool")).not.toBeInTheDocument());
+    expect(await screen.findByText(/No hay eventos/)).toBeInTheDocument();
+  });
 });

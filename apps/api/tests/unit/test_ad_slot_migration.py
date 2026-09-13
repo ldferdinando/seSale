@@ -16,6 +16,7 @@ def test_ad_slots_table_has_expected_columns(session: Session):
         "city_id",
         "section",
         "slot_position",
+        "category_key",  # Etapa 13b
         "rotation_mode",
         "rotation_interval_seconds",
         "is_active",

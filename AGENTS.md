@@ -135,6 +135,7 @@ root/
 │   │   │   │   ├── proximamente/      # Página de modo mantenimiento (rewrite desde middleware.ts) — Etapa 9d
 │   │   │   │   ├── que-es-sesale/     # Página informativa "¿Qué es seSALE?", linkeada desde el Navbar — Etapa 11b
 │   │   │   │   ├── categorias/        # Sección Categorías del bottom nav — Etapa 13a: page.tsx + CategoriasContent.tsx
+│   │   │   │   │                      #   (+ banners categoria-wide generales — Etapa 13b)
 │   │   │   │   │                      #   (grilla de categorías activas + counts) y [key]/page.tsx + CategoriaDetalleContent.tsx
 │   │   │   │   │                      #   (eventos filtrados por categoría, generateMetadata, notFound si key inválido)
 │   │   │   │   └── admin/layout.tsx   # Guard de /admin: redirige si no hay sesión o role≠"admin" — Etapa 9e
@@ -145,7 +146,7 @@ root/
 │   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar una imagen — prop type:"flyer-desktop"|"flyer-mobile"|"cover" — Etapa 8b, generalizado en Etapa 8e, flyer dual en Etapa 12b
 │   │   │   │   ├── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
-│   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d
+│   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d; +aspect categoria-wide/grid — Etapa 13b
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b;
 │   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a;
@@ -174,7 +175,7 @@ root/
 │   │   │   │   └── media.ts           # resolveMediaUrl() — resuelve flyer_url/cover_img_url relativo contra NEXT_PUBLIC_API_URL — Etapa 8b
 │   │   │   ├── hooks/              # Custom hooks globales
 │   │   │   │   ├── useActiveCity.ts   # Consume ActiveCityContext — Etapa 7a
-│   │   │   │   ├── useBannerSlots.ts  # Fetch de AdSlot por ciudad/sección (TanStack Query) — Etapa 8d
+│   │   │   │   ├── useBannerSlots.ts  # Fetch de AdSlot por ciudad/sección (TanStack Query) — Etapa 8d; +category_key — Etapa 13b
 │   │   │   │   └── useGastroPlaces.ts # Fetch de lugares gastronómicos por ciudad/filtros (TanStack Query) — Etapa 8e
 │   │   │   └── types/              # Tipos TypeScript globales
 │   │   ├── public/
@@ -222,7 +223,7 @@ root/
 │       │   │   │                  #   eliminado en Etapa 12a (reemplazado por gastro_types_catalog)
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
-│       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre
+│       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre; +category_key — Etapa 13b
 │       │   │   └── ad_item.py      # AdItem (pieza publicitaria) — Etapa 8d-pre
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
 │       │   │   ├── location.py     # Etapa 7b; +LocationGastroRead/AdminRead/Create/Update — Etapa 8e
@@ -231,7 +232,7 @@ root/
 │       │   │   ├── plan.py         # Etapa 6
 │       │   │   ├── subscription.py # Etapa 6
 │       │   │   ├── report.py       # Etapa 6.5
-│       │   │   └── ad_slot.py      # AdSlotRead/AdItemPublicRead/AdItemAdminRead/AdItemCreate/AdItemUpdate — Etapa 8d
+│       │   │   └── ad_slot.py      # AdSlotRead/AdItemPublicRead/AdItemAdminRead/AdItemCreate/AdItemUpdate — Etapa 8d; +AdSlotCreate/category_key — Etapa 13b
 │       │   ├── routers/            # Endpoints organizados por recurso
 │       │   │   ├── admin.py        # Endpoints solo-admin (eventos completos, alta de usuarios) — Etapa 5.6, suscripciones — Etapa 6, reportes — Etapa 6.5,
 │       │   │   │                  #   ABM lugares — Etapa 7b, listado/sort-order de ciudades — Etapa 8a, ad-slots/ad-items — Etapa 8d, ABM gastro — Etapa 8e;
@@ -261,7 +262,8 @@ root/
 │       │       ├── city_service.py
 │       │       ├── payment_service.py
 │       │       ├── report_service.py  # Etapa 6.5
-│       │       └── ad_service.py   # ABM de AdItem, listados públicos/admin, reorder — Etapa 8d
+│       │       └── ad_service.py   # ABM de AdItem, listados públicos/admin, reorder — Etapa 8d;
+│       │                          #   +ensure_base_ad_slots_for_city/ensure_category_ad_slots — Etapa 13b
 │       ├── tests/                  # Tests del backend
 │       │   ├── unit/
 │       │   └── integration/

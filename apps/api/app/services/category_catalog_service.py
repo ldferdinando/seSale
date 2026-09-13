@@ -7,6 +7,8 @@ from app.models.category import EventCategory
 from app.models.event import Event, EventStatus
 from app.models.event_category_catalog import EventCategoryCatalog
 from app.schemas.category_catalog import CategoryCreate, CategoryUpdate
+from app.services.ad_service import ensure_category_ad_slots
+from app.services.city_service import list_active_cities
 
 
 def list_categories(session: Session, *, only_active: bool = True) -> list[EventCategoryCatalog]:
@@ -43,6 +45,14 @@ def create_category(session: Session, data: CategoryCreate) -> EventCategoryCata
     session.add(category)
     session.commit()
     session.refresh(category)
+
+    # Etapa 13b — banners de categoría: cada categoría nueva necesita sus
+    # propios slots (2 categoria-wide + 2 categoria-grid) en cada ciudad
+    # activa, para que el admin ya los tenga disponibles al cargar
+    # anunciantes. Idempotente (ensure_category_ad_slots no duplica).
+    active_city_ids = [city.id for city in list_active_cities(session)]
+    ensure_category_ad_slots(session, category.key, active_city_ids)
+
     return category
 
 

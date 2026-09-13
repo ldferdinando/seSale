@@ -4,9 +4,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-AdSection = Literal["eventos", "eventos-grid", "gastronomia"]
+AdSection = Literal["eventos", "eventos-grid", "gastronomia", "categoria-wide", "categoria-grid"]
 AdRotationMode = Literal["sequential", "random"]
 AdItemStatus = Literal["active", "paused", "expired"]
+
+_CATEGORY_SECTIONS = ("categoria-wide", "categoria-grid")
 
 
 class AdItemPublicRead(BaseModel):
@@ -31,6 +33,7 @@ class AdSlotRead(BaseModel):
     city_id: UUID
     section: AdSection
     slot_position: int
+    category_key: str | None
     rotation_mode: AdRotationMode
     rotation_interval_seconds: int
     is_active: bool
@@ -55,6 +58,29 @@ class AdSlotAdminRead(AdSlotRead):
     vencidos) — el admin necesita ver el historial completo del slot."""
 
     items: list[AdItemAdminRead]  # type: ignore[assignment]
+
+
+class AdSlotCreate(BaseModel):
+    """No hay endpoint público para crear AdSlot — los crea el sistema (seed,
+    o automáticamente al activar una ciudad / crear una categoría, ver
+    app/services/ad_service.py). Este schema existe para que esa creación
+    pase por la misma validación de Pydantic que tendría un endpoint: solo
+    "categoria-wide"/"categoria-grid" pueden llevar `category_key`."""
+
+    city_id: UUID
+    section: AdSection
+    slot_position: int = 0
+    category_key: str | None = Field(default=None, max_length=50)
+    rotation_mode: AdRotationMode = "sequential"
+    rotation_interval_seconds: int = 3
+
+    @model_validator(mode="after")
+    def _validate_category_key(self) -> "AdSlotCreate":
+        if self.category_key is not None and self.section not in _CATEGORY_SECTIONS:
+            raise ValueError(
+                'category_key solo es válido cuando section es "categoria-wide" o "categoria-grid"'
+            )
+        return self
 
 
 class AdItemCreate(BaseModel):

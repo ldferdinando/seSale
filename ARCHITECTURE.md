@@ -753,33 +753,55 @@ posición ni un anunciante como usuario registrado.
   (`user_id`, el anunciante) y auditada con `created_by` (el admin que la
   cargó). Un `AdSlot` puede tener múltiples `AdItem` (rotan entre ellos).
 
-**Dos secciones de banners, independientes entre sí** (un mismo anunciante
-puede estar en una, en la otra, o en ambas, con `AdItem` separados):
+**Secciones de banners, independientes entre sí** (un mismo anunciante
+puede estar en varias, con `AdItem` separados):
 
 | `section` | Dónde aparece | `slot_position` válidos | `rotation_mode` |
 |---|---|---|---|
 | `"eventos"` | Home, banners wide arriba del listado de eventos — 3 carruseles apilados, el admin elige en cuál carga cada banner | `0`, `1`, `2` | `"sequential"` (rota en orden cada `rotation_interval_seconds`, default 3s) |
 | `"eventos-grid"` | Home, tiles cuadrados en grilla de 2 columnas debajo del listado — se pueden agregar más de 2 tiles (se acomodan de a 2 por fila) | `0`, `1`, `2`... sin límite | `"random"` (cada tile rota en orden random entre sus imágenes) |
 | `"gastronomia"` | Pantalla de Gastronomía — mismos 3 carruseles wide apilados que `"eventos"`, independientes | `0`, `1`, `2` | `"sequential"` |
+| `"categoria-wide"` (Etapa 13b) | Banners wide en `/categorias` (si `category_key=None`, banner general) o en `/categorias/{key}` (si tiene `category_key`, específico de esa categoría) | `0`, `1` | `"sequential"` |
+| `"categoria-grid"` (Etapa 13b) | Tiles cuadrados en `/categorias/{key}` — siempre con `category_key`, reemplazan temporalmente el listado de eventos mientras no haya filtros activos | `0`, `1` | `"random"` |
 
-Categorías y tipos de gastronomía quedan para una etapa futura — no se
-modelan todavía.
+Tipos de gastronomía quedan para una etapa futura — no se modelan todavía.
 
 ```python
 class AdSlot(SQLModel, table=True):
     """Espacio publicitario — la posición fija en la página. Lo crea el
-    sistema (seed), no el admin: no cambia frecuentemente. El contenido
-    vive en AdItem."""
+    sistema (seed, o automáticamente al activar una ciudad / crear una
+    categoría — Etapa 13b), no el admin: no cambia frecuentemente. El
+    contenido vive en AdItem."""
 
     __tablename__ = "ad_slots"
     __table_args__ = (
-        UniqueConstraint("city_id", "section", "slot_position", name="uq_ad_slots_city_section_position"),
+        # Cubre los slots con category_key no nulo.
+        UniqueConstraint(
+            "city_id", "section", "slot_position", "category_key",
+            name="uq_ad_slot_city_section_position_category",
+        ),
+        # El UniqueConstraint de arriba NO bloquea dos filas con
+        # category_key=NULL (NULL nunca es igual a NULL en SQL estándar,
+        # ni en Postgres ni en SQLite) — un índice único parcial cubre ese
+        # caso en ambos motores.
+        Index(
+            "uq_ad_slot_city_section_position_null_category",
+            "city_id", "section", "slot_position",
+            unique=True,
+            postgresql_where=text("category_key IS NULL"),
+            sqlite_where=text("category_key IS NULL"),
+        ),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     city_id: UUID = Field(foreign_key="cities.id", index=True)
-    section: str = Field(max_length=20)              # "eventos" | "eventos-grid" | "gastronomia"
+    section: str = Field(max_length=20)              # "eventos" | "eventos-grid" | "gastronomia" | "categoria-wide" | "categoria-grid"
     slot_position: int = Field(default=0)             # 0-based, ver tabla arriba
+    # Etapa 13b — solo relevante si section="categoria-wide"/"categoria-grid".
+    # None = aparece en TODAS las categorías (banner general de /categorias).
+    # "musica"/"teatro"/etc. = solo en /categorias/{key}. Para cualquier otro
+    # section, siempre None (validado en schemas/ad_slot.py::AdSlotCreate).
+    category_key: str | None = Field(default=None, max_length=50)
     rotation_mode: str = Field(default="sequential", max_length=20)  # "sequential" | "random"
     rotation_interval_seconds: int = Field(default=3)
     is_active: bool = Field(default=True)             # si False, no se muestra aunque tenga AdItems activos
@@ -1794,22 +1816,40 @@ GET    /api/admin/reports              Admin. Filtros: status, event_id,
 PATCH  /api/admin/reports/{id}/status  Admin. Body: { status: "reviewed"|"dismissed" }
 ```
 
-### Banners (`/api/ads`, `/api/admin`) ✓ Etapa 8d
+### Banners (`/api/ads`, `/api/admin`) ✓ Etapa 8d (+ Etapa 13b)
 ```
 GET    /api/ads                          Público. Params: city_id (requerido),
                                          section (requerido, "eventos" |
-                                         "eventos-grid" | "gastronomia").
+                                         "eventos-grid" | "gastronomia" |
+                                         "categoria-wide" | "categoria-grid"),
+                                         category_key (opcional, Etapa 13b).
                                          AdSlot de esa ciudad/sección con sus
                                          AdItem vigentes anidados (status=active
                                          y starts_at<=hoy<=ends_at o ends_at=None),
                                          ordenados por display_order ASC. Slots
                                          sin items vigentes igual se incluyen
                                          (items=[]). Dispara expire_overdue_ad_items
-                                         lazy (BackgroundTask), igual que GET /api/events
+                                         lazy (BackgroundTask), igual que GET /api/events.
+                                         category_key solo importa para
+                                         "categoria-wide"/"categoria-grid": sin él,
+                                         trae los slots generales (category_key
+                                         IS NULL); con él, los de esa categoría
+                                         puntual (lista vacía si no hay, nunca error)
 
 GET    /api/admin/ad-slots               Admin. Params: city_id (requerido),
-                                         section (opcional). TODOS los AdItem
-                                         del slot (activos/pausados/vencidos)
+                                         section (opcional), category_key
+                                         (opcional, Etapa 13b — misma convención
+                                         que GET /api/ads, solo filtra si section
+                                         viene junto). TODOS los AdItem del slot
+                                         (activos/pausados/vencidos).
+                                         Si section viene, autorepara los
+                                         slots esperables de esa sección/
+                                         category_key antes de listar (fix
+                                         Etapa 13b: una categoría creada antes
+                                         de esa etapa podía quedar sin sus
+                                         AdSlot, y sin AdSlot no hay botón
+                                         "Agregar banner" en el panel — ver
+                                         ad_service.py::_self_heal_ad_slots)
 
 GET    /api/admin/ad-items               Admin. Filtros: city_id, section,
                                          status, user_id, date_from, date_to.
@@ -1920,6 +1960,7 @@ GET    /api/health                       Público, sin datos sensibles.
 | **12a** | Categorías de eventos y tipos gastronómicos gestionables por el admin (tablas catálogo, reemplazan los sets hardcodeados); links de contacto de eventos (WhatsApp/Instagram/Facebook/Web/Email) disponibles para todos los planes. | ✓ Completa: `event_categories_catalog`/`gastro_types_catalog` (migración `0021`, seedeadas con los 13/10 valores que antes eran `VALID_CATEGORIES`/`GASTRO_TYPES` hardcodeados — ver sección 3); `GET /api/categories`/`GET /api/gastro-types` (público, solo activos) + CRUD completo bajo `/api/admin/categories`/`/api/admin/gastro-types` (crear, editar nombre/emoji/color/sort_order sin tocar `key`, toggle con 409 si hay eventos futuros usando esa categoría/tipo); la validación de pertenencia se movió de los `field_validator` de Pydantic (sin acceso a DB) a `event_service.py`/`location_service.py` (con sesión); `Event.contact_facebook` nuevo (migración `0022`); frontend: `useCategoryCatalog`/`useGastroTypeCatalog` (TanStack Query, `staleTime` 10min, fallback hardcodeado si la API falla) reemplazan las listas estáticas en `CategoryMultiSelect.tsx`/`CategoryChips.tsx`/`EventCard.tsx`/`EventSummaryView.tsx`/`EventDetailView.tsx`/`GastroForm.tsx`/`GastroTypeChips.tsx`; `EventForm.tsx` — input real de WhatsApp (antes solo un checkbox sin campo, ver `a_revisar.md`) y nuevo input de Facebook, formulario completo deshabilitado si el evento ya pasó y quien edita es el organizador (no admin); `EventDetailView.tsx` — WhatsApp con prefijo `549`, link de Facebook nuevo; `AdminCategoriesPanel.tsx`/`AdminGastroTypesPanel.tsx` nuevos en `/admin` |
 | **12b** | Fixes de UI: filtro "¿Qué hay hoy?" a ancho completo; búsqueda de eventos ampliada (lugar + categoría) y filtro por tipo de entrada; placeholder de flyer solo para Destacado Plus; flyer dual mobile/desktop. | ✓ Completa. **Búsqueda:** `GET /api/events?search=` ahora matchea (ilike) título + descripción + `locations.name` + `event_categories.category` vía subqueries EXISTS (sin duplicados). Nuevo `?ticket_type=gratis\|pago` (`pago` incluye `anticipo`). Frontend: chips "Todos/Gratis/Pago" en `EventFilters.tsx`, `EventFiltersState.ticketType`, "Limpiar filtros" lo resetea. **Placeholder:** `EventDetailView.tsx` solo renderiza el bloque imagen/placeholder si `plan==="pro"` (`dest`/`gratis` no muestran ni espacio); `EventCard.tsx` ya cumplía. **Flyer dual:** modelo `Event.flyer_url` → `flyer_url_desktop` + `flyer_url_mobile` (migración `0023`, rename directo sin pérdida de datos); `POST/DELETE /api/events/{id}/flyer` → `.../flyer/desktop` y `.../flyer/mobile`; el admin puede subir con cualquier plan (antes 400); `storage.upload_flyer(size_type)` path `{event_id}/{desktop\|mobile}/`; frontend `FlyerUpload.tsx` nuevo (dos zonas, prop `canUpload`), `MediaUpload` tipos `flyer-desktop\|flyer-mobile\|cover`, `<picture>` con `<source media="(max-width:767px)">` en `EventCard`/`EventDetailView`. Ver `a_revisar.md`. |
 | **13a** | Sección propia de Categorías en el bottom nav: `/categorias` (grilla de categorías activas en orden alfabético + conteo de eventos por ciudad) y `/categorias/{key}` (eventos de esa categoría con filtros de momento/fecha). | ✓ Completa. Nuevo `GET /api/categories/counts?city_id=` (dict `{key: count}`, una entrada por categoría activa, cuenta `approved` + `is_active` + `date >= hoy` ARG; sin `city_id` → 422) — `count_future_events_by_category` en `category_catalog_service.py`, **sin cambios de modelo/migraciones** (sólo lee). Frontend: `app/categorias/page.tsx` (metadata estático) + `CategoriasContent.tsx` (grilla `grid-cols-2`, ordena por `name` con `localeCompare("es")`, reusa `useCategoryCatalog` + nuevo `useCategoryCounts`); `categorias/[key]/page.tsx` (`generateMetadata` con ciudad por defecto "General Roca" — la ciudad activa es sólo client-side; `notFound()` si el key no es una categoría activa) + `CategoriaDetalleContent.tsx` (reusa `EventList` + `DateFilter` + `MomentPills`, sin filtro de categoría). `EventList` gana prop opcional `emptyState`. `BottomNav.tsx` — tab "Categorías" deja de estar `disabled`, `activeMatch` cubre `/categorias` y `/categorias/{key}`. AdSlots de la sección categorías quedan pendientes (ver `a_revisar.md`). |
+| **13b** | AdSlots para la sección de Categorías: banners wide generales en `/categorias`, banners wide y tiles de grilla específicos por categoría en `/categorias/{key}` — completa el pendiente de la Etapa 13a. | ✓ Completa. **Modelo:** `AdSlot.category_key` nuevo (nullable, migración `0024`) + `section` suma `"categoria-wide"`/`"categoria-grid"`; `UniqueConstraint` pasa a 4 columnas (`city_id, section, slot_position, category_key`, nombre `uq_ad_slot_city_section_position_category`) + un índice único parcial nuevo (`WHERE category_key IS NULL`, soportado en SQLite y Postgres) para bloquear el caso `category_key=NULL` duplicado, que el `UniqueConstraint` por sí solo no cubre (NULL nunca es igual a NULL en SQL estándar). **Backend:** `GET /api/ads`/`GET /api/admin/ad-slots` suman `category_key` opcional (sin él: slots con `category_key IS NULL`; con él: los de esa categoría, lista vacía si no hay); `AdSlotCreate` nuevo en `schemas/ad_slot.py` (sin endpoint público — lo usa el servicio para crear slots con la misma validación que tendría un endpoint: `category_key` solo permitido en `categoria-wide`/`categoria-grid`); `ad_service.py::ensure_base_ad_slots_for_city`/`ensure_category_ad_slots` (idempotentes) crean automáticamente los slots al activar una ciudad (`city_service.toggle_city_active`) y al crear una categoría (`category_catalog_service.create_category`) — antes esto no existía ni para home/gastronomía, ver `a_revisar.md`. **Frontend:** `useBannerSlots`/`useAdminAdSlots` suman `category_key` (incluido en la query key); `/categorias` — 2 `BannerSlot` wide generales arriba del grid, con placeholder si vacíos (igual que home); `/categorias/{key}` — banners wide específicos de la categoría (**sin placeholder** si no hay ninguno cargado — a diferencia de home/gastronomía/`/categorias`, es normal que una categoría recién creada no tenga anunciantes) + tiles de `categoria-grid` que reemplazan el listado de eventos mientras no haya ningún filtro de momento/fecha activo y el pool tenga al menos un `AdItem`; `AdminAdsPanel.tsx` — selector "Categoría" (Todas / lista de `GET /api/categories`) visible solo para `categoria-wide`/`categoria-grid`, con nota aclaratoria cuando se elige "Todas las categorías". |
 
 ---
 

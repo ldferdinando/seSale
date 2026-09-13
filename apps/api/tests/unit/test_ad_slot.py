@@ -53,6 +53,42 @@ def test_ad_slot_unique_constraint_allows_same_position_different_section(sessio
     assert other.id is not None
 
 
+def test_ad_slot_unique_constraint_allows_same_section_position_different_category_key(
+    session: Session, city: City
+):
+    """Etapa 13b — un slot general (category_key=None) y uno específico de
+    categoría pueden coexistir en la misma (city_id, section, slot_position)."""
+    general = _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+    specific = _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    assert general.id is not None
+    assert specific.id is not None
+
+
+def test_ad_slot_unique_constraint_blocks_same_section_position_and_category_key(
+    session: Session, city: City
+):
+    """Etapa 13b — dos slots con el mismo (city_id, section, slot_position,
+    category_key), category_key no nulo, sí chocan."""
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+    with pytest.raises(IntegrityError):
+        _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key="musica")
+
+
+def test_ad_slot_unique_constraint_blocks_same_section_position_both_null_category_key(
+    session: Session, city: City
+):
+    """Etapa 13b — el caso NULL=NULL: un UniqueConstraint común no lo
+    bloquearía (NULL nunca es igual a NULL en SQL estándar) — lo bloquea el
+    índice único parcial `WHERE category_key IS NULL` agregado en la
+    migración 0024."""
+    _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+
+    with pytest.raises(IntegrityError):
+        _make_slot(session, city=city, section="categoria-wide", slot_position=0, category_key=None)
+
+
 def test_create_ad_item_with_user_and_created_by(session: Session, city: City, organizer: User, admin: User):
     slot = _make_slot(session, city=city)
 
@@ -223,15 +259,16 @@ def test_ad_item_requires_created_by(session: Session, city: City, organizer: Us
         session.commit()
 
 
-def test_seed_creates_8_ad_slots_per_city():
-    """El seed (seed.py) crea 8 AdSlot por ciudad: 3 eventos (sequential) +
-    2 eventos-grid (random) + 3 gastronomia (sequential)."""
+def test_seed_creates_10_ad_slots_per_city():
+    """El seed (seed.py) crea 10 AdSlot base por ciudad: 3 eventos
+    (sequential) + 2 eventos-grid (random) + 3 gastronomia (sequential) +
+    2 categoria-wide generales, category_key=None (sequential) — Etapa 13b."""
     from seed import _ad_slots_for_city
 
     fake_city_id = "00000000-0000-0000-0000-000000000000"
     slots = _ad_slots_for_city(fake_city_id)
 
-    assert len(slots) == 8
+    assert len(slots) == 10
     by_section: dict[str, list[AdSlot]] = {}
     for slot in slots:
         by_section.setdefault(slot.section, []).append(slot)
@@ -244,5 +281,9 @@ def test_seed_creates_8_ad_slots_per_city():
 
     assert sorted(s.slot_position for s in by_section["gastronomia"]) == [0, 1, 2]
     assert all(s.rotation_mode == "sequential" for s in by_section["gastronomia"])
+
+    assert sorted(s.slot_position for s in by_section["categoria-wide"]) == [0, 1]
+    assert all(s.rotation_mode == "sequential" for s in by_section["categoria-wide"])
+    assert all(s.category_key is None for s in by_section["categoria-wide"])
 
     assert all(s.is_active is True for s in slots)

@@ -4,8 +4,11 @@ from httpx import AsyncClient
 from sqlmodel import Session, select
 
 from app.models import City, Event, EventStatus, Location, User
+from app.models.ad_slot import AdSlot
 from app.models.category import EventCategory
 from app.models.event_category_catalog import EventCategoryCatalog
+from app.services.category_catalog_service import create_category
+from app.schemas.category_catalog import CategoryCreate
 
 
 async def test_get_admin_categories_includes_inactive(
@@ -172,3 +175,60 @@ async def test_patch_admin_category_toggle_reactivates_without_restriction(
 
     assert response.status_code == 200
     assert response.json()["is_active"] is True
+
+
+# Etapa 13b — create_category crea automáticamente los slots de la categoría
+
+
+def test_create_category_creates_4_ad_slots_per_active_city(session: Session, city: City):
+    create_category(session, CategoryCreate(key="artesanias", name="Artesanías"))
+
+    slots = session.exec(select(AdSlot).where(AdSlot.city_id == city.id, AdSlot.category_key == "artesanias")).all()
+    positions = {(s.section, s.slot_position) for s in slots}
+    assert positions == {
+        ("categoria-wide", 0),
+        ("categoria-wide", 1),
+        ("categoria-grid", 0),
+        ("categoria-grid", 1),
+    }
+
+
+def test_create_category_ignores_inactive_cities(session: Session, city: City):
+    inactive_city = City(name="Ciudad Inactiva", province="Río Negro", is_active=False)
+    session.add(inactive_city)
+    session.commit()
+    session.refresh(inactive_city)
+
+    create_category(session, CategoryCreate(key="artesanias", name="Artesanías"))
+
+    slots = session.exec(
+        select(AdSlot).where(AdSlot.city_id == inactive_city.id, AdSlot.category_key == "artesanias")
+    ).all()
+    assert slots == []
+
+
+def test_create_category_slot_creation_is_idempotent(session: Session, city: City):
+    from app.services.ad_service import ensure_category_ad_slots
+
+    create_category(session, CategoryCreate(key="artesanias", name="Artesanías"))
+    # Simula una segunda pasada (ej. reintento) — no debe duplicar ni fallar.
+    ensure_category_ad_slots(session, "artesanias", [city.id])
+
+    slots = session.exec(
+        select(AdSlot).where(AdSlot.city_id == city.id, AdSlot.category_key == "artesanias")
+    ).all()
+    assert len(slots) == 4
+
+
+async def test_post_admin_category_creates_ad_slots(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    payload = {"key": "artesanias", "name": "Artesanías"}
+
+    response = await client.post("/api/admin/categories", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    slots = session.exec(
+        select(AdSlot).where(AdSlot.city_id == city.id, AdSlot.category_key == "artesanias")
+    ).all()
+    assert len(slots) == 4

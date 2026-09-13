@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from app.core.timezone import argentina_today
 from app.models.city import City
 from app.models.event import Event, EventStatus
+from app.services.ad_service import ensure_base_ad_slots_for_city, ensure_category_ad_slots
 
 
 def list_active_cities(session: Session) -> list[City]:
@@ -49,12 +50,28 @@ def toggle_city_active(session: Session, city_id: UUID) -> City:
                 "Desactivá o reasigná los eventos antes de deshabilitar la ciudad."
             )
         city.is_active = False
-    else:
-        city.is_active = True
+        session.add(city)
+        session.commit()
+        session.refresh(city)
+        return city
 
+    city.is_active = True
     session.add(city)
     session.commit()
     session.refresh(city)
+
+    # Etapa 13b — banners: al activar una ciudad, crea sus slots base
+    # (eventos/eventos-grid/gastronomia/categoria-wide general) y los slots
+    # de cada categoría ya activa, igual que si hubiera pasado por seed.py /
+    # create_category. Idempotente. Import local para evitar import
+    # circular (category_catalog_service ya importa de este módulo).
+    from app.services.category_catalog_service import list_categories
+
+    ensure_base_ad_slots_for_city(session, city.id)
+    active_category_keys = [c.key for c in list_categories(session, only_active=True)]
+    for key in active_category_keys:
+        ensure_category_ad_slots(session, key, [city.id])
+
     return city
 
 
