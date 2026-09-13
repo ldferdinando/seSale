@@ -74,7 +74,7 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-ink-4">
+      <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
         <CalendarIcon className="h-3 w-3 text-primary" aria-hidden />
         ¿Cuándo?
       </p>

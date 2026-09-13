@@ -49,10 +49,10 @@ export default function HomePage() {
       <section className="relative overflow-hidden border-b border-border px-4 py-9">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
         <div className="container mx-auto max-w-2xl">
-          <p className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+          <p className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-4">
             ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!
           </p>
-          <h1 className="mb-2.5 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
+          <h1 className="mb-2.5 text-[clamp(27px,6.8vw,42px)] font-black leading-tight tracking-tight">
             Todo lo que pasa en <em className="text-primary not-italic">{activeCity?.name ?? "tu ciudad"}</em>,
             <br />
             en un lugar.

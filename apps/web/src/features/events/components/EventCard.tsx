@@ -84,10 +84,14 @@ export function PlanBadge({ plan }: { plan: Event["plan"] }) {
  */
 function planCardClasses(plan: Event["plan"]): string {
   if (plan === "pro") {
-    return "border-[1.75px] border-[#E91E8C99] border-l-[6px] border-l-brand-pink bg-[linear-gradient(160deg,#2a0d1f,#150910)]";
+    // Etapa "Cambios de diseño TIPO A v2.2": borde 1.75px→2.5px (seSALE_v2.html
+    // mantiene el mismo color de borde #E91E8C99, no lo actualiza a --F nuevo).
+    return "border-[2.5px] border-[#E91E8C99] border-l-[6px] border-l-brand-pink bg-[linear-gradient(160deg,#2a0d1f,#150910)]";
   }
   if (plan === "dest") {
-    return "border-[1.5px] border-[#E91E8C77] bg-[linear-gradient(135deg,#E91E8C22,#E91E8C0d)]";
+    // Fondo pasa de rosa a lime en seSALE_v2.html; el borde (#E91E8C77) no
+    // cambia (no está en el alcance de esta etapa).
+    return "border-[1.5px] border-[#E91E8C77] bg-[linear-gradient(135deg,#D4D94A26,#D4D94A0d)]";
   }
   return "";
 }
@@ -125,7 +129,7 @@ export function EventCard({ event }: EventCardProps) {
           !event.is_active && "opacity-50",
         )}
       >
-        <CardContent className="flex items-center gap-3 p-3">
+        <CardContent className={cn("flex items-center gap-3", isPro ? "px-3.5 py-4" : "p-3")}>
           <div className="flex min-w-[34px] flex-col items-center text-center">
             <span className="text-lg font-extrabold leading-none tracking-tight text-primary">
               {format(eventDate, "d")}

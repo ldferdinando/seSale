@@ -16,7 +16,7 @@
     --foreground: 0 0% 100%;
     --card: 0 0% 10%;
     --card-foreground: 0 0% 100%;
-    --primary: 328 82% 52%;
+    --primary: 338 88% 58%;
     --primary-foreground: 0 0% 100%;
     --muted: 0 0% 22%;
     --muted-foreground: 0 0% 40%;
@@ -58,7 +58,7 @@
   margin-top: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: #e91e8c;
+  color: #f2357b;
   background: none;
   border: none;
   padding: 0;

@@ -108,14 +108,15 @@ export function Navbar() {
           línea de degradé de abajo (ambos ya están pineados con inset-0 /
           inset-x-0 bottom-0, no necesitan overflow-hidden para no
           desbordar) — pero de paso clipeaba el dropdown de CitySelector
-          (absolute, ~200px de alto) contra los ~72px de este contenedor,
+          (absolute, ~200px de alto) contra los ~104px de este contenedor
+          (72px hasta la etapa TIPO A de seSALE_v2.html),
           dejando visible solo una tira de ~40px del menú. El mecanismo del
           selector (abrir/elegir/persistir/refiltrar eventos) funcionaba
           bien — el problema era 100% visual, invisible en el árbol de
           accesibilidad (por eso el diagnóstico anterior, hecho sin abrir el
           navegador de verdad, no lo detectó). No agregar overflow-hidden
           acá de nuevo sin envolver únicamente los dos divs decorativos. */}
-      <div className="relative min-h-[72px]">
+      <div className="relative min-h-[104px]">
         <div
           className="pointer-events-none absolute inset-0"
           style={{
@@ -126,7 +127,7 @@ export function Navbar() {
           aria-hidden
         />
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary to-transparent" />
-        <div className="container mx-auto flex min-h-[72px] max-w-2xl flex-wrap items-center justify-between gap-2 px-4 py-2">
+        <div className="container mx-auto flex min-h-[104px] max-w-2xl flex-wrap items-end justify-between gap-2 px-4 py-2">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-black tracking-tight text-foreground">se</span>
             <span className="text-xl font-black tracking-tight text-primary">SALE</span>

@@ -33,10 +33,15 @@ const config: Config = {
           foreground: "hsl(var(--destructive-foreground))",
         },
         // Paleta seSALE — tomada 1:1 de seSALE.html (variables --F, --V, --AM, etc.)
+        // Etapa "Cambios de diseño TIPO A v2.2": --F/--FD/--FB actualizados a la
+        // paleta de seSALE_v2.html. --blue (--AZ) NO se tocó — ver a_revisar.md
+        // (reasignación a lime generaba conflicto semántico con usos reales de
+        // este color en el frontend, no solo "mapa/cómo llegar" como en el HTML
+        // de referencia).
         brand: {
-          pink: "#E91E8C",
-          pinkDark: "#c4166f",
-          pinkBg: "#1a0d14",
+          pink: "#F2357B",
+          pinkDark: "#c41f5e",
+          pinkBg: "#1c0e17",
           green: "#1D9E75",
           whatsapp: "#25D366",
           amber: "#EF9F27",
@@ -45,6 +50,11 @@ const config: Config = {
           orange: "#D85A30",
           teal: "#14B8A6",
           babyPink: "#FF8FA3",
+          // Nuevas en seSALE_v2.html (--lime / --label-icon). --label-icon es
+          // alias de --lime en la referencia; no se aplicó a ningún ícono en
+          // esta etapa (ver a_revisar.md), queda disponible para cuando se use.
+          lime: "#D4D94A",
+          labelIcon: "#D4D94A",
         },
         // Escala de superficies (--s0..--s6 en seSALE.html)
         surface: {
@@ -60,10 +70,14 @@ const config: Config = {
         ink: {
           1: "#ffffff",
           2: "#cccccc",
-          3: "#888888",
-          4: "#666666",
-          5: "#444444",
+          3: "#aaaaaa",
+          4: "#8f8f8f",
+          5: "#6e6e6e",
         },
+        // --surround en seSALE_v2.html: fondo detrás del layout centrado de
+        // desktop (TIPO B, no implementado en esta etapa). Token disponible
+        // para cuando se implemente.
+        surround: "#050505",
       },
       borderRadius: {
         lg: "var(--radius)",

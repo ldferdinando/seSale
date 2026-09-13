@@ -23,7 +23,7 @@ export function AdSlots() {
   return (
     <div className="px-4 pt-3.5">
       <div className="mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-ink-5">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
           <Megaphone className="h-2.5 w-2.5 text-primary" aria-hidden />
           Publicidad
         </span>

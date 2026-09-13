@@ -66,7 +66,7 @@ describe("EventCard", () => {
 
     const card = screen.getByTestId("event-card");
     expect(card.className).toContain("border-[1.5px]");
-    expect(card.className).toContain("linear-gradient(135deg,#E91E8C22,#E91E8C0d)");
+    expect(card.className).toContain("linear-gradient(135deg,#D4D94A26,#D4D94A0d)");
   });
 
   it("plan='pro' with flyer_url_desktop shows the thumbnail image", () => {
