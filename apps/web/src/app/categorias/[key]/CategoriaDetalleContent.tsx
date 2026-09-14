@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarX, Sun } from "lucide-react";
+import { CalendarX, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -100,6 +100,20 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
             onChange={(moment) => setFilters((f) => ({ ...f, moment }))}
           />
         </div>
+
+        {/* Etapa "Cambios de diseño TIPO B v2.2" (punto 8): resetea los
+            filtros de esta vista (momento + fecha) al estado "Todos" — no
+            afecta la categoría, fijada por la ruta. */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => setFilters({})}
+            className="flex w-fit items-center gap-1.5 rounded-[20px] bg-surface-5 px-[13px] py-[5px] text-[11px] font-semibold text-white hover:bg-surface-6"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            Borrar filtros
+          </button>
+        )}
       </div>
 
       {showGridInsteadOfList ? (

@@ -140,6 +140,18 @@ describe("GastroPlaceCard", () => {
     expect(screen.getByTestId("gastro-verified-icon")).toBeInTheDocument();
   });
 
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 10): el badge "Verificado"
+  // ya se mostraba también en plan Gratis (nameRow es compartido entre las
+  // 3 plantillas de plan) — este test lo deja explícito para que no se
+  // rompa sin que un test lo note.
+  it('shows the verified badge on plan "gratis" too, not only dest/pro', () => {
+    const place = makeGastroPlace({ plan: "gratis", is_verified: true });
+
+    render(<GastroPlaceCard place={place} />);
+
+    expect(screen.getByTestId("gastro-verified-icon")).toBeInTheDocument();
+  });
+
   // Etapa 10b-1: botón "Llegar" (Google Maps) — siempre que haya
   // coordenadas o dirección (address es obligatorio en el modelo).
   it('shows a "Llegar" button that links to Google Maps by coordinates', () => {

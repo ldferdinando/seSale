@@ -94,6 +94,40 @@ describe("CategoriaDetalleContent (/categorias/[key])", () => {
     await waitFor(() => expect(urls.some((u) => u.includes("date_from"))).toBe(true));
   });
 
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 8 — "Borrar filtros")
+  describe('botón "Borrar filtros"', () => {
+    it("is not shown when no filter is active", async () => {
+      server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([])));
+
+      renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+      await screen.findByText(/No hay eventos/);
+
+      expect(screen.queryByRole("button", { name: /Borrar filtros/ })).not.toBeInTheDocument();
+    });
+
+    it("appears once a filter is active and resets moment/date back to 'Todos'", async () => {
+      const urls: string[] = [];
+      server.use(
+        http.get(`${API_URL}/api/events`, ({ request }) => {
+          urls.push(request.url);
+          return HttpResponse.json([]);
+        }),
+      );
+
+      renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+      await screen.findByText(/No hay eventos/);
+
+      fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+      await waitFor(() => expect(urls.some((u) => u.includes("moment=nocturno"))).toBe(true));
+
+      const clearButton = await screen.findByRole("button", { name: /Borrar filtros/ });
+      fireEvent.click(clearButton);
+
+      await waitFor(() => expect(urls.some((u) => !u.includes("moment="))).toBe(true));
+      expect(screen.queryByRole("button", { name: /Borrar filtros/ })).not.toBeInTheDocument();
+    });
+  });
+
   // Etapa 13b — banners específicos de la categoría (BANS_CAT/ADS_GRID_CAT)
 
   it("requests category-wide and category-grid banners scoped to this category's key", async () => {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { sesaleWhatsappHref } from "@/features/plans/lib/whatsapp";
 
 interface Countdown {
@@ -60,10 +61,8 @@ export function ProximamenteContent() {
 
   return (
     <main className="flex min-h-[calc(100vh-72px)] flex-col items-center justify-center gap-8 px-4 py-16 text-center">
-      <Link href="/" className="flex items-center gap-2" aria-label="seSALE">
-        <span className="text-3xl font-black tracking-tight text-foreground">se</span>
-        <span className="text-3xl font-black tracking-tight text-primary">SALE</span>
-        <span className="mb-1.5 h-2 w-2 flex-shrink-0 animate-pulse rounded-full bg-primary" aria-hidden />
+      <Link href="/">
+        <Logo size="lg" />
       </Link>
 
       <svg

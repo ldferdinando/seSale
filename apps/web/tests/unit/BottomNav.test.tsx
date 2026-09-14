@@ -1,14 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { usePathnameMock } = vi.hoisted(() => ({
+const { usePathnameMock, pushMock } = vi.hoisted(() => ({
   usePathnameMock: vi.fn(() => "/"),
+  pushMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   usePathname: usePathnameMock,
+  useRouter: () => ({ push: pushMock }),
 }));
 
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -30,21 +33,76 @@ function renderWithClient() {
 describe("BottomNav", () => {
   afterEach(() => {
     clearToken();
+    pushMock.mockClear();
   });
 
-  it('links "Mi cuenta" to /mi-cuenta when there is an active session', async () => {
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 4): el quinto botón pasa a
+  // ser "Contactanos" (WhatsApp) siempre, con o sin sesión — "Mi cuenta"
+  // sigue accesible desde el Navbar para un usuario logueado (ver
+  // a_revisar.md sobre este trade-off).
+  it('shows "Contactanos" (WhatsApp) regardless of session state', async () => {
+    renderWithClient();
+
+    const link = await screen.findByRole("link", { name: /Contactanos/ });
+    expect(link).toHaveAttribute("href", expect.stringContaining("wa.me"));
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it('shows "Contactanos" even with an active session, not "Mi cuenta"', async () => {
     server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
     setToken("test-token");
 
     renderWithClient();
 
-    expect(await screen.findByRole("link", { name: /Mi cuenta/ })).toHaveAttribute("href", "/mi-cuenta");
+    expect(await screen.findByRole("link", { name: /Contactanos/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Mi cuenta/ })).not.toBeInTheDocument();
   });
 
-  it('links to /login as "Ingresar" when there is no active session', async () => {
+  it('"Publicar" navigates straight to /publicar when there is an active session', async () => {
+    const user = userEvent.setup();
+    server.use(http.get(`${API_URL}/api/users/me`, () => HttpResponse.json(makeUser())));
+    setToken("test-token");
+
     renderWithClient();
 
-    expect(await screen.findByRole("link", { name: /Ingresar/ })).toHaveAttribute("href", "/login");
+    const publishButton = await screen.findByRole("button", { name: /Publicar/ });
+    await user.click(publishButton);
+
+    expect(pushMock).toHaveBeenCalledWith("/publicar");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it('"Publicar" opens the free-to-publish gate popup when there is no active session', async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    const publishButton = await screen.findByRole("button", { name: /Publicar/ });
+    await user.click(publishButton);
+
+    expect(pushMock).not.toHaveBeenCalledWith("/publicar");
+    const dialog = await screen.findByRole("dialog", { name: /Publicar un evento/ });
+    expect(dialog).toHaveTextContent(/gratis/i);
+  });
+
+  it('the gate popup "Ingresar para publicar" navigates to /login', async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: /Publicar/ }));
+    await user.click(await screen.findByRole("button", { name: /Ingresar para publicar/ }));
+
+    expect(pushMock).toHaveBeenCalledWith(expect.stringContaining("/login"));
+  });
+
+  it('the gate popup "Seguir navegando" closes without navigating', async () => {
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: /Publicar/ }));
+    await user.click(await screen.findByRole("button", { name: /Seguir navegando/ }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   // Etapa 9a — tab Gastronomía habilitado (ver a_revisar.md).

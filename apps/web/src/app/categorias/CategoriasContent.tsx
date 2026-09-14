@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search, SearchX } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { BannerSlot } from "@/components/BannerSlot";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +11,14 @@ import { useCategoryCounts } from "@/features/events/hooks/useCategoryCounts";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { useBannerSlots } from "@/hooks/useBannerSlots";
+
+/** Compara sin distinguir mayúsculas/acentos — "musica" encuentra "Música". */
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
 
 /** Etapa 13a — grilla de categorías activas en orden alfabético. Cada card
  * lleva a /categorias/{key} (eventos de esa categoría). Ver #s-categorias en
@@ -25,11 +33,21 @@ export function CategoriasContent() {
   const { activeCity } = useActiveCity();
   const { counts, isLoading: isLoadingCounts } = useCategoryCounts(activeCity?.id);
   const wideBanners = useBannerSlots({ cityId: activeCity?.id ?? null, section: "categoria-wide" });
+  const [search, setSearch] = useState("");
 
   const sorted = useMemo(
     () => [...categories].sort((a, b) => a.name.localeCompare(b.name, "es")),
     [categories],
   );
+
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 7): buscador en vivo
+  // (oninput, sin debounce ni pedido al backend — son a lo sumo unas
+  // decenas de categorías ya cargadas en memoria por useCategoryCatalog).
+  const filtered = useMemo(() => {
+    const query = normalize(search.trim());
+    if (!query) return sorted;
+    return sorted.filter((category) => normalize(category.name).includes(query));
+  }, [sorted, search]);
 
   return (
     <main className="flex flex-col gap-4 pb-6">
@@ -43,6 +61,19 @@ export function CategoriasContent() {
         </div>
       </header>
 
+      <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 mx-4">
+        <Search className="h-4 w-4 flex-shrink-0 text-ink-4" aria-hidden />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar categoría..."
+          aria-label="Buscar categoría"
+          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-ink-5"
+          data-testid="categorias-search-input"
+        />
+      </div>
+
       <div className="flex flex-col gap-2 px-4">
         {wideBanners.isLoading ? (
           <div className="flex flex-col gap-2" data-testid="categoria-bans-loading">
@@ -54,8 +85,14 @@ export function CategoriasContent() {
         )}
       </div>
 
+      {filtered.length === 0 ? (
+        <div className="mx-4 flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-4 bg-surface-2 px-6 py-16 text-center">
+          <SearchX className="h-9 w-9 text-ink-5" aria-hidden />
+          <p className="text-sm font-bold text-ink-3">Sin resultados para tu búsqueda</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-3 px-4">
-        {sorted.map((category) => {
+        {filtered.map((category) => {
           const style = CATEGORY_STYLES[category.key] ?? DEFAULT_CATEGORY_STYLE;
           const Icon = style.icon;
           const count = counts[category.key] ?? 0;
@@ -89,6 +126,7 @@ export function CategoriasContent() {
           );
         })}
       </div>
+      )}
     </main>
   );
 }

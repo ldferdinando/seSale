@@ -145,6 +145,30 @@ describe("EventCard", () => {
     expect(screen.getByTestId("event-card").textContent).toContain("18:00");
   });
 
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 9): la hora se muestra
+  // destacada (negrita + color principal), separada del nombre del lugar
+  // — antes ambos heredaban el mismo `text-ink-4` del <p> padre. Sin
+  // parseo de string: hora y lugar ya son campos estructurados distintos
+  // (event.time/location.name), no un texto combinado tipo "21:30 · Bar".
+  it("shows the hour in bold and text-primary, separate from the venue name", () => {
+    const event = makeEvent({
+      date: "2099-01-01",
+      date_end: "2099-01-01",
+      time: "21:00:00",
+      time_end: "23:00:00",
+    });
+
+    renderCard(<EventCard event={event} />);
+
+    const hourEl = screen.getByTestId("event-card-hour");
+    expect(hourEl.textContent).toContain("18:00 – 20:00");
+    expect(hourEl.className).toContain("font-bold");
+    expect(hourEl.className).toContain("text-primary");
+
+    const venueText = screen.getByText("El Tinglado Bar");
+    expect(venueText.className).not.toContain("font-bold");
+  });
+
   // Etapa 10c: date_end en la card.
   it("with date === date_end, shows only the hour range (no date, no +1)", () => {
     const event = makeEvent({

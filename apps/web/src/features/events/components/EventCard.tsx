@@ -198,10 +198,20 @@ export function EventCard({ event }: EventCardProps) {
               )}
             </p>
             <p className="mt-1 flex items-center gap-2 truncate text-xs text-ink-4">
-              <span className="flex flex-shrink-0 items-center gap-1">
-                <Clock className="h-3 w-3 text-primary" aria-hidden />
+              {/* Etapa "Cambios de diseño TIPO B v2.2" (punto 9): hora y
+                  lugar por separado — la hora destacada en negrita y color
+                  principal (antes ambos heredaban `text-ink-4` del <p>
+                  padre, sin distinguirse del nombre del lugar). Los datos ya
+                  vienen estructurados en el modelo (`event.date`/`time`/
+                  `location.name`, ver EventLocation en types/index.ts) —
+                  sin parseo de string combinado tipo `rLugLinea`. */}
+              <span
+                data-testid="event-card-hour"
+                className="flex flex-shrink-0 items-center gap-1 font-bold text-primary"
+              >
+                <Clock className="h-3 w-3" aria-hidden />
                 {dateRangeMain}
-                {showsNextDaySuffix && <span className="text-[10px] text-ink-5"> +1</span>}
+                {showsNextDaySuffix && <span className="text-[10px] font-normal text-ink-5"> +1</span>}
                 {" hs"}
               </span>
               <span className="flex min-w-0 items-center gap-1 truncate">

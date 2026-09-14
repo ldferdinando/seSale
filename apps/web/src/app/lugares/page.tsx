@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Info, Search, Store } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BannerSlot } from "@/components/BannerSlot";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +38,34 @@ export default function LugaresPage() {
     search: debouncedSearch,
   });
 
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 11): con "Todos" (sin
+  // filtro de tipo) los banners van antes del listado, igual que hasta
+  // ahora; al elegir un tipo específico se reposicionan después de los
+  // resultados y se hace scroll suave hacia el listado, para que el
+  // usuario vea primero los lugares filtrados que pidió.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const bannersBlock = isLoadingBanners ? (
+    <div className="flex flex-col gap-2" data-testid="gastronomia-banners-loading">
+      <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+      <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+      <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
+    </div>
+  ) : (
+    slots.map((slot) => <BannerSlot key={slot.id} slot={slot} />)
+  );
+
+  function handleGastroTypeChange(type: string | null) {
+    setGastroType(type);
+    if (type !== null) {
+      // setTimeout(0) en vez de hacer el scroll en el mismo tick: espera a
+      // que React termine de reposicionar el bloque de resultados (el
+      // banner deja de estar arriba) antes de scrollear hacia él.
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }
+
   return (
     <main className="flex flex-col gap-4 pb-6">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3 text-ink-3">
@@ -59,21 +87,12 @@ export default function LugaresPage() {
         />
       </div>
 
-      <GastroTypeChips gastroType={gastroType} onChange={setGastroType} />
+      <GastroTypeChips gastroType={gastroType} onChange={handleGastroTypeChange} />
 
-      <div className="flex flex-col gap-2 px-4">
-        {isLoadingBanners ? (
-          <div className="flex flex-col gap-2" data-testid="gastronomia-banners-loading">
-            <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
-            <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
-            <Skeleton className="aspect-[3.2/1] w-full rounded-xl md:aspect-[3.88/1]" />
-          </div>
-        ) : (
-          slots.map((slot) => <BannerSlot key={slot.id} slot={slot} />)
-        )}
-      </div>
+      {/* "Todos" (gastroType === null): banners antes de los resultados. */}
+      {gastroType === null && <div className="flex flex-col gap-2 px-4">{bannersBlock}</div>}
 
-      <div className="flex flex-col gap-2 px-4">
+      <div ref={resultsRef} className="flex flex-col gap-2 px-4 scroll-mt-4">
         {isLoadingPlaces ? (
           <div className="flex flex-col gap-2" data-testid="gastro-places-loading">
             <Skeleton className="h-[92px] w-full rounded-xl" />
@@ -89,6 +108,10 @@ export default function LugaresPage() {
           places.map((place) => <GastroPlaceCard key={place.id} place={place} />)
         )}
       </div>
+
+      {/* Con un tipo específico elegido: banners después de los resultados
+          (punto 11 — reposicionamiento dinámico de banners al filtrar). */}
+      {gastroType !== null && <div className="flex flex-col gap-2 px-4">{bannersBlock}</div>}
 
       {/* Copy calcado de `.no-deliv` en seSALE.html — Etapa 10b-1. */}
       <div className="mx-4 flex items-start gap-2 rounded-xl bg-surface-1 p-3 text-[11px] leading-relaxed text-ink-4">

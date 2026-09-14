@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
@@ -92,5 +93,44 @@ describe("CategoriasContent (/categorias)", () => {
     renderWithActiveCity(<CategoriasContent />);
 
     await waitFor(() => expect(screen.getAllByTestId("banner-slot-empty")).toHaveLength(2));
+  });
+
+  // Etapa "Cambios de diseño TIPO B v2.2" (punto 7 — buscador funcional).
+  describe("buscador en vivo", () => {
+    it("filters the visible categories as the user types (case/accent-insensitive)", async () => {
+      const user = userEvent.setup();
+      renderWithActiveCity(<CategoriasContent />);
+
+      await screen.findAllByTestId("categoria-card");
+      await user.type(screen.getByTestId("categorias-search-input"), "musica");
+
+      const cards = screen.getAllByTestId("categoria-card");
+      expect(cards).toHaveLength(1);
+      expect(within(cards[0]).getByRole("heading")).toHaveTextContent("Música en vivo");
+    });
+
+    it('shows "Sin resultados para tu búsqueda" when nothing matches', async () => {
+      const user = userEvent.setup();
+      renderWithActiveCity(<CategoriasContent />);
+
+      await screen.findAllByTestId("categoria-card");
+      await user.type(screen.getByTestId("categorias-search-input"), "zzzzz");
+
+      expect(await screen.findByText("Sin resultados para tu búsqueda")).toBeInTheDocument();
+      expect(screen.queryAllByTestId("categoria-card")).toHaveLength(0);
+    });
+
+    it("shows every category again after clearing the search", async () => {
+      const user = userEvent.setup();
+      renderWithActiveCity(<CategoriasContent />);
+
+      await screen.findAllByTestId("categoria-card");
+      const input = screen.getByTestId("categorias-search-input");
+      await user.type(input, "musica");
+      expect(screen.getAllByTestId("categoria-card")).toHaveLength(1);
+
+      await user.clear(input);
+      expect(await screen.findAllByTestId("categoria-card")).toHaveLength(13);
+    });
   });
 });

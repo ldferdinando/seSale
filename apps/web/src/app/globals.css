@@ -24,6 +24,67 @@
     --destructive: 1 71% 59%;
     --destructive-foreground: 0 0% 100%;
     --radius: 0.75rem;
+
+    /* Etapa "Cambios de diseño TIPO B v2.2" (punto 3 — modo claro/oscuro):
+       escala --s0..--s6/--t1..--t5 + --FB/--label-icon/--surround, tomadas
+       1:1 de seSALE_v2.html. Estos son los mismos valores hex que ya vivían
+       hardcodeados en tailwind.config.ts (surface, ink, brand.pinkBg,
+       brand.lime, brand.labelIcon, surround) — se centralizan acá como
+       variables para que `body[data-theme="light"]` (más abajo) pueda
+       redefinirlas y todo lo que usa `bg-surface-N`/`text-ink-N`/
+       `bg-brand-pinkBg`/etc. cambie de tema solo. Valores oscuros = default. */
+    --FB: #1c0e17;
+    --lime: #d4d94a;
+    --label-icon: var(--lime);
+    --surround: #050505;
+    --s0: #0d0d0d;
+    --s1: #111111;
+    --s2: #1a1a1a;
+    --s3: #222222;
+    --s4: #2a2a2a;
+    --s5: #383838;
+    --s6: #555555;
+    --t1: #ffffff;
+    --t2: #cccccc;
+    --t3: #aaaaaa;
+    --t4: #8f8f8f;
+    --t5: #6e6e6e;
+  }
+
+  /* Modo claro — toggle desde el botón sol/luna del Navbar (ThemeProvider,
+     persistido en localStorage, mismo mecanismo que la ciudad activa). Solo
+     redefine la escala de superficies/texto — --F/--FD (marca) no cambian
+     entre temas, igual que en seSALE_v2.html. El nav/marca del Navbar se
+     mantiene siempre oscuro (ver comentario en Navbar.tsx) — no depende de
+     este bloque. */
+  body[data-theme="light"] {
+    --FB: #fdeaf1;
+    --label-icon: #f2357b;
+    --surround: #e6e1d6;
+    --s0: #faf8f5;
+    --s1: #ffffff;
+    --s2: #f1eee8;
+    --s3: #eae6de;
+    --s4: #e2ddd3;
+    --s5: #edeae2;
+    --s6: #b9b2a5;
+    --t1: #1a1a1a;
+    --t2: #3a3a3a;
+    --t3: #5c5c5c;
+    --t4: #7a7a7a;
+    --t5: #968f86;
+
+    /* --background/--card/--border/--muted (shadcn, HSL) equivalentes en
+       hex a --s0/--s2/--s4/--s5 de arriba, para que Card/Button/Input (que
+       usan bg-background/bg-card/border-border/bg-muted) también respondan
+       al modo claro. --foreground/--muted-foreground equivalen a --t1/--t4. */
+    --background: 36 33% 97%;
+    --foreground: 0 0% 10%;
+    --card: 40 24% 93%;
+    --card-foreground: 0 0% 10%;
+    --muted: 44 23% 91%;
+    --muted-foreground: 0 0% 48%;
+    --border: 40 21% 86%;
   }
 
   body {
@@ -63,4 +124,79 @@
   border: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* Etapa "Cambios de diseño TIPO B v2.2" (punto 1 — logo animado).
+   Versión simplificada del logo de seSALE_v2.html: la referencia usa un SVG
+   con una imagen enmascarada en base64 (~varios KB, un asset raster a
+   mantener) + una "bola" que recorre el trazo letra por letra con
+   keyframes atados en % a las proporciones exactas de esas letras. Portar
+   eso 1:1 acopla el logo a un archivo de imagen versionado aparte y a
+   keyframes que se rompen si el texto/tipografía cambia — se evaluó el
+   costo (como pide el punto 1) y se optimizó por un efecto equivalente
+   (barrido de revelado + brillo en loop) con solo CSS, sin asset nuevo:
+   un `clip-path` que revela el texto de izquierda a derecha una vez al
+   montar, más un brillo (`background-clip:text`) que recorre "SALE" cada
+   ~5.4s, igual que el sweep de la referencia. Centralizado en
+   `<Logo>` (components/Logo.tsx) — Navbar.tsx y ProximamenteContent.tsx ya
+   no tienen el SVG/texto del logo duplicado. */
+.sesale-logo-reveal {
+  clip-path: inset(0 100% 0 0);
+  animation: sesale-logo-reveal 1.1s cubic-bezier(0.33, 0.66, 0.28, 1) 1 both;
+}
+.sesale-logo-shine {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--primary)) 35%,
+    #ffffff 50%,
+    hsl(var(--primary)) 65%
+  );
+  background-size: 300% 100%;
+  background-position: 200% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sesale-logo-shine 5.4s cubic-bezier(0.45, 0, 0.4, 1) 1.3s infinite;
+}
+@keyframes sesale-logo-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes sesale-logo-shine {
+  0% {
+    background-position: 200% 0;
+  }
+  45%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sesale-logo-reveal {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+  }
+  .sesale-logo-shine {
+    animation: none;
+    background-position: -40% 0;
+  }
+}
+
+/* Etapa "Cambios de diseño TIPO B v2.2" (punto 12 — layout centrado
+   desktop): calcado de la regla "DESKTOP — centra la app" de
+   seSALE_v2.html (.nav/.screen/.bnav con max-width:560px;margin:auto). Acá
+   se aplica a nivel `body` (fondo --surround) + Navbar/AppShell/BottomNav
+   (cada uno con `md:max-w-[560px] md:mx-auto` agregado en su propio
+   archivo) en vez de una única regla `.screen`, porque este frontend no
+   tiene un contenedor `.screen` único envolviendo toda la app — son 3
+   elementos independientes (header sticky, contenido, nav fijo). El panel
+   /admin queda afuera (ver AppShell.tsx) — sigue a ancho completo. */
+@media (min-width: 768px) {
+  body {
+    background: var(--surround);
+  }
 }

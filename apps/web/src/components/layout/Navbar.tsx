@@ -2,14 +2,17 @@
 
 import { Check, ChevronRight, LogOut, MapPin, Shield, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Logo } from "@/components/Logo";
+import { ThemeToggleButton } from "@/components/layout/ThemeToggleButton";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import type { City } from "@/features/auth/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
+import { cn } from "@/lib/utils";
 
 function CitySelector() {
   const { activeCity, isDetecting, setActiveCity, resetToDetected } = useActiveCity();
@@ -90,7 +93,10 @@ function CitySelector() {
 export function Navbar() {
   const { data: currentUser } = useCurrentUser();
   const router = useRouter();
+  const pathname = usePathname();
   const logout = useLogout();
+  // Punto 12 (layout centrado desktop): /admin queda afuera, ver AppShell.tsx.
+  const isAdmin = pathname?.startsWith("/admin") ?? false;
 
   async function handleLogout() {
     try {
@@ -102,7 +108,20 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background">
+    <header
+      className={cn(
+        "sticky top-0 z-50 border-b border-border bg-background",
+        // `w-full` es necesario acá, no solo decorativo: <body> es un flex
+        // container (`flex flex-col`, ver app/layout.tsx) y este <header>
+        // es un flex item — con `mx-auto` solo (sin `width` explícito) un
+        // flex item se encoge a su contenido en el eje cruzado en vez de
+        // estirarse, así que `max-w-[560px]` nunca llegaba a aplicarse de
+        // verdad (quedaba angosto, ~420px). `AppShell` ya tenía `w-full`
+        // por la misma razón; a `BottomNav` no le hacía falta porque es
+        // `fixed inset-x-0` (fuera del flujo, otro cálculo de ancho).
+        !isAdmin && "md:mx-auto md:w-full md:max-w-[560px]",
+      )}
+    >
       {/* Bug real reportado por la usuaria (Etapa 9b): este contenedor tenía
           overflow-hidden pensado solo para contener el fondo de puntos y la
           línea de degradé de abajo (ambos ya están pineados con inset-0 /
@@ -128,13 +147,12 @@ export function Navbar() {
         />
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary to-transparent" />
         <div className="container mx-auto flex min-h-[104px] max-w-2xl flex-wrap items-end justify-between gap-2 px-4 py-2">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight text-foreground">se</span>
-            <span className="text-xl font-black tracking-tight text-primary">SALE</span>
-            <span className="mb-1 h-[7px] w-[7px] flex-shrink-0 animate-pulse rounded-full bg-primary" />
+          <Link href="/">
+            <Logo />
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
+            <ThemeToggleButton />
             <CitySelector />
 
             <Link
