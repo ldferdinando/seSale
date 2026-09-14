@@ -1,8 +1,19 @@
 import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
-import type { AdminReport, AdminReportFilters, Report, ReportCreateInput, ReportStatus } from "@/features/reports/types";
+import type {
+  AdminReport,
+  AdminReportFilters,
+  LocationReport,
+  Report,
+  ReportCreateInput,
+  ReportStatus,
+} from "@/features/reports/types";
 
 export async function reportEvent(eventId: string, input: ReportCreateInput): Promise<Report> {
   return apiPost<Report>(`/api/events/${eventId}/report`, input);
+}
+
+export async function reportLocation(locationId: string, input: ReportCreateInput): Promise<LocationReport> {
+  return apiPost<LocationReport>(`/api/gastro/${locationId}/report`, input);
 }
 
 export async function fetchAdminReports(filters: AdminReportFilters = {}): Promise<AdminReport[]> {

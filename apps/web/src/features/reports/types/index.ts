@@ -18,6 +18,19 @@ export interface AdminReport extends Report {
   event_title: string;
 }
 
+/** Respuesta de POST /api/gastro/{id}/report — etapa "Ficha de Lugar v2.2".
+ * Mismo modelo Report del backend, generalizado a event_id | location_id;
+ * acá solo se consume desde el modal (que no lee estos campos, solo si la
+ * mutación tuvo éxito), así que no hace falta más que esto. */
+export interface LocationReport {
+  id: string;
+  location_id: string;
+  text: string;
+  contact_phone: string;
+  created_at: string;
+  status: ReportStatus;
+}
+
 export interface AdminReportFilters {
   status?: ReportStatus;
   event_id?: string;

@@ -1,26 +1,32 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useState } from "react";
 import {
   Bike,
   CalendarCheck,
   Clock,
+  Facebook as FacebookIcon,
+  Flag,
   Globe,
   Instagram as InstagramIcon,
   Mail,
   MapPin,
   MessageCircle,
+  Phone,
   Share2,
   ShieldCheck,
   Store,
 } from "lucide-react";
 
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { EventCard } from "@/features/events/components/EventCard";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
 import { currentWeekdayInArgentina } from "@/features/gastro/lib/openingHours";
 import { useLocationEvents } from "@/features/gastro/hooks/useLocationEvents";
 import { GASTRO_TYPE_LABELS, WEEKDAYS, WEEKDAY_LABELS, type GastroPlace } from "@/features/gastro/types";
-import { GastroPlanBadge } from "@/features/gastro/components/GastroPlaceCard";
+import { GastroPlanBadge, OpenHoursChip } from "@/features/gastro/components/GastroPlaceCard";
+import { ReportPlaceModal } from "@/features/gastro/components/ReportPlaceModal";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -63,11 +69,17 @@ function shareGastroPlace(place: GastroPlace) {
 export function GastroDetailView({ place }: GastroDetailViewProps) {
   const { data: locationEvents } = useLocationEvents(place.event_count > 0 ? place.id : undefined);
   const upcomingEvents = (locationEvents ?? []).slice(0, 3);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const style = GASTRO_TYPE_STYLES[place.gastro_types[0]] ?? DEFAULT_GASTRO_TYPE_STYLE;
   const Icon = style.icon;
   const coverUrl = resolveMediaUrl(place.cover_img_url);
   const today = currentWeekdayInArgentina();
+  // La imagen/logo ampliable (tap para ver en grande, ImageLightbox) es
+  // exclusiva del plan Destacado Plus — mismo criterio que GastroPlaceCard.tsx
+  // (la foto al costado de la card solo aparece para plan==="pro").
+  const showCover = place.plan === "pro";
 
   const whatsappHref = place.gastro_whatsapp
     ? `https://wa.me/${place.gastro_whatsapp.replace(/\D/g, "")}`
@@ -81,22 +93,38 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
       : `https://${place.gastro_web}`
     : null;
   const emailHref = place.gastro_email ? `mailto:${place.gastro_email}` : null;
+  const facebookHref = place.gastro_facebook
+    ? place.gastro_facebook.startsWith("http")
+      ? place.gastro_facebook
+      : `https://facebook.com/${place.gastro_facebook.replace(/^@/, "")}`
+    : null;
+  const phoneHref = place.gastro_phone ? `tel:${place.gastro_phone.replace(/\s+/g, "")}` : null;
   const mapUrl = buildMapUrl(place);
   const reservarUrl = buildReservarUrl(place);
 
   return (
     <div className="flex flex-col gap-4">
-      <div
-        className="flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-[#1a1a1a]"
-        data-testid="gastro-cover"
-      >
-        {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={place.name} className="h-full w-full object-cover" />
-        ) : (
-          <Icon className="h-12 w-12" style={{ color: style.color }} aria-hidden />
-        )}
-      </div>
+      {showCover && (
+        <>
+          <button
+            type="button"
+            onClick={() => coverUrl && setLightboxOpen(true)}
+            disabled={!coverUrl}
+            data-testid="gastro-cover"
+            className="flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-[#1a1a1a] disabled:cursor-default"
+          >
+            {coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverUrl} alt={place.name} className="h-full w-full object-cover" />
+            ) : (
+              <Icon className="h-12 w-12" style={{ color: style.color }} aria-hidden />
+            )}
+          </button>
+          {lightboxOpen && coverUrl && (
+            <ImageLightbox src={coverUrl} alt={place.name} onClose={() => setLightboxOpen(false)} />
+          )}
+        </>
+      )}
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -114,6 +142,9 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
             {place.address}
           </p>
+          <div className="mt-1">
+            <OpenHoursChip place={place} />
+          </div>
           {mapUrl && (
             <a
               href={mapUrl}
@@ -214,7 +245,7 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
         </a>
       )}
 
-      {((whatsappHref && !reservarUrl) || instagramHref || webHref || emailHref) && (
+      {((whatsappHref && !reservarUrl) || instagramHref || webHref || emailHref || facebookHref || phoneHref) && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto</p>
           {/* Etapa 10b-1: si ya se muestra el CTA "Reservar" (arriba, plan pro
@@ -230,6 +261,16 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
               WhatsApp
             </a>
           )}
+          {phoneHref && (
+            <a
+              href={phoneHref}
+              data-testid="gastro-phone-link"
+              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
+            >
+              <Phone className="h-4 w-4 text-foreground" aria-hidden />
+              {place.gastro_phone}
+            </a>
+          )}
           {instagramHref && (
             <a
               href={instagramHref}
@@ -239,6 +280,18 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             >
               <InstagramIcon className="h-4 w-4 text-[#E91E8C]" aria-hidden />
               Instagram
+            </a>
+          )}
+          {facebookHref && (
+            <a
+              href={facebookHref}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="gastro-facebook-link"
+              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
+            >
+              <FacebookIcon className="h-4 w-4 text-[#4B93F5]" aria-hidden />
+              Facebook
             </a>
           )}
           {webHref && (
@@ -295,6 +348,23 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
           ))}
         </div>
       )}
+
+      <div className="flex flex-col gap-2 rounded-xl bg-surface-5 p-3">
+        <p className="text-xs text-ink-4">
+          ¿Este lugar cerró, cambió de dirección o algo no es correcto? Podés reportarlo.
+        </p>
+        <button
+          type="button"
+          onClick={() => setReportModalOpen(true)}
+          data-testid="gastro-report-button"
+          className="flex w-fit items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive"
+        >
+          <Flag className="h-3 w-3" aria-hidden />
+          Reportar un problema
+        </button>
+      </div>
+
+      {reportModalOpen && <ReportPlaceModal locationId={place.id} onClose={() => setReportModalOpen(false)} />}
     </div>
   );
 }

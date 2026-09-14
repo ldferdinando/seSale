@@ -68,6 +68,12 @@ class Location(SQLModel, table=True):
     gastro_instagram: str | None = Field(default=None, max_length=100)
     gastro_web: str | None = Field(default=None, max_length=500)
     gastro_email: str | None = Field(default=None, max_length=255)
+    # Etapa "Ficha de Lugar v2.2" — mismo patrón que Event.contact_facebook
+    # (migración 0022, Etapa 12a): canal de contacto opcional adicional.
+    # gastro_phone es un teléfono público del lugar (distinto de User.phone,
+    # que es privado y solo para verificación de identidad del organizador).
+    gastro_facebook: str | None = Field(default=None, max_length=500)
+    gastro_phone: str | None = Field(default=None, max_length=50)
 
     # ── Características ──────────────────────────────────────────────────
 

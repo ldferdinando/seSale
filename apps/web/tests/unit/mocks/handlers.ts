@@ -296,6 +296,8 @@ export function makeGastroPlace(overrides: Partial<GastroPlace> = {}): GastroPla
     gastro_instagram: "eltingladobar",
     gastro_web: null,
     gastro_email: null,
+    gastro_facebook: null,
+    gastro_phone: null,
     has_delivery: false,
     has_reservations: true,
     price_range: "$$",
@@ -596,6 +598,20 @@ export const handlers = [
   }),
   http.get(`${API_URL}/api/gastro/:id`, ({ params }) => {
     return HttpResponse.json(makeGastroPlace({ id: params.id as string }));
+  }),
+  http.post(`${API_URL}/api/gastro/:id/report`, async ({ request, params }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      {
+        id: "99999999-bbbb-4bbb-bbbb-bbbbbbbbbbbb",
+        location_id: params.id as string,
+        text: body.text as string,
+        contact_phone: body.contact_phone as string,
+        created_at: "2099-01-01T00:00:00Z",
+        status: "pending",
+      },
+      { status: 201 },
+    );
   }),
   http.get(`${API_URL}/api/admin/gastro`, () => {
     return HttpResponse.json([makeAdminGastroPlace()]);

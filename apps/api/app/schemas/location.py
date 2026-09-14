@@ -135,6 +135,8 @@ class LocationGastroRead(BaseModel):
     gastro_instagram: str | None
     gastro_web: str | None
     gastro_email: str | None
+    gastro_facebook: str | None
+    gastro_phone: str | None
     has_delivery: bool
     has_reservations: bool
     price_range: str | None
@@ -173,6 +175,8 @@ class LocationGastroCreate(BaseModel):
     gastro_instagram: str | None = Field(default=None, max_length=100)
     gastro_web: str | None = Field(default=None, max_length=500)
     gastro_email: str | None = Field(default=None, max_length=255)
+    gastro_facebook: str | None = Field(default=None, max_length=500)
+    gastro_phone: str | None = Field(default=None, max_length=50)
     has_delivery: bool = False
     has_reservations: bool = False
     price_range: str | None = None
@@ -217,6 +221,8 @@ class LocationGastroUpdate(BaseModel):
     gastro_instagram: str | None = Field(default=None, max_length=100)
     gastro_web: str | None = Field(default=None, max_length=500)
     gastro_email: str | None = Field(default=None, max_length=255)
+    gastro_facebook: str | None = Field(default=None, max_length=500)
+    gastro_phone: str | None = Field(default=None, max_length=50)
     has_delivery: bool | None = None
     has_reservations: bool | None = None
     price_range: str | None = None

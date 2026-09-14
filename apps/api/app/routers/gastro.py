@@ -3,11 +3,16 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session
 
-from app.core.deps import get_session
+from app.core.config import settings
+from app.core.deps import get_client_ip, get_session
+from app.core.email import send_location_report_email
 from app.core.expiry import run_expire_overdue_gastro_plans_task
 from app.core.limiter import limiter
+from app.models.location import Location
 from app.schemas.location import LocationGastroRead
+from app.schemas.report import ReportCreate, ReportRead
 from app.services.location_service import get_gastro_place, list_public_gastro_places
+from app.services.report_service import create_location_report
 
 router = APIRouter(prefix="/api/gastro", tags=["gastro"])
 
@@ -51,3 +56,38 @@ async def get_gastro_place_detail(
         return get_gastro_place(session, location_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{location_id}/report", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("3/hour", key_func=get_client_ip)
+async def post_gastro_place_report(
+    request: Request,
+    location_id: UUID,
+    payload: ReportCreate,
+    session: Session = Depends(get_session),
+) -> ReportRead:
+    """Público — mismo patrón que POST /api/events/{id}/report (Etapa 6.5):
+    rate limit por IP + notificación por email al admin."""
+    try:
+        report = create_location_report(
+            session,
+            location_id=location_id,
+            text=payload.text,
+            contact_phone=payload.contact_phone,
+            ip_address=get_client_ip(request),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    location = session.get(Location, location_id)
+    location_url = f"{settings.frontend_url}/lugares/{location_id}"
+    if location is not None:
+        await send_location_report_email(
+            location_name=location.name,
+            location_id=location_id,
+            report_text=payload.text,
+            contact_phone=payload.contact_phone,
+            location_url=location_url,
+        )
+
+    return report

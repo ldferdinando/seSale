@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.models.event import Event, EventStatus
+from app.models.location import Location
 from app.models.report import Report
 
 
@@ -23,6 +24,38 @@ def create_report(
 
     report = Report(
         event_id=event_id,
+        text=text,
+        contact_phone=contact_phone,
+        ip_address=ip_address,
+    )
+    session.add(report)
+    session.commit()
+    session.refresh(report)
+    return report
+
+
+def create_location_report(
+    session: Session,
+    *,
+    location_id: UUID,
+    text: str,
+    contact_phone: str,
+    ip_address: str | None,
+) -> Report:
+    """Crea un reporte para un lugar gastronómico publicado. Lanza
+    LookupError si el lugar no existe o no está visible públicamente
+    (mismo criterio que get_gastro_place: is_gastro/is_active/is_public)."""
+    location = session.get(Location, location_id)
+    if (
+        location is None
+        or not location.is_gastro
+        or not location.is_active
+        or not location.is_public
+    ):
+        raise LookupError("Lugar no encontrado")
+
+    report = Report(
+        location_id=location_id,
         text=text,
         contact_phone=contact_phone,
         ip_address=ip_address,

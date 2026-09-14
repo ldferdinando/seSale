@@ -56,6 +56,8 @@ export function GastroForm({ place, onSaved, onCancel }: GastroFormProps) {
   const [instagram, setInstagram] = useState(place?.gastro_instagram ?? "");
   const [web, setWeb] = useState(place?.gastro_web ?? "");
   const [email, setEmail] = useState(place?.gastro_email ?? "");
+  const [facebook, setFacebook] = useState(place?.gastro_facebook ?? "");
+  const [phone, setPhone] = useState(place?.gastro_phone ?? "");
   const [hasDelivery, setHasDelivery] = useState(place?.has_delivery ?? false);
   const [hasReservations, setHasReservations] = useState(place?.has_reservations ?? false);
   const [priceRange, setPriceRange] = useState(place?.price_range ?? "");
@@ -106,6 +108,8 @@ export function GastroForm({ place, onSaved, onCancel }: GastroFormProps) {
       gastro_instagram: instagram || undefined,
       gastro_web: web || undefined,
       gastro_email: email || undefined,
+      gastro_facebook: facebook || undefined,
+      gastro_phone: phone || undefined,
       has_delivery: hasDelivery,
       has_reservations: hasReservations,
       price_range: (priceRange || null) as GastroPlaceCreateInput["price_range"],
@@ -270,6 +274,14 @@ export function GastroForm({ place, onSaved, onCancel }: GastroFormProps) {
         <div className="flex flex-col gap-1">
           <Label htmlFor="gastro-email">Email</Label>
           <Input id="gastro-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="gastro-facebook">Facebook</Label>
+          <Input id="gastro-facebook" value={facebook} onChange={(e) => setFacebook(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="gastro-phone">Teléfono</Label>
+          <Input id="gastro-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
       </div>
 

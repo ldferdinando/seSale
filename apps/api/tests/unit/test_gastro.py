@@ -384,3 +384,128 @@ async def test_get_admin_gastro_includes_inactive_and_private(
     assert response.status_code == 200
     names = {p["name"] for p in response.json()}
     assert names == {"Activo", "Inactivo"}
+
+
+# ── gastro_facebook / gastro_phone (Etapa "Ficha de Lugar v2.2") ─────────
+
+
+async def test_post_admin_gastro_persists_facebook_and_phone(
+    client: AsyncClient, city: City, admin_token_headers: dict[str, str]
+):
+    payload = {
+        **GASTRO_PAYLOAD,
+        "city_id": str(city.id),
+        "gastro_facebook": "eltingladobar",
+        "gastro_phone": "2984123456",
+    }
+
+    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["gastro_facebook"] == "eltingladobar"
+    assert body["gastro_phone"] == "2984123456"
+
+
+async def test_put_admin_gastro_updates_facebook_and_phone(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    location = _make_gastro_location(session, city=city)
+
+    response = await client.put(
+        f"/api/admin/gastro/{location.id}",
+        json={"gastro_facebook": "nuevapagina", "gastro_phone": "2984999999"},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["gastro_facebook"] == "nuevapagina"
+    assert body["gastro_phone"] == "2984999999"
+
+
+async def test_get_gastro_place_detail_includes_facebook_and_phone_when_null(
+    client: AsyncClient, session: Session, city: City
+):
+    location = _make_gastro_location(session, city=city)
+
+    response = await client.get(f"/api/gastro/{location.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["gastro_facebook"] is None
+    assert body["gastro_phone"] is None
+
+
+# ── POST /api/gastro/{id}/report ──────────────────────────────────────────
+
+
+async def test_report_gastro_place_success(
+    client: AsyncClient, session: Session, city: City, monkeypatch
+):
+    sent_emails = []
+
+    async def fake_send(**kwargs):
+        sent_emails.append(kwargs)
+
+    monkeypatch.setattr("app.routers.gastro.send_location_report_email", fake_send)
+
+    location = _make_gastro_location(session, city=city)
+
+    response = await client.post(
+        f"/api/gastro/{location.id}/report",
+        json={"text": "Este lugar cerró hace unos meses", "contact_phone": "2984123456"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["location_id"] == str(location.id)
+    assert body["event_id"] is None
+    assert body["status"] == "pending"
+    assert len(sent_emails) == 1
+    assert sent_emails[0]["location_name"] == "El Tinglado Bar"
+
+
+async def test_report_gastro_place_not_public_returns_404(
+    client: AsyncClient, session: Session, city: City
+):
+    location = _make_gastro_location(session, city=city, is_public=False)
+
+    response = await client.post(
+        f"/api/gastro/{location.id}/report",
+        json={"text": "Este lugar cerró hace unos meses", "contact_phone": "2984123456"},
+    )
+
+    assert response.status_code == 404
+
+
+async def test_report_gastro_place_short_text_returns_422(
+    client: AsyncClient, session: Session, city: City
+):
+    location = _make_gastro_location(session, city=city)
+
+    response = await client.post(
+        f"/api/gastro/{location.id}/report",
+        json={"text": "corto", "contact_phone": "2984123456"},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_report_gastro_place_rate_limited_after_three_per_hour(
+    client: AsyncClient, session: Session, city: City, monkeypatch
+):
+    async def fake_send(**kwargs):
+        return None
+
+    monkeypatch.setattr("app.routers.gastro.send_location_report_email", fake_send)
+
+    location = _make_gastro_location(session, city=city)
+    payload = {"text": "Este lugar cerró hace unos meses", "contact_phone": "2984123456"}
+
+    for _ in range(3):
+        response = await client.post(f"/api/gastro/{location.id}/report", json=payload)
+        assert response.status_code == 201
+
+    fourth = await client.post(f"/api/gastro/{location.id}/report", json=payload)
+    assert fourth.status_code == 429

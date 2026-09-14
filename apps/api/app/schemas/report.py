@@ -18,7 +18,11 @@ class ReportCreate(BaseModel):
 
 class ReportRead(BaseModel):
     id: UUID
-    event_id: UUID
+    # Etapa "Ficha de Lugar v2.2": exactamente uno de los dos viene seteado
+    # (event_id para /api/events/{id}/report, location_id para
+    # /api/gastro/{id}/report) — ver app/models/report.py.
+    event_id: UUID | None
+    location_id: UUID | None
     text: str
     contact_phone: str
     created_at: datetime

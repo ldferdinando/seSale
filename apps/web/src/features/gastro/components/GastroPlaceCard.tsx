@@ -68,8 +68,10 @@ function GastroTypeBadges({ types }: { types: string[] }) {
 
 /** Etapa 10b-2: chip "Abierto ahora" (verde) / "Hoy: HH a HH hs" (gris) /
  * silencio — ver isOpenNow() y las reglas de la Parte 2 del pedido: nunca se
- * muestra "cerrado" en texto, el silencio ya comunica eso. */
-function OpenHoursChip({ place }: { place: GastroPlace }) {
+ * muestra "cerrado" en texto, el silencio ya comunica eso. Se exporta porque
+ * GastroDetailView.tsx la reusa (etapa "Ficha de Lugar v2.2") en vez de
+ * duplicar el cálculo de abierto/cerrado. */
+export function OpenHoursChip({ place }: { place: GastroPlace }) {
   const openNow = isOpenNow(place.opening_hours);
   const todayHours = formatTodayHours(place.opening_hours);
 

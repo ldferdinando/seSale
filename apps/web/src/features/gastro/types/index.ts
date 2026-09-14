@@ -46,6 +46,8 @@ export interface GastroPlace {
   gastro_instagram: string | null;
   gastro_web: string | null;
   gastro_email: string | null;
+  gastro_facebook: string | null;
+  gastro_phone: string | null;
   has_delivery: boolean;
   has_reservations: boolean;
   price_range: PriceRange | null;
@@ -95,6 +97,8 @@ export interface GastroPlaceCreateInput {
   gastro_instagram?: string;
   gastro_web?: string;
   gastro_email?: string;
+  gastro_facebook?: string;
+  gastro_phone?: string;
   has_delivery?: boolean;
   has_reservations?: boolean;
   price_range?: PriceRange | null;

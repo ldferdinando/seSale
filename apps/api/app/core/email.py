@@ -60,6 +60,43 @@ async def send_report_email(
         logger.exception("Error al enviar el email de reporte para el evento %s", event_id)
 
 
+async def send_location_report_email(
+    location_name: str,
+    location_id: UUID,
+    report_text: str,
+    contact_phone: str,
+    location_url: str,
+) -> None:
+    """Envía email de reporte al admin con Resend — mismo patrón defensivo
+    que send_report_email, para reportes de lugares gastronómicos."""
+    if not settings.resend_api_key:
+        logger.warning(
+            "RESEND_API_KEY no configurada — no se envía email de reporte para el lugar %s", location_id
+        )
+        return
+
+    body = (
+        f"Se recibió un reporte sobre el lugar: {location_name}\n"
+        f"URL del lugar: {location_url}\n\n"
+        f"Texto del reporte:\n{report_text}\n\n"
+        f"Teléfono de contacto del reportante: {contact_phone}\n\n"
+        f"Para revisar este reporte ingresá al panel admin:\n{settings.frontend_url}/admin"
+    )
+
+    try:
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send(
+            {
+                "from": "seSALE <reportes@sesale.com.ar>",
+                "to": [settings.admin_email],
+                "subject": f"Reporte de lugar: {location_name}",
+                "text": body,
+            }
+        )
+    except Exception:
+        logger.exception("Error al enviar el email de reporte para el lugar %s", location_id)
+
+
 async def send_transfer_notification_to_admin(
     user_public_name: str,
     plan_name: str,
