@@ -109,7 +109,7 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
       role="dialog"
       aria-modal="true"
       aria-label={isEditing ? "Editar banner" : "Agregar banner"}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 sm:items-center"
       onClick={onCancel}
     >
       <form

@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Tabs } from "@/components/ui/tabs";
 import { AdminAdsPanel } from "@/features/admin/components/AdminAdsPanel";
 import { AdminCategoriesPanel } from "@/features/admin/components/AdminCategoriesPanel";
 import { AdminCitiesPanel } from "@/features/admin/components/AdminCitiesPanel";
@@ -14,6 +13,7 @@ import { AdminGastroPanel } from "@/features/admin/components/AdminGastroPanel";
 import { AdminGastroTypesPanel } from "@/features/admin/components/AdminGastroTypesPanel";
 import { AdminLocationsPanel } from "@/features/admin/components/AdminLocationsPanel";
 import { AdminReportsPanel } from "@/features/admin/components/AdminReportsPanel";
+import { AdminSectionNav } from "@/features/admin/components/AdminSectionNav";
 import { AdminSubscriptionsPanel } from "@/features/admin/components/AdminSubscriptionsPanel";
 import { AdminUsersPanel } from "@/features/admin/components/AdminUsersPanel";
 
@@ -54,7 +54,7 @@ export default function AdminPage() {
 
       {/* Etapa 9e: admin/layout.tsx ya garantiza sesión + role="admin" antes
           de renderizar esta página — no hace falta repetir el chequeo acá. */}
-      <Tabs tabs={ADMIN_TABS} value={tab} onChange={setTab} />
+      <AdminSectionNav sections={ADMIN_TABS} value={tab} onChange={setTab} />
 
       {tab === "destacados" && <AdminFeaturedPanel />}
       {tab === "eventos" && <AdminEventsPanel initialOrganizerId={eventsOrganizerFilter} />}

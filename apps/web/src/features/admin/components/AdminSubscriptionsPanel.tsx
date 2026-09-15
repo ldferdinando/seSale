@@ -131,12 +131,12 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
       data-testid="admin-subscription-row"
       className="flex flex-col gap-2 rounded-lg border border-border p-3"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-bold text-foreground">{subscription.user_public_name}</p>
-          <p className="text-xs text-ink-4">{subscription.user_email}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-bold text-foreground">{subscription.user_public_name}</p>
+          <p className="break-words text-xs text-ink-4">{subscription.user_email}</p>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-shrink-0 flex-col items-end gap-1">
           <Badge variant={isPendingApproval ? "pro" : subscription.status === "active" ? "pro" : "muted"}>
             {STATUS_LABEL[subscription.status]}
           </Badge>
@@ -145,11 +145,11 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-ink-4">
-        <span>
+        <span className="break-words">
           Plan: <strong className="text-foreground">{subscription.plan_name}</strong>
         </span>
         {subscription.event_title && (
-          <span>
+          <span className="break-words">
             Evento: <strong className="text-foreground">{subscription.event_title}</strong>
           </span>
         )}
@@ -157,7 +157,7 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
         {subscription.status === "active" && (
           <span>Vence: {format(parseISO(subscription.expires_at), "d MMM yyyy", { locale: es })}</span>
         )}
-        {subscription.mp_payment_id && <span>MP: {subscription.mp_payment_id}</span>}
+        {subscription.mp_payment_id && <span className="break-all">MP: {subscription.mp_payment_id}</span>}
       </div>
 
       {subscription.transfer_note && (

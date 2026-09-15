@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
 import { makeAdminEvent } from "./mocks/handlers";
+import { mockMatchMedia, setViewportWidth } from "./mocks/matchMedia";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
@@ -218,5 +219,41 @@ describe("AdminEventsPanel", () => {
     await user.click(deleteButton);
 
     expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+  });
+
+  describe("en viewport mobile (Etapa admin-responsive-1)", () => {
+    it("muestra cada evento como tarjeta con etiqueta: valor y las acciones siguen funcionando", async () => {
+      mockMatchMedia();
+      setViewportWidth(375);
+      let status: "pending" | "approved" = "pending";
+      server.use(
+        http.get(`${API_URL}/api/admin/events`, () =>
+          HttpResponse.json([makeAdminEvent({ id: "a", title: "Festival de Otoño", status, plan: "gratis" })]),
+        ),
+        http.patch(`${API_URL}/api/events/:id/status`, async ({ request }) => {
+          const body = (await request.json()) as { status: "approved" | "rejected" };
+          status = body.status as "pending" | "approved";
+          return HttpResponse.json(makeAdminEvent({ id: "a", title: "Festival de Otoño", status }));
+        }),
+      );
+      const user = userEvent.setup();
+      renderWithClient();
+
+      const row = await screen.findByTestId("admin-event-row");
+      expect(within(row).getByText("Festival de Otoño")).toBeInTheDocument();
+      // Etiquetas de columna visibles en la tarjeta.
+      expect(within(row).getByText("Evento")).toBeInTheDocument();
+      expect(within(row).getByText("Organizador / Lugar / Categorías")).toBeInTheDocument();
+      expect(within(row).getByText("Fecha")).toBeInTheDocument();
+      expect(within(row).getByText("Plan")).toBeInTheDocument();
+
+      const approveButton = within(row).getByRole("button", { name: /Aprobar/ });
+      await user.click(approveButton);
+
+      await waitFor(async () => {
+        const updatedRow = await screen.findByTestId("admin-event-row");
+        expect(within(updatedRow).getByText("Aprobado")).toBeInTheDocument();
+      });
+    });
   });
 });

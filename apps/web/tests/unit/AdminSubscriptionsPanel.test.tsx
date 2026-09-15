@@ -90,4 +90,32 @@ describe("AdminSubscriptionsPanel", () => {
 
     await waitFor(() => expect(screen.getByText("Suscripción rechazada")).toBeInTheDocument());
   });
+
+  it("un email/ID de pago largos no impiden ver ni usar el botón Aprobar (bug: quedaba fuera de pantalla en mobile)", async () => {
+    // Bug reportado: un string largo sin espacios (email, mp_payment_id) no
+    // rompía de línea (overflow-wrap normal) y forzaba scroll horizontal de
+    // toda la fila en viewports angostos, corriendo el botón Aprobar fuera
+    // de la pantalla visible. Fix: break-words/break-all en esos campos.
+    server.use(
+      http.get(`${API_URL}/api/admin/subscriptions`, () =>
+        HttpResponse.json([
+          makeAdminSubscription({
+            status: "pending_approval",
+            payment_method: "mercadopago",
+            user_email: "organizador-con-un-email-particularmente-largo-y-sin-espacios@ejemplo.com.ar",
+            mp_payment_id: "123456789012345678901234567890123456789012345678901234567890",
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    const row = await screen.findByTestId("admin-subscription-row");
+    const emailEl = within(row).getByText(/organizador-con-un-email/);
+    expect(emailEl).toHaveClass("break-words");
+    const mpEl = within(row).getByText(/MP: 123456789/);
+    expect(mpEl).toHaveClass("break-all");
+
+    expect(within(row).getByRole("button", { name: "Aprobar" })).toBeInTheDocument();
+  });
 });

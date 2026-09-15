@@ -22,11 +22,11 @@ export function PublishGateModal({ onLogin, onContinueBrowsing }: PublishGateMod
       role="dialog"
       aria-modal="true"
       aria-label="Publicar un evento"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 sm:items-center"
       onClick={onContinueBrowsing}
     >
       <div
-        className="flex w-full max-w-sm flex-col gap-4 rounded-t-2xl bg-card p-5 sm:rounded-2xl"
+        className="flex max-h-[85vh] w-full max-w-sm flex-col gap-4 overflow-y-auto rounded-t-2xl bg-card p-5 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-2">

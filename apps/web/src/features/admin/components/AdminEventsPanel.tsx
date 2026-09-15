@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type AdminTableColumn, ResponsiveAdminTable } from "@/features/admin/components/ResponsiveAdminTable";
 import { useCities } from "@/features/auth/hooks/useCities";
 import {
   isRelevantOrganizerSubscription,
@@ -48,9 +49,55 @@ function StatusBadge({ status }: { status: EventStatus }) {
   return <Badge variant="muted">Pendiente</Badge>;
 }
 
-function AdminEventRow({ event }: { event: AdminEvent }) {
-  const updateStatus = useUpdateEventStatus();
+/**
+ * Columna "Evento" — título + badges de estado. No encaja en un simple
+ * "etiqueta: valor" de texto plano (son varios badges), así que queda como
+ * excepción con renderer propio — ver a_revisar.md, sección Etapa
+ * admin-responsive-1.
+ */
+function EventTitleCell({ event }: { event: AdminEvent }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="text-sm font-bold text-foreground">{event.title}</p>
+      <StatusBadge status={event.status} />
+      {!event.is_active && <Badge variant="muted">Eliminado</Badge>}
+    </div>
+  );
+}
+
+/**
+ * Columna "Plan" — Select editable (Etapa 11a — BUG 3: guarda apenas se
+ * elige una opción, sin botón "Guardar" separado, igual que
+ * AdminFeaturedPanel). Es otra excepción con renderer propio: una columna
+ * de texto plano no permitiría editar el plan desde la tarjeta mobile.
+ */
+function EventPlanCell({ event }: { event: AdminEvent }) {
   const updatePlan = useUpdateEventPlan();
+
+  return (
+    <Select
+      value={event.plan}
+      onValueChange={(value) => updatePlan.mutate({ eventId: event.id, plan: value as EventPlan })}
+      disabled={updatePlan.isPending}
+    >
+      <SelectTrigger aria-label={`Plan — ${event.title}`} className="h-8 w-[150px] text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PLAN_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Acciones por fila (aprobar/rechazar, ver, editar, eliminar) — se muestran
+ * igual en la tabla desktop y en la tarjeta mobile. */
+function EventRowActions({ event }: { event: AdminEvent }) {
+  const updateStatus = useUpdateEventStatus();
   const deleteEvent = useDeleteEvent();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -64,111 +111,110 @@ function AdminEventRow({ event }: { event: AdminEvent }) {
   }
 
   return (
-    <div
-      data-testid="admin-event-row"
-      className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-start sm:justify-between"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-bold text-foreground">{event.title}</p>
-          <StatusBadge status={event.status} />
-          {!event.is_active && <Badge variant="muted">Eliminado</Badge>}
-        </div>
-        <p className="mt-1 text-xs text-ink-4">
-          {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
-        </p>
-        <p className="mt-1 text-xs text-ink-5">{format(parseISO(event.date), "d MMM yyyy", { locale: es })}</p>
-        {isRelevantOrganizerSubscription(event.organizer_subscription) && (
-          <div className="mt-2">
-            <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
-          </div>
-        )}
-        <div className="mt-2 flex items-center gap-2">
-          {/* Etapa 11a — BUG 3: acá es donde el admin realmente gestiona
-              eventos (incluye pendientes, a diferencia de AdminFeaturedPanel
-              que solo lista approved/vigentes vía GET /api/events público) —
-              antes solo mostraba el plan como PlanBadge de solo lectura, sin
-              ningún control para cambiarlo. Mismo patrón que
-              AdminFeaturedPanel: el Select guarda apenas se elige una
-              opción, sin botón "Guardar" separado. */}
-          <Select
-            value={event.plan}
-            onValueChange={(value) => updatePlan.mutate({ eventId: event.id, plan: value as EventPlan })}
-            disabled={updatePlan.isPending}
+    <>
+      {event.status === "pending" && (
+        <>
+          <Button
+            type="button"
+            size="sm"
+            disabled={updateStatus.isPending}
+            onClick={() => updateStatus.mutate({ eventId: event.id, status: "approved" })}
+            className="flex items-center gap-1"
           >
-            <SelectTrigger aria-label={`Plan — ${event.title}`} className="h-8 w-[150px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PLAN_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            <Check className="h-3.5 w-3.5" aria-hidden />
+            Aprobar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={updateStatus.isPending}
+            onClick={() => updateStatus.mutate({ eventId: event.id, status: "rejected" })}
+            className="flex items-center gap-1"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Rechazar
+          </Button>
+        </>
+      )}
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-        {event.status === "pending" && (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              disabled={updateStatus.isPending}
-              onClick={() => updateStatus.mutate({ eventId: event.id, status: "approved" })}
-              className="flex items-center gap-1"
-            >
-              <Check className="h-3.5 w-3.5" aria-hidden />
-              Aprobar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={updateStatus.isPending}
-              onClick={() => updateStatus.mutate({ eventId: event.id, status: "rejected" })}
-              className="flex items-center gap-1"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-              Rechazar
-            </Button>
-          </>
-        )}
+      <Link
+        href={`/eventos/${event.id}`}
+        className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
+      >
+        <Eye className="h-3.5 w-3.5" aria-hidden />
+        Ver detalle
+      </Link>
 
-        <Link
-          href={`/eventos/${event.id}`}
-          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
-        >
-          <Eye className="h-3.5 w-3.5" aria-hidden />
-          Ver detalle
-        </Link>
+      <Link
+        href={`/eventos/${event.id}/editar`}
+        className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+        Editar
+      </Link>
 
-        <Link
-          href={`/eventos/${event.id}/editar`}
-          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-          Editar
-        </Link>
-
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={deleteEvent.isPending}
-          onClick={handleDelete}
-          onBlur={() => setConfirmingDelete(false)}
-          className={confirmingDelete ? "flex items-center gap-1 bg-destructive/15 text-destructive" : "flex items-center gap-1"}
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          {confirmingDelete ? "Confirmar" : "Eliminar"}
-        </Button>
-      </div>
-    </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        disabled={deleteEvent.isPending}
+        onClick={handleDelete}
+        onBlur={() => setConfirmingDelete(false)}
+        className={confirmingDelete ? "flex items-center gap-1 bg-destructive/15 text-destructive" : "flex items-center gap-1"}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        {confirmingDelete ? "Confirmar" : "Eliminar"}
+      </Button>
+    </>
   );
 }
+
+/**
+ * Columnas de la tabla de Eventos — piloto de ResponsiveAdminTable (Etapa
+ * admin-responsive-1). Todas "esenciales" por ahora: la tabla de Eventos no
+ * tiene columnas secundarias que valga la pena esconder.
+ */
+const EVENT_COLUMNS: AdminTableColumn<AdminEvent>[] = [
+  {
+    key: "title",
+    label: "Evento",
+    essential: true,
+    render: (event) => <EventTitleCell event={event} />,
+  },
+  {
+    key: "organizer",
+    label: "Organizador / Lugar / Categorías",
+    essential: true,
+    render: (event) => (
+      <span className="text-xs text-ink-4">
+        {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
+      </span>
+    ),
+  },
+  {
+    key: "date",
+    label: "Fecha",
+    essential: true,
+    render: (event) => <span className="text-xs text-ink-5">{format(parseISO(event.date), "d MMM yyyy", { locale: es })}</span>,
+  },
+  {
+    key: "subscription",
+    label: "Pago",
+    render: (event) =>
+      isRelevantOrganizerSubscription(event.organizer_subscription) ? (
+        <OrganizerSubscriptionBadge subscription={event.organizer_subscription} />
+      ) : (
+        <span className="text-xs text-ink-5">—</span>
+      ),
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    essential: true,
+    render: (event) => <EventPlanCell event={event} />,
+  },
+];
 
 export function AdminEventsPanel({ initialOrganizerId }: { initialOrganizerId?: string }) {
   const [filters, setFilters] = useState<AdminEventFilters>({ organizer_id: initialOrganizerId });
@@ -277,11 +323,13 @@ export function AdminEventsPanel({ initialOrganizerId }: { initialOrganizerId?: 
       )}
 
       {events && events.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {events.map((event) => (
-            <AdminEventRow key={event.id} event={event} />
-          ))}
-        </div>
+        <ResponsiveAdminTable
+          columns={EVENT_COLUMNS}
+          data={events}
+          getRowKey={(event) => event.id}
+          renderActions={(event) => <EventRowActions event={event} />}
+          rowTestId="admin-event-row"
+        />
       )}
     </section>
   );
