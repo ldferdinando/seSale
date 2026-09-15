@@ -126,63 +126,64 @@
   cursor: pointer;
 }
 
-/* Etapa "Cambios de diseño TIPO B v2.2" (punto 1 — logo animado).
-   Versión simplificada del logo de seSALE_v2.html: la referencia usa un SVG
-   con una imagen enmascarada en base64 (~varios KB, un asset raster a
-   mantener) + una "bola" que recorre el trazo letra por letra con
-   keyframes atados en % a las proporciones exactas de esas letras. Portar
-   eso 1:1 acopla el logo a un archivo de imagen versionado aparte y a
-   keyframes que se rompen si el texto/tipografía cambia — se evaluó el
-   costo (como pide el punto 1) y se optimizó por un efecto equivalente
-   (barrido de revelado + brillo en loop) con solo CSS, sin asset nuevo:
-   un `clip-path` que revela el texto de izquierda a derecha una vez al
-   montar, más un brillo (`background-clip:text`) que recorre "SALE" cada
-   ~5.4s, igual que el sweep de la referencia. Centralizado en
-   `<Logo>` (components/Logo.tsx) — Navbar.tsx y ProximamenteContent.tsx ya
-   no tienen el SVG/texto del logo duplicado. */
-.sesale-logo-reveal {
-  clip-path: inset(0 100% 0 0);
-  animation: sesale-logo-reveal 1.1s cubic-bezier(0.33, 0.66, 0.28, 1) 1 both;
+/* Etapa "Logo: usar la imagen original en vez del texto animado con CSS".
+   El logo ahora es el asset real (apps/web/public/logo-sesale.png, un PNG
+   con transparencia extraído del <mask> en base64 de seSALE_v2.html — ver
+   a_revisar.md), dibujado dentro de un <svg> en components/Logo.tsx con la
+   misma animación de la referencia: un <rect> con clip-path que crece en
+   ancho (revela la imagen de izquierda a derecha una vez al montar,
+   ~2.36s) + un grupo de gradientes radiales enmascarado por la silueta del
+   propio PNG que se traslada en loop cada 5.4s (brillo). Reemplaza la
+   versión anterior de esta etapa (texto real en Inter + `clip-path`/
+   `background-clip:text` sobre "se"/"SALE"), que la usuaria vio y
+   descartó: el texto no lograba el mismo peso visual que el dibujo
+   original, que no es una fuente sino una imagen diseñada a mano. */
+.sesale-logo-reveal-rect {
+  animation: sesale-logo-reveal 2360ms cubic-bezier(0.33, 0.66, 0.28, 1) 1 both;
 }
-.sesale-logo-shine {
-  background-image: linear-gradient(
-    100deg,
-    hsl(var(--primary)) 35%,
-    #ffffff 50%,
-    hsl(var(--primary)) 65%
-  );
-  background-size: 300% 100%;
-  background-position: 200% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: sesale-logo-shine 5.4s cubic-bezier(0.45, 0, 0.4, 1) 1.3s infinite;
+.sesale-logo-shine-translate {
+  transform: translateX(0);
+  animation: sesale-logo-shine-sweep 5400ms cubic-bezier(0.45, 0, 0.4, 1) 2560ms infinite;
+}
+.sesale-logo-shine-layer {
+  opacity: 0;
+  animation: sesale-logo-shine-in 0s linear 2560ms 1 forwards;
 }
 @keyframes sesale-logo-reveal {
   from {
-    clip-path: inset(0 100% 0 0);
+    width: 0;
   }
   to {
-    clip-path: inset(0 0 0 0);
+    width: 1100px;
   }
 }
-@keyframes sesale-logo-shine {
+@keyframes sesale-logo-shine-sweep {
   0% {
-    background-position: 200% 0;
+    transform: translateX(0) rotate(0deg);
   }
-  45%,
+  45% {
+    transform: translateX(1550px) rotate(6deg);
+  }
   100% {
-    background-position: -40% 0;
+    transform: translateX(1550px) rotate(6deg);
+  }
+}
+@keyframes sesale-logo-shine-in {
+  to {
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sesale-logo-reveal {
+  .sesale-logo-reveal-rect {
     animation: none;
-    clip-path: inset(0 0 0 0);
+    width: 1100px;
   }
-  .sesale-logo-shine {
+  .sesale-logo-shine-translate {
     animation: none;
-    background-position: -40% 0;
+  }
+  .sesale-logo-shine-layer {
+    animation: none;
+    opacity: 0;
   }
 }
 

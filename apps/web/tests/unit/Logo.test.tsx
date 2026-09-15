@@ -4,29 +4,37 @@ import { describe, expect, it } from "vitest";
 import { Logo } from "@/components/Logo";
 
 /**
- * Etapa "Cambios de diseño TIPO B v2.2" (punto 1 — logo animado).
+ * Etapa "Logo: usar la imagen original en vez del texto animado con CSS".
  * `<Logo>` centraliza el markup que antes estaba duplicado en Navbar.tsx y
- * ProximamenteContent.tsx — ver a_revisar.md sobre la versión simplificada
- * (CSS puro, sin el SVG con máscara raster del prototipo) de la animación.
+ * ProximamenteContent.tsx. El logo dejó de ser texto real ("se"/"SALE")
+ * para pasar a ser el asset de imagen original (apps/web/public/logo-sesale.png)
+ * dentro de un <svg role="img">, así que estos tests ya no buscan el texto
+ * como contenido accesible — verifican el equivalente accesible de la
+ * imagen (role="img" + aria-label/<title>) y el tamaño intrínseco del
+ * <svg> por tamaño. Ver a_revisar.md.
  */
 describe("Logo", () => {
-  it("renders the seSALE wordmark, accessible by its label", () => {
+  it("renders the seSale wordmark, accessible by its label", () => {
     render(<Logo />);
 
-    expect(screen.getByLabelText("seSALE")).toBeInTheDocument();
-    expect(screen.getByText("se")).toBeInTheDocument();
-    expect(screen.getByText("SALE")).toBeInTheDocument();
+    const logo = screen.getByRole("img", { name: "seSale" });
+    expect(logo).toBeInTheDocument();
+    expect(logo.tagName.toLowerCase()).toBe("svg");
   });
 
-  it("uses the larger text size when size='lg'", () => {
+  it("uses the larger intrinsic size when size='lg'", () => {
     render(<Logo size="lg" />);
 
-    expect(screen.getByText("se").className).toContain("text-3xl");
+    expect(screen.getByRole("img", { name: "seSale" }).getAttribute("class")).toContain(
+      "h-[48px]",
+    );
   });
 
-  it("defaults to the small (Navbar) text size", () => {
+  it("defaults to the small (Navbar) intrinsic size", () => {
     render(<Logo />);
 
-    expect(screen.getByText("se").className).toContain("text-xl");
+    expect(screen.getByRole("img", { name: "seSale" }).getAttribute("class")).toContain(
+      "h-[30px]",
+    );
   });
 });
