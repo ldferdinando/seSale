@@ -10,7 +10,7 @@ from app.core.email import send_subscription_approved_email, send_subscription_r
 from app.core.expiry import expire_overdue_subscriptions
 from app.core.limiter import limiter
 from app.core.storage import InvalidFlyerFileError
-from app.models.event import Event, EventStatus
+from app.models.event import EventStatus
 from app.models.plan import PlanType
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
@@ -94,7 +94,7 @@ from app.services.payment_service import (
     get_latest_subscriptions_by_event,
     review_subscription,
 )
-from app.services.report_service import list_admin_reports, update_report_status
+from app.services.report_service import get_report_target, list_admin_reports, update_report_status
 from app.services.user_service import create_user_by_admin, list_users_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -334,7 +334,8 @@ async def get_admin_reports(
         session, status=status_filter, event_id=event_id, date_from=date_from, date_to=date_to
     )
     return [
-        AdminReportRead(**report.model_dump(), event_title=event_title) for report, event_title in rows
+        AdminReportRead(**report.model_dump(), target_title=target_title, target_type=target_type)
+        for report, target_title, target_type in rows
     ]
 
 
@@ -349,8 +350,8 @@ async def patch_admin_report_status(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    event = session.get(Event, report.event_id)
-    return AdminReportRead(**report.model_dump(), event_title=event.title if event else "")
+    target_title, target_type = get_report_target(session, report)
+    return AdminReportRead(**report.model_dump(), target_title=target_title, target_type=target_type)
 
 
 @router.get("/locations", response_model=list[LocationAdminRead])

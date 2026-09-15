@@ -23,6 +23,19 @@ describe("GastroDetailView", () => {
     expect(screen.getAllByText("Cerrado").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("starts the weekly hours block collapsed and expands on toggle", async () => {
+    const user = userEvent.setup();
+    const place = makeGastroPlace();
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    const toggle = screen.getByTestId("gastro-hours-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("shows the map when the place has coordinates", async () => {
     const place = makeGastroPlace({ latitude: -39.03, longitude: -67.58 });
     const { container } = renderWithQueryClient(<GastroDetailView place={place} />);

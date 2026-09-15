@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -32,7 +33,13 @@ class ReportRead(BaseModel):
 
 
 class AdminReportRead(ReportRead):
-    event_title: str
+    # Etapa "Admin de reportes de lugares": generalizado de `event_title` a
+    # target_title/target_type para cubrir reportes de evento y de lugar con
+    # el mismo campo (se eligió esto en vez de sumar `location_name` aparte
+    # porque el frontend admin solo necesita un título + saber a qué tipo de
+    # ficha linkear, no ambos títulos a la vez).
+    target_title: str
+    target_type: Literal["event", "location"]
 
 
 class ReportStatusUpdate(BaseModel):

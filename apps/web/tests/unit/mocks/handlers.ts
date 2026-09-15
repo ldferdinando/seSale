@@ -220,7 +220,9 @@ export function makeAdminReport(overrides: Partial<AdminReport> = {}): AdminRepo
   return {
     id: "99999999-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
     event_id: "11111111-1111-1111-1111-111111111111",
-    event_title: "Noche de Rock Nacional",
+    location_id: null,
+    target_title: "Noche de Rock Nacional",
+    target_type: "event",
     text: "Este evento tiene información incorrecta",
     contact_phone: "2984123456",
     created_at: "2099-01-01T21:00:00Z",

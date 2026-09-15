@@ -29,6 +29,43 @@ describe("AdminReportsPanel", () => {
     expect(screen.getByText("Pendiente")).toBeInTheDocument();
   });
 
+  it("shows event and location reports with their type badge and correct link", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/reports`, () =>
+        HttpResponse.json([
+          makeAdminReport(),
+          makeAdminReport({
+            id: "88888888-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+            event_id: null,
+            location_id: "33333333-3333-3333-3333-333333333333",
+            target_title: "El Tinglado Bar",
+            target_type: "location",
+            text: "Este lugar cerró",
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    expect(await screen.findByText("Noche de Rock Nacional")).toBeInTheDocument();
+    expect(screen.getByText("El Tinglado Bar")).toBeInTheDocument();
+
+    const rows = screen.getAllByTestId("admin-report-row");
+    expect(rows).toHaveLength(2);
+
+    const badges = screen.getAllByTestId("admin-report-target-type");
+    expect(badges.map((badge) => badge.textContent)).toEqual(["Evento", "Lugar"]);
+
+    expect(screen.getByText("Noche de Rock Nacional").closest("a")).toHaveAttribute(
+      "href",
+      "/eventos/11111111-1111-1111-1111-111111111111",
+    );
+    expect(screen.getByText("El Tinglado Bar").closest("a")).toHaveAttribute(
+      "href",
+      "/lugares/33333333-3333-3333-3333-333333333333",
+    );
+  });
+
   it("marks a report as reviewed", async () => {
     let status: "pending" | "reviewed" = "pending";
     server.use(

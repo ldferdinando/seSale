@@ -26,12 +26,20 @@ const STATUS_BADGE_VARIANT: Record<ReportStatus, "default" | "pro" | "muted"> = 
 function ReportRow({ report }: { report: AdminReport }) {
   const updateStatus = useUpdateReportStatus();
 
+  const targetHref =
+    report.target_type === "event" ? `/eventos/${report.event_id}` : `/lugares/${report.location_id}`;
+
   return (
     <div data-testid="admin-report-row" className="flex flex-col gap-2 rounded-lg border border-border p-3">
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/eventos/${report.event_id}`} className="text-sm font-bold text-primary hover:underline">
-          {report.event_title}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Badge variant={report.target_type === "event" ? "default" : "muted"} data-testid="admin-report-target-type">
+            {report.target_type === "event" ? "Evento" : "Lugar"}
+          </Badge>
+          <Link href={targetHref} className="text-sm font-bold text-primary hover:underline">
+            {report.target_title}
+          </Link>
+        </div>
         <Badge variant={STATUS_BADGE_VARIANT[report.status]}>{STATUS_LABEL[report.status]}</Badge>
       </div>
 

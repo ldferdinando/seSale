@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   Bike,
   CalendarCheck,
+  ChevronDown,
   Clock,
   Facebook as FacebookIcon,
   Flag,
@@ -22,7 +23,7 @@ import {
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { EventCard } from "@/features/events/components/EventCard";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
-import { currentWeekdayInArgentina } from "@/features/gastro/lib/openingHours";
+import { currentWeekdayInArgentina, formatTodayHours } from "@/features/gastro/lib/openingHours";
 import { useLocationEvents } from "@/features/gastro/hooks/useLocationEvents";
 import { GASTRO_TYPE_LABELS, WEEKDAYS, WEEKDAY_LABELS, type GastroPlace } from "@/features/gastro/types";
 import { GastroPlanBadge, OpenHoursChip } from "@/features/gastro/components/GastroPlaceCard";
@@ -71,6 +72,7 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
   const upcomingEvents = (locationEvents ?? []).slice(0, 3);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [hoursExpanded, setHoursExpanded] = useState(false);
 
   const style = GASTRO_TYPE_STYLES[place.gastro_types[0]] ?? DEFAULT_GASTRO_TYPE_STYLE;
   const Icon = style.icon;
@@ -142,9 +144,6 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
             {place.address}
           </p>
-          <div className="mt-1">
-            <OpenHoursChip place={place} />
-          </div>
           {mapUrl && (
             <a
               href={mapUrl}
@@ -199,29 +198,61 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
       </div>
 
       {/* Horarios — completos por día si opening_hours viene estructurado;
-          si no, se muestra el texto libre `hours` como fallback. */}
+          si no, se muestra el texto libre `hours` como fallback. Arranca
+          colapsado (solo estado + horario de hoy), igual criterio que
+          togHorarioLd() en seSALE_v2.html; el bloque de 7 días existente
+          se envuelve sin reimplementarlo. */}
       {place.opening_hours ? (
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3" data-testid="gastro-weekly-hours">
-          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-4">
-            <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
-            Horarios
-          </p>
-          {WEEKDAYS.map((day) => {
-            const hours = place.opening_hours?.[day];
-            return (
-              <div
-                key={day}
-                data-testid={`gastro-hours-${day}`}
-                className={cn(
-                  "flex items-center justify-between rounded-lg px-2 py-1 text-sm",
-                  day === today ? "bg-primary/10 font-bold text-foreground" : "text-ink-3",
-                )}
-              >
-                <span>{WEEKDAY_LABELS[day]}</span>
-                <span>{hours ? `${hours.open} a ${hours.close} hs` : "Cerrado"}</span>
+        <div className="rounded-xl border border-border bg-card" data-testid="gastro-weekly-hours">
+          <button
+            type="button"
+            onClick={() => setHoursExpanded((expanded) => !expanded)}
+            aria-expanded={hoursExpanded}
+            aria-controls="gastro-hours-list"
+            data-testid="gastro-hours-toggle"
+            className="flex w-full items-center justify-between gap-2 p-3 text-left"
+          >
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-4">
+              <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
+              Ver horarios de la semana
+            </span>
+            <span className="flex items-center gap-2">
+              <OpenHoursChip place={place} />
+              <span className="text-xs font-semibold text-ink-4">{formatTodayHours(place.opening_hours)}</span>
+              <ChevronDown
+                className={cn("h-4 w-4 flex-shrink-0 text-ink-4 transition-transform", hoursExpanded && "rotate-180")}
+                aria-hidden
+              />
+            </span>
+          </button>
+          <div
+            id="gastro-hours-list"
+            className={cn(
+              "grid transition-[grid-template-rows] duration-200 ease-in-out",
+              hoursExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="flex flex-col gap-1 px-3 pb-3">
+                {WEEKDAYS.map((day) => {
+                  const hours = place.opening_hours?.[day];
+                  return (
+                    <div
+                      key={day}
+                      data-testid={`gastro-hours-${day}`}
+                      className={cn(
+                        "flex items-center justify-between rounded-lg px-2 py-1 text-sm",
+                        day === today ? "bg-primary/10 font-bold text-foreground" : "text-ink-3",
+                      )}
+                    >
+                      <span>{WEEKDAY_LABELS[day]}</span>
+                      <span>{hours ? `${hours.open} a ${hours.close} hs` : "Cerrado"}</span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          </div>
         </div>
       ) : (
         place.hours && (

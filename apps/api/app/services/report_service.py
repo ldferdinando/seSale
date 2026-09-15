@@ -73,9 +73,18 @@ def list_admin_reports(
     event_id: UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
-) -> list[tuple[Report, str]]:
-    """Devuelve (Report, event_title) — más recientes primero."""
-    stmt = select(Report, Event.title).join(Event, Event.id == Report.event_id)
+) -> list[tuple[Report, str, str]]:
+    """Devuelve (Report, target_title, target_type) — más recientes primero.
+
+    Un reporte tiene event_id O location_id seteado (nunca ambos, ver
+    create_report/create_location_report), así que se hace LEFT JOIN contra
+    las dos tablas en una sola query: para cada fila, exactamente una de
+    Event.title/Location.name viene no-nula y la otra null."""
+    stmt = (
+        select(Report, Event.title, Location.name)
+        .join(Event, Event.id == Report.event_id, isouter=True)
+        .join(Location, Location.id == Report.location_id, isouter=True)
+    )
 
     if status is not None:
         stmt = stmt.where(Report.status == status)
@@ -87,7 +96,23 @@ def list_admin_reports(
         stmt = stmt.where(Report.created_at <= date_to)
 
     stmt = stmt.order_by(Report.created_at.desc())
-    return list(session.exec(stmt).all())
+    rows = session.exec(stmt).all()
+    return [
+        (report, event_title, "event")
+        if report.event_id is not None
+        else (report, location_name, "location")
+        for report, event_title, location_name in rows
+    ]
+
+
+def get_report_target(session: Session, report: Report) -> tuple[str, str]:
+    """(target_title, target_type) para un único Report ya persistido —
+    mismo criterio que list_admin_reports, para el endpoint de detalle/PATCH."""
+    if report.event_id is not None:
+        event = session.get(Event, report.event_id)
+        return (event.title if event else ""), "event"
+    location = session.get(Location, report.location_id) if report.location_id is not None else None
+    return (location.name if location else ""), "location"
 
 
 def update_report_status(session: Session, report_id: UUID, new_status: str) -> Report:

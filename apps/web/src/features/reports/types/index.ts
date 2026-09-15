@@ -14,8 +14,21 @@ export interface Report {
   status: ReportStatus;
 }
 
-export interface AdminReport extends Report {
-  event_title: string;
+/** Etapa "Admin de reportes de lugares": `event_title` se generalizó a
+ * target_title/target_type — cubre reportes de evento y de lugar con el
+ * mismo campo. No extiende `Report` (ahí event_id no es nullable, pensado
+ * para el reporte de evento del usuario) porque acá exactamente uno de
+ * event_id/location_id viene seteado, según target_type. */
+export interface AdminReport {
+  id: string;
+  event_id: string | null;
+  location_id: string | null;
+  text: string;
+  contact_phone: string;
+  created_at: string;
+  status: ReportStatus;
+  target_title: string;
+  target_type: "event" | "location";
 }
 
 /** Respuesta de POST /api/gastro/{id}/report — etapa "Ficha de Lugar v2.2".
