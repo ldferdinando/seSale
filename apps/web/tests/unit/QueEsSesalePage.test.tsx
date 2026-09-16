@@ -21,4 +21,30 @@ describe("QueEsSesaleContent", () => {
     const link = screen.getByRole("link", { name: /Ver eventos/ });
     expect(link).toHaveAttribute("href", "/");
   });
+
+  // Etapa "Ajustes de diseño reportados" (Parte 2, revisitada) — secciones
+  // nuevas calcadas de #s-que-es en seSALE_v2.html, ausentes en la Etapa 11b.
+  it("renders the 'Por qué seSALE' section", () => {
+    render(<QueEsSesaleContent />);
+
+    expect(screen.getByText("Por qué seSALE")).toBeInTheDocument();
+    expect(screen.getByText("Cada organizador está verificado")).toBeInTheDocument();
+  });
+
+  it("renders the audience cards", () => {
+    render(<QueEsSesaleContent />);
+
+    expect(screen.getByText("¿Para quién es?")).toBeInTheDocument();
+    expect(screen.getByText("Bandas y artistas")).toBeInTheDocument();
+    expect(screen.getByText("El público")).toBeInTheDocument();
+  });
+
+  it("renders both 'Cómo funciona' step sequences", () => {
+    render(<QueEsSesaleContent />);
+
+    expect(screen.getByText("Cómo funciona — Para el público")).toBeInTheDocument();
+    expect(screen.getByText("Cómo funciona — Para organizadores")).toBeInTheDocument();
+    expect(screen.getAllByText("Paso 1")).toHaveLength(2);
+    expect(screen.getByText("Creás tu cuenta gratis")).toBeInTheDocument();
+  });
 });

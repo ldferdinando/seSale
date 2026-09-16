@@ -113,7 +113,7 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             onClick={() => coverUrl && setLightboxOpen(true)}
             disabled={!coverUrl}
             data-testid="gastro-cover"
-            className="flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-[#1a1a1a] disabled:cursor-default"
+            className="flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-3 disabled:cursor-default"
           >
             {coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

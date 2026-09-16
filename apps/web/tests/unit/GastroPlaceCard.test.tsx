@@ -132,6 +132,19 @@ describe("GastroPlaceCard", () => {
     expect(card.className).not.toContain("#E91E8C77");
   });
 
+  // Etapa "Ajustes de diseño reportados" — .lugar-row en seSALE_v2.html no
+  // tiene borde (solo background:var(--s1)), a diferencia del border/bg-card
+  // que trae `Card` por default.
+  it("plan='gratis' has no border (only the surface-1 background)", () => {
+    const place = makeGastroPlace({ plan: "gratis" });
+
+    render(<GastroPlaceCard place={place} />);
+
+    const card = screen.getByTestId("gastro-place-card");
+    expect(card.className).toContain("border-transparent");
+    expect(card.className).toContain("bg-surface-1");
+  });
+
   it("shows the verified icon when is_verified is true", () => {
     const place = makeGastroPlace({ is_verified: true });
 

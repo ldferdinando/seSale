@@ -49,6 +49,14 @@
     --t3: #aaaaaa;
     --t4: #8f8f8f;
     --t5: #6e6e6e;
+
+    /* Etapa "Ajustes de diseño reportados" (Parte 1) — gradiente de fondo
+       de la card de Destacado Plus (.evi-plus en seSALE_v2.html), que hasta
+       ahora estaba hardcodeado solo en su versión oscura en EventCard.tsx/
+       GastroPlaceCard.tsx. Mismo mecanismo que --FB/--lime/etc.: valores
+       oscuros acá, redefinidos abajo en body[data-theme="light"]. */
+    --evi-plus-grad-1: #2a0d1f;
+    --evi-plus-grad-2: #150910;
   }
 
   /* Modo claro — toggle desde el botón sol/luna del Navbar (ThemeProvider,
@@ -85,6 +93,9 @@
     --muted: 44 23% 91%;
     --muted-foreground: 0 0% 48%;
     --border: 40 21% 86%;
+
+    --evi-plus-grad-1: #fdeaf1;
+    --evi-plus-grad-2: #fff6f9;
   }
 
   body {
@@ -124,6 +135,15 @@
   border: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* Etapa "Ajustes de diseño reportados" (Parte 1) — fondo de la card de
+   Destacado Plus (.evi-plus), usado en EventCard.tsx y GastroPlaceCard.tsx.
+   Reactivo al tema vía --evi-plus-grad-1/2 (ver :root/body[data-theme]
+   arriba), a diferencia del bg-[linear-gradient(...)] hardcodeado que
+   tenían antes. */
+.sesale-evi-plus-bg {
+  background: linear-gradient(160deg, var(--evi-plus-grad-1), var(--evi-plus-grad-2));
 }
 
 /* Etapa "Logo: usar la imagen original en vez del texto animado con CSS".

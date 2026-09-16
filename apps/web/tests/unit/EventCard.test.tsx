@@ -59,6 +59,19 @@ describe("EventCard", () => {
     expect(card.className).not.toContain("linear-gradient");
   });
 
+  // Etapa "Ajustes de diseño reportados" — .evi en seSALE_v2.html no tiene
+  // recuadro propio (ni fondo ni borde) para el plan gratis, a diferencia
+  // del border/bg que trae el componente `Card` por default.
+  it("plan='gratis' has no card box (transparent border/background)", () => {
+    const event = makeEvent({ plan: "gratis" });
+
+    renderCard(<EventCard event={event} />);
+
+    const card = screen.getByTestId("event-card");
+    expect(card.className).toContain("border-transparent");
+    expect(card.className).toContain("bg-transparent");
+  });
+
   it("plan='dest' has the gradient background and the 1.5px accent border", () => {
     const event = makeEvent({ plan: "dest" });
 

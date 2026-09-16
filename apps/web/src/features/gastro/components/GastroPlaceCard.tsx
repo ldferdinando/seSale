@@ -238,7 +238,7 @@ export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
         <Link href={`/lugares/${place.id}`} data-testid="gastro-place-card-link">
           <Card
             data-testid="gastro-place-card"
-            className="overflow-hidden border-[1.75px] border-l-[6px] border-[#E91E8C99] border-l-brand-pink bg-[linear-gradient(160deg,#2a0d1f,#150910)] transition-colors hover:border-primary/40"
+            className="overflow-hidden border-[1.75px] border-l-[6px] border-[#E91E8C99] border-l-brand-pink sesale-evi-plus-bg transition-colors hover:border-primary/40"
           >
             <CardContent className="flex flex-col gap-2.5 p-3">
               <div className="flex items-start gap-3">
@@ -333,9 +333,17 @@ export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
   // ícono 40×40, nombre, tipos, horario de hoy y badges. ────────────────
   return (
     <Link href={`/lugares/${place.id}`} data-testid="gastro-place-card-link">
-      <Card data-testid="gastro-place-card" className="overflow-hidden transition-colors hover:border-primary/40">
+      {/* Etapa "Ajustes de diseño reportados" — `.lugar-row` en seSALE_v2.html
+          no tiene borde (solo `background:var(--s1)`), a diferencia de
+          `.lugar-card.dest`/`.plus` que sí llevan borde completo. Se pisa el
+          `border-border` que trae `Card` por default y se usa `bg-surface-1`
+          en vez de `bg-card` para calzar con el token real de la referencia. */}
+      <Card
+        data-testid="gastro-place-card"
+        className="overflow-hidden border-transparent bg-surface-1 transition-colors hover:border-primary/40"
+      >
         <CardContent className="flex items-center gap-3 p-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#1a1a1a]">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-3">
             <Icon className="h-[18px] w-[18px]" style={{ color: style.color }} aria-hidden />
           </div>
 

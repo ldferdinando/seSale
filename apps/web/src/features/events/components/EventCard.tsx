@@ -75,8 +75,13 @@ export function PlanBadge({ plan }: { plan: Event["plan"] }) {
 }
 
 /**
- * Jerarquía visual de plan, calcada de seSALE.html (`.evi-dest`/`.evi-plus`):
- * - gratis: sin clases extra, la fila queda con el estilo base de `Card`.
+ * Jerarquía visual de plan, calcada de seSALE.html (`.evi`/`.evi-dest`/`.evi-plus`):
+ * - gratis: SIN recuadro — `.evi` en la referencia no tiene fondo ni borde
+ *   propios (es una fila plana dentro de la lista, solo separada por
+ *   `border-bottom`). Se pisan el `border`/`bg-card` que trae `Card` por
+ *   default (Etapa "Ajustes de diseño reportados" — antes gratis quedaba
+ *   con el recuadro completo del componente base, distinto de la
+ *   referencia).
  * - dest: fondo degradé sutil + borde completo 1.5px en rosa.
  * - pro: mismo criterio + borde más grueso (1.75px) y una rayita de acento
  *   de 6px a la izquierda, exclusiva de este nivel.
@@ -86,14 +91,17 @@ function planCardClasses(plan: Event["plan"]): string {
   if (plan === "pro") {
     // Etapa "Cambios de diseño TIPO A v2.2": borde 1.75px→2.5px (seSALE_v2.html
     // mantiene el mismo color de borde #E91E8C99, no lo actualiza a --F nuevo).
-    return "border-[2.5px] border-[#E91E8C99] border-l-[6px] border-l-brand-pink bg-[linear-gradient(160deg,#2a0d1f,#150910)]";
+    // `sesale-evi-plus-bg` (Etapa "Ajustes de diseño reportados") reemplaza
+    // el bg-[linear-gradient(...)] hardcodeado por uno reactivo al tema —
+    // ver --evi-plus-grad-1/2 en globals.css.
+    return "border-[2.5px] border-[#E91E8C99] border-l-[6px] border-l-brand-pink sesale-evi-plus-bg";
   }
   if (plan === "dest") {
     // Fondo pasa de rosa a lime en seSALE_v2.html; el borde (#E91E8C77) no
     // cambia (no está en el alcance de esta etapa).
     return "border-[1.5px] border-[#E91E8C77] bg-[linear-gradient(135deg,#D4D94A26,#D4D94A0d)]";
   }
-  return "";
+  return "border-transparent bg-transparent";
 }
 
 interface EventCardProps {

@@ -189,7 +189,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   return (
     <div className="flex flex-col gap-5">
       {isProEvent && (
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-surface-0">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-surface-0">
           {hasFlyer ? (
             <>
               <picture>
@@ -199,7 +199,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
                   src={flyerDesktop ?? undefined}
                   alt={event.title}
                   onClick={() => setLightboxOpen(true)}
-                  className="h-full w-full cursor-pointer object-cover"
+                  className="h-full w-full cursor-pointer object-contain"
                 />
               </picture>
               <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white">
