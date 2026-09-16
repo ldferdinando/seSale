@@ -132,7 +132,7 @@ export function QueEsSesaleContent() {
         <div className="absolute inset-x-0 top-0 h-[3px] bg-brand-pink" aria-hidden />
 
         <div className="mx-auto flex flex-col items-center gap-3">
-          <Logo size="lg" />
+          <Logo size="lg" tone="light" />
 
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.3em] text-brand-pink">
             <MapPin className="h-3.5 w-3.5" aria-hidden />

@@ -37,4 +37,22 @@ describe("Logo", () => {
       "h-[30px]",
     );
   });
+
+  // Etapa "Ajustes de diseño reportados" — tone="light" usa el asset con
+  // el glyph "se" recoloreado a blanco (logo-sesale-light.png), para fondos
+  // oscuros fijos (ej. el hero de "¿Qué es seSale?"), donde el "se" original
+  // (gris casi negro) no se distinguía del fondo.
+  it("uses the white-'se' asset when tone='light'", () => {
+    const { container } = render(<Logo tone="light" />);
+
+    const image = container.querySelector('[data-testid="logo-image"]');
+    expect(image?.getAttribute("href")).toBe("/logo-sesale-light.png");
+  });
+
+  it("defaults to the dark-'se' asset (tone='dark')", () => {
+    const { container } = render(<Logo />);
+
+    const image = container.querySelector('[data-testid="logo-image"]');
+    expect(image?.getAttribute("href")).toBe("/logo-sesale.png");
+  });
 });

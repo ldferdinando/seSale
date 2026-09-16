@@ -6,6 +6,15 @@ interface LogoProps {
   /** "sm" — Navbar (marca siempre oscura, ver comentario en Navbar.tsx).
    *  "lg" — pantallas de un solo logo grande (ej. /proximamente). */
   size?: "sm" | "lg";
+  /** "dark" (default) — "se" en gris oscuro, para fondos claros (Navbar,
+   *  que siempre queda fijo en tema claro — ver `.sesale-navbar-fixed-light`
+   *  en globals.css). "light" — "se" en blanco (`logo-sesale-light.png`,
+   *  generado a partir del original recoloreando solo el glyph oscuro,
+   *  "Sale." se mantiene rosa en los dos), para fondos oscuros fijos como
+   *  el hero de "¿Qué es seSale?" (`.qe-logo-img` en seSALE_v2.html usa un
+   *  asset White-on-dark separado del logo del nav, por la misma razón:
+   *  con el original, "se" casi no se lee sobre un fondo oscuro). */
+  tone?: "dark" | "light";
   className?: string;
 }
 
@@ -44,7 +53,8 @@ const VIEWBOX_HEIGHT = 239.06;
  * fijos (igual que en la referencia, donde el nav/marca se mantiene
  * siempre oscuro/fijo) — es intencional, no hay que hacerlo variar.
  */
-export function Logo({ size = "sm", className }: LogoProps) {
+export function Logo({ size = "sm", tone = "dark", className }: LogoProps) {
+  const logoSrc = tone === "light" ? "/logo-sesale-light.png" : "/logo-sesale.png";
   const uid = useId();
   const clipId = `logo-clip-${uid}`;
   const maskId = `logo-mask-${uid}`;
@@ -105,7 +115,8 @@ export function Logo({ size = "sm", className }: LogoProps) {
 
       <g clipPath={`url(#${clipId})`}>
         <image
-          href="/logo-sesale.png"
+          data-testid="logo-image"
+          href={logoSrc}
           x="0"
           y="0"
           width={VIEWBOX_WIDTH}

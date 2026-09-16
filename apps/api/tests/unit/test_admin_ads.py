@@ -3,6 +3,8 @@ GET /api/admin/ad-slots, GET/POST/PUT/DELETE /api/admin/ad-items,
 PATCH .../status, POST .../image, PATCH .../reorder.
 """
 
+from datetime import date, timedelta
+
 from httpx import AsyncClient
 from sqlmodel import Session
 
@@ -332,6 +334,75 @@ async def test_put_admin_ad_item_edits_fields(
     body = response.json()
     assert body["link_url"] == "https://nuevo-link.com"
     assert body["alt_text"] == "Nuevo texto"
+
+
+async def test_put_admin_ad_item_extending_expired_reactivates_it(
+    client: AsyncClient, session: Session, city: City, organizer: User, admin: User, admin_token_headers
+):
+    slot = _make_slot(session, city=city)
+    item = _make_item(
+        session,
+        slot=slot,
+        user=organizer,
+        admin=admin,
+        status="expired",
+        ends_at=date.today() - timedelta(days=1),
+    )
+
+    response = await client.put(
+        f"/api/admin/ad-items/{item.id}",
+        json={"ends_at": (date.today() + timedelta(days=7)).isoformat()},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "active"
+
+
+async def test_put_admin_ad_item_extending_paused_does_not_reactivate_it(
+    client: AsyncClient, session: Session, city: City, organizer: User, admin: User, admin_token_headers
+):
+    slot = _make_slot(session, city=city)
+    item = _make_item(
+        session,
+        slot=slot,
+        user=organizer,
+        admin=admin,
+        status="paused",
+        ends_at=date.today() - timedelta(days=1),
+    )
+
+    response = await client.put(
+        f"/api/admin/ad-items/{item.id}",
+        json={"ends_at": (date.today() + timedelta(days=7)).isoformat()},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "paused"
+
+
+async def test_put_admin_ad_item_setting_past_ends_at_expires_it_immediately(
+    client: AsyncClient, session: Session, city: City, organizer: User, admin: User, admin_token_headers
+):
+    slot = _make_slot(session, city=city)
+    item = _make_item(
+        session,
+        slot=slot,
+        user=organizer,
+        admin=admin,
+        status="active",
+        ends_at=date.today() + timedelta(days=7),
+    )
+
+    response = await client.put(
+        f"/api/admin/ad-items/{item.id}",
+        json={"ends_at": (date.today() - timedelta(days=1)).isoformat()},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "expired"
 
 
 # ── DELETE /api/admin/ad-items/{id} ──────────────────────────────────────

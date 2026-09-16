@@ -277,8 +277,23 @@ def create_ad_item(session: Session, data: AdItemCreate, *, created_by: UUID) ->
 def update_ad_item(session: Session, ad_item_id: UUID, data: AdItemUpdate) -> AdItemAdminRead:
     item = get_ad_item_or_404(session, ad_item_id)
     updates = data.model_dump(exclude_unset=True)
+    original_status = item.status
     for field, value in updates.items():
         setattr(item, field, value)
+
+    if "status" not in updates:
+        # El admin no tocó el status en este update: lo recalculamos según
+        # el ends_at resultante (el nuevo valor, o el que ya tenía si no se
+        # está cambiando este campo). "paused" es intencional del admin y
+        # nunca se reactiva solo por extender la fecha — necesita la acción
+        # explícita de reactivar (toggle_ad_item_status).
+        today = datetime.now(timezone.utc).date()
+        is_current = item.ends_at is None or item.ends_at >= today
+        if original_status == "expired" and is_current:
+            item.status = "active"
+        elif original_status == "active" and not is_current:
+            item.status = "expired"
+
     item.updated_at = datetime.now(timezone.utc)
     session.add(item)
     session.commit()
