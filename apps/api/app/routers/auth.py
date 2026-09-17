@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.user import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+    GoogleAuthRequest,
     ResetPasswordRequest,
     Token,
     UserLogin,
@@ -16,6 +17,7 @@ from app.schemas.user import (
     UserRegister,
 )
 from app.services.auth_service import (
+    authenticate_google_user,
     authenticate_user,
     issue_tokens,
     register_user,
@@ -94,6 +96,21 @@ async def login(
 ) -> Token:
     try:
         user = authenticate_user(session, email=payload.email, password=payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    access_token, refresh_token, expires_in = issue_tokens(session, user)
+    _set_refresh_cookie(response, refresh_token)
+    return Token(access_token=access_token, expires_in=expires_in)
+
+
+@router.post("/google", response_model=Token)
+@limiter.limit("10/minute", key_func=get_client_ip)
+async def google_login(
+    request: Request, payload: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
+) -> Token:
+    try:
+        user = authenticate_google_user(session, credential=payload.credential)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 

@@ -28,6 +28,10 @@ export interface LoginInput {
   password: string;
 }
 
+export interface GoogleAuthInput {
+  credential: string;
+}
+
 export interface City {
   id: string;
   name: string;

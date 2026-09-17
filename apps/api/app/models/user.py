@@ -13,6 +13,10 @@ class User(SQLModel, table=True):
     role: str = Field(default="user")  # "user" | "admin"
     is_active: bool = Field(default=True)
 
+    # Login con Google (ID token, `sub` del token). None para cuentas
+    # creadas por email/password que nunca vincularon Google.
+    google_id: str | None = Field(default=None, unique=True, index=True, max_length=255)
+
     # Sesión activa (refresh token). Una sola sesión por usuario: el login
     # pisa el hash anterior, el logout lo borra.
     refresh_token_hash: str | None = Field(default=None, max_length=255)

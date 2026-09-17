@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     admin_email: str = "admin@sesale.com.ar"
 
+    # Login con Google (ID token, sin client secret) — POST /api/auth/google.
+    # Debe coincidir con el Client ID usado en el frontend
+    # (NEXT_PUBLIC_GOOGLE_CLIENT_ID): se usa para validar el `aud` del token.
+    google_client_id: str | None = None
+
     # Etapa 8b — flyers de eventos (plan Destacado Plus). Sin Supabase
     # configurado (supabase_url/supabase_service_key vacíos), storage.py cae
     # a guardar los archivos en apps/api/uploads/flyers/ para desarrollo.

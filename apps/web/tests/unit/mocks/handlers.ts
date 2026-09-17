@@ -453,6 +453,9 @@ export const handlers = [
       status: 201,
     });
   }),
+  http.post(`${API_URL}/api/auth/google`, () => {
+    return HttpResponse.json({ access_token: "fake-access-token", token_type: "bearer", expires_in: 1800 });
+  }),
   http.post(`${API_URL}/api/auth/refresh`, () => {
     return new HttpResponse(null, { status: 401 });
   }),

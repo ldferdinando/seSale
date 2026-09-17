@@ -401,6 +401,97 @@ async def test_forgot_password_unknown_email_does_not_send_email(client: AsyncCl
     assert called is False
 
 
+# Login con Google — POST /api/auth/google.
+
+
+def _mock_google_verify(monkeypatch, idinfo: dict) -> None:
+    def fake_verify(credential: str) -> dict:
+        assert credential == "fake-credential"
+        return idinfo
+
+    monkeypatch.setattr("app.services.auth_service.verify_google_id_token", fake_verify)
+
+
+def _google_idinfo(**overrides) -> dict:
+    base = {
+        "sub": "google-sub-123",
+        "email": "nueva-google@sesale.com.ar",
+        "email_verified": True,
+        "name": "Persona Google",
+    }
+    base.update(overrides)
+    return base
+
+
+async def test_google_login_creates_new_user(client: AsyncClient, session: Session, monkeypatch):
+    _mock_google_verify(monkeypatch, _google_idinfo())
+
+    response = await client.post("/api/auth/google", json={"credential": "fake-credential"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["access_token"]
+    assert "refresh_token" in response.cookies
+
+    user = session.exec(select(User).where(User.email == "nueva-google@sesale.com.ar")).first()
+    assert user is not None
+    assert user.google_id == "google-sub-123"
+    assert user.email_verified is True
+    assert user.full_name == "Persona Google"
+
+
+async def test_google_login_existing_user_by_google_id(client: AsyncClient, session: Session, organizer: User, monkeypatch):
+    organizer.google_id = "google-sub-existing"
+    session.add(organizer)
+    session.commit()
+
+    _mock_google_verify(monkeypatch, _google_idinfo(sub="google-sub-existing", email=organizer.email))
+
+    response = await client.post("/api/auth/google", json={"credential": "fake-credential"})
+
+    assert response.status_code == 200
+    session.refresh(organizer)
+    assert organizer.google_id == "google-sub-existing"
+
+
+async def test_google_login_links_existing_account_by_email(
+    client: AsyncClient, session: Session, organizer: User, monkeypatch
+):
+    assert organizer.google_id is None
+    _mock_google_verify(monkeypatch, _google_idinfo(sub="google-sub-link", email=organizer.email))
+
+    response = await client.post("/api/auth/google", json={"credential": "fake-credential"})
+
+    assert response.status_code == 200
+    users = session.exec(select(User).where(User.email == organizer.email)).all()
+    assert len(users) == 1
+    session.refresh(organizer)
+    assert organizer.google_id == "google-sub-link"
+
+
+async def test_google_login_unverified_email_returns_401(client: AsyncClient, session: Session, monkeypatch):
+    _mock_google_verify(monkeypatch, _google_idinfo(email_verified=False))
+
+    response = await client.post("/api/auth/google", json={"credential": "fake-credential"})
+
+    assert response.status_code == 401
+    user = session.exec(select(User).where(User.email == "nueva-google@sesale.com.ar")).first()
+    assert user is None
+
+
+async def test_google_login_invalid_token_returns_401(client: AsyncClient, monkeypatch):
+    from app.core.google_oauth import GoogleTokenError
+
+    def fake_verify(credential: str) -> dict:
+        raise GoogleTokenError("Token de Google inválido o expirado")
+
+    monkeypatch.setattr("app.services.auth_service.verify_google_id_token", fake_verify)
+
+    response = await client.post("/api/auth/google", json={"credential": "not-a-real-token"})
+
+    assert response.status_code == 401
+
+
 async def test_reset_password_clears_active_session(client: AsyncClient, session: Session, organizer: User, monkeypatch):
     # Cambiar la password invalida cualquier sesión activa (refresh token).
     login_response = await client.post(

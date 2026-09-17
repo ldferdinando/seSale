@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.google_oauth import GoogleTokenError, verify_google_id_token
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -59,6 +60,64 @@ def authenticate_user(session: Session, *, email: str, password: str) -> User:
     user = session.exec(select(User).where(User.email == email)).first()
     if user is None or not verify_password(password, user.hashed_password) or not user.is_active:
         raise ValueError("Credenciales inválidas")
+    return user
+
+
+def authenticate_google_user(session: Session, *, credential: str) -> User:
+    """Verifica el ID token de Google y resuelve la cuenta a loguear.
+
+    - `google_id` ya vinculado -> loguea esa cuenta.
+    - No hay `google_id` pero existe una cuenta con el mismo email
+      (registrada antes por email/password) -> la vincula (seguro: el email
+      ya viene verificado por Google, no hace falta que el usuario pruebe
+      que también es dueño de la password).
+    - Ninguna de las dos -> crea una cuenta nueva sin password utilizable
+      (login por password queda imposible hasta que la persona use
+      "Olvidé mi contraseña", que sí le permite setear una).
+    """
+    try:
+        idinfo = verify_google_id_token(credential)
+    except GoogleTokenError as exc:
+        raise ValueError(str(exc)) from exc
+
+    if not idinfo.get("email_verified", False):
+        raise ValueError("El email de tu cuenta de Google no está verificado")
+
+    google_id: str = idinfo["sub"]
+    email: str = idinfo["email"]
+    name: str = idinfo.get("name") or email
+
+    user = session.exec(select(User).where(User.google_id == google_id)).first()
+    if user is not None:
+        if not user.is_active:
+            raise ValueError("Cuenta inactiva")
+        return user
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if user is not None:
+        if not user.is_active:
+            raise ValueError("Cuenta inactiva")
+        user.google_id = google_id
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
+    user = User(
+        email=email,
+        # Sin password real: un secreto aleatorio que nadie conoce, para que
+        # `hashed_password` (columna NOT NULL) quede en un valor que jamás
+        # va a matchear en `authenticate_user`. La persona puede setear una
+        # password propia después vía "Olvidé mi contraseña".
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        google_id=google_id,
+        full_name=name,
+        public_name=name,
+        email_verified=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     return user
 
 

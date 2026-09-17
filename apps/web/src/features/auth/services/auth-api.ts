@@ -2,6 +2,7 @@ import { apiGet, apiPost, restoreSession } from "@/lib/api-client";
 import type {
   ForgotPasswordInput,
   ForgotPasswordResponse,
+  GoogleAuthInput,
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
@@ -15,6 +16,10 @@ export async function registerUser(input: RegisterInput): Promise<User> {
 
 export async function loginUser(input: LoginInput): Promise<TokenResponse> {
   return apiPost<TokenResponse>("/api/auth/login", input);
+}
+
+export async function googleLogin(input: GoogleAuthInput): Promise<TokenResponse> {
+  return apiPost<TokenResponse>("/api/auth/google", input);
 }
 
 export async function refreshSession(): Promise<TokenResponse> {

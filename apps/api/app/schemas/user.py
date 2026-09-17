@@ -25,6 +25,13 @@ class UserLogin(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    """POST /api/auth/google — `credential` es el ID token (JWT) que entrega
+    el botón de Google Identity Services en el frontend."""
+
+    credential: str
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
