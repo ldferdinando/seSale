@@ -48,7 +48,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
         src={src}
         alt={alt}
         onClick={(e) => e.stopPropagation()}
-        className="aspect-[3/4] w-full max-w-[420px] rounded-2xl bg-surface-0 object-contain md:max-w-[520px]"
+        className="aspect-[4/5] w-full max-w-[420px] rounded-2xl bg-surface-0 object-contain md:max-w-[520px]"
       />
     </div>
   );

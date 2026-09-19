@@ -145,8 +145,7 @@ de planes de visibilidad y espacios publicitarios. La monetización viene de pla
                     │ contact_facebook (str|null)     │  │ │  ← Etapa 12a
                     │ contact_web (str|null)          │  │ │
                     │ contact_email (str|null)        │  │ │
-                    │ flyer_url_desktop (str|null)    │  │ │  ← Etapa 12b (era flyer_url)
-                    │ flyer_url_mobile (str|null)     │  │ │  ← Etapa 12b (opcional)
+                    │ flyer_url (str|null)            │  │ │  ← Diseño v3 (4:5, era dual 12b)
                     │ is_active                       │  │ │
                     │ created_at / updated_at         │  │ │
                     └─────────────────────────────────┘  │ │
@@ -353,34 +352,34 @@ class Event(SQLModel, table=True):
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 
-    # Media — Etapa 12b: flyer dual (mobile + desktop). Reemplaza el campo
-    # único `flyer_url` de la Etapa 8b (rename directo en la migración
-    # `0023`, sin pérdida de datos: lo que estaba en `flyer_url` quedó en
-    # `flyer_url_desktop`).
+    # Media — Etapa "Diseño v3": flyer único, proporción 4:5 (1080×1350,
+    # "como el feed de Instagram"). Reemplaza el flyer dual
+    # (`flyer_url_desktop`/`flyer_url_mobile`) de la Etapa 12b — migración
+    # `0028` agrega esta columna y ELIMINA (drop directo, no rename) las dos
+    # viejas, sin copiar ningún valor: todos los eventos que ya tenían un
+    # flyer cargado quedan con `flyer_url=None`, el organizador tiene que
+    # resubir en el formato nuevo (decisión de la usuaria, ver a_revisar.md
+    # § "Diseño v3 — completar Destacado Plus").
     #
-    # - `flyer_url_desktop`: flyer horizontal/cuadrado (desktop y tablet).
-    # - `flyer_url_mobile`: flyer vertical/cuadrado (mobile), OPCIONAL. Si es
-    #   None, el frontend usa el de desktop para todas las resoluciones
-    #   (Opción A). Se muestra con `<picture>` + `<source media="(max-width:
-    #   767px)">` en EventCard.tsx y EventDetailView.tsx.
-    #
-    # Permisos de subida (POST/DELETE /api/events/{id}/flyer/{desktop|mobile}):
-    # el organizador dueño solo con plan `pro` (Destacado Plus); el admin
-    # con cualquier plan (Etapa 12b). Cualquier otro → 403.
+    # Permisos de subida (POST/DELETE /api/events/{id}/flyer): el
+    # organizador dueño solo con plan `pro` (Destacado Plus); el admin con
+    # cualquier plan. Cualquier otro → 403.
     #
     # El bloque de imagen/placeholder en el frontend es exclusivo de `pro`:
     # `dest`/`gratis` no muestran ni imagen ni espacio reservado, aunque
-    # tuvieran una URL cargada.
+    # tuvieran una URL cargada. En `EventCard.tsx`, `pro` es una card de
+    # imagen completa 4:5 (el flyer de fondo) con los datos del evento en un
+    # panel translúcido superpuesto abajo — ya no la fila con miniatura
+    # 44×44 ni el `<picture>`/`<source media="(max-width:767px)">` que tenía
+    # el flyer dual.
     #
     # Storage (app/core/storage.py): Supabase Storage con path
-    # `{event_id}/{desktop|mobile}/{filename}` (URL absoluta pública), o
-    # disco local en dev con ruta RELATIVA `/uploads/flyers/{id}/{size}/...`
-    # — el backend no puede saber en qué origen es alcanzable (localhost,
-    # túnel, prod), lo resuelve el frontend con resolveMediaUrl()
-    # (apps/web/src/lib/media.ts), anteponiendo NEXT_PUBLIC_API_URL solo si
-    # no es ya absoluta.
-    flyer_url_desktop: str | None = Field(default=None)
-    flyer_url_mobile: str | None = Field(default=None)
+    # `{event_id}/{filename}` (URL absoluta pública), o disco local en dev
+    # con ruta RELATIVA `/uploads/flyers/{id}/...` — el backend no puede
+    # saber en qué origen es alcanzable (localhost, túnel, prod), lo
+    # resuelve el frontend con resolveMediaUrl() (apps/web/src/lib/media.ts),
+    # anteponiendo NEXT_PUBLIC_API_URL solo si no es ya absoluta.
+    flyer_url: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -1428,31 +1427,27 @@ POST   /api/events/{id}/report         Reportar un evento (público, sin login) 
                                        y envía un email al admin (Resend) — si el
                                        email falla, se loguea pero no se falla el
                                        endpoint (el reporte ya quedó guardado)
-POST   /api/events/{id}/flyer/desktop  Sube/reemplaza el flyer de desktop     ✓ Etapa 12b
-POST   /api/events/{id}/flyer/mobile   Sube/reemplaza el flyer de mobile      ✓ Etapa 12b
+POST   /api/events/{id}/flyer          Sube/reemplaza el flyer del evento     ✓ Diseño v3
                                        (multipart/form-data, campo "file").
-                                       Reemplazan al POST /api/events/{id}/flyer
-                                       único de la Etapa 8b. Permisos: el
+                                       Flyer único 4:5 — reemplaza al par
+                                       .../flyer/desktop + .../flyer/mobile
+                                       de la Etapa 12b. Permisos: el
                                        organizador dueño solo con plan pro
                                        (Destacado Plus) — 400 si es gratis o
-                                       dest; el ADMIN con cualquier plan
-                                       (Etapa 12b). 403 para cualquier otro,
-                                       404 si el evento no existe. 422 si el
-                                       archivo no es JPG/PNG/WEBP o supera
-                                       5MB. Si ya había un flyer de ESE
-                                       tamaño, se reemplaza en el storage (el
-                                       otro tamaño no se toca). Devuelve
-                                       { flyer_url_desktop, flyer_url_mobile }
-                                       — relativos en dev sin Supabase, el
-                                       frontend los resuelve con
+                                       dest; el ADMIN con cualquier plan.
+                                       403 para cualquier otro, 404 si el
+                                       evento no existe. 422 si el archivo
+                                       no es JPG/PNG/WEBP o supera 5MB. Si ya
+                                       había un flyer, se reemplaza en el
+                                       storage. Devuelve { flyer_url } —
+                                       relativo en dev sin Supabase, el
+                                       frontend lo resuelve con
                                        resolveMediaUrl() (lib/media.ts)
-DELETE /api/events/{id}/flyer/desktop  Elimina el flyer de desktop            ✓ Etapa 12b
-DELETE /api/events/{id}/flyer/mobile   Elimina el flyer de mobile             ✓ Etapa 12b
+DELETE /api/events/{id}/flyer          Elimina el flyer del evento            ✓ Diseño v3
                                        Organizador dueño o admin — 403 si no,
-                                       404 si el evento no existe. Borra solo
-                                       ese tamaño del storage y pone su campo
-                                       en null. Devuelve
-                                       { flyer_url_desktop, flyer_url_mobile }
+                                       404 si el evento no existe. Borra el
+                                       archivo del storage y pone flyer_url
+                                       en null. Devuelve { flyer_url }
 ```
 
 ### Usuarios (`/api/users`)

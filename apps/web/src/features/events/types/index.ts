@@ -61,10 +61,10 @@ export interface Event {
   contact_facebook: string | null; // Etapa 12a
   contact_web: string | null;
   contact_email: string | null;
-  // Etapa 12b — flyer dual. `flyer_url_mobile` null => se usa el de desktop
-  // para todas las resoluciones (el <picture> cae al <img> de desktop).
-  flyer_url_desktop: string | null;
-  flyer_url_mobile: string | null;
+  // Etapa "Diseño v3" — flyer único (proporción 4:5, 1080×1350, "como el
+  // feed de Instagram"), reemplaza al flyer dual desktop/mobile de la
+  // Etapa 12b.
+  flyer_url: string | null;
   location: EventLocation;
   // Etapa 10b-2: expuesto también al organizador dueño (antes solo en
   // AdminEventRead) — autoservicio "Dar de baja"/"Volver a publicar".

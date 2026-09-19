@@ -215,9 +215,18 @@ async def delete_event_endpoint(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
-async def _handle_flyer_upload(
-    session: Session, event_id: UUID, current_user: User, file: UploadFile, size_type: str
+@router.post("/{event_id}/flyer", response_model=FlyerUploadResponse)
+@limiter.limit("20/minute")
+async def post_event_flyer(
+    request: Request,
+    event_id: UUID,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> FlyerUploadResponse:
+    """Flyer único del evento (proporción 4:5, 1080×1350, "como Instagram").
+    JPG, PNG o WEBP, máx. 5MB. Organizador dueño (plan `pro`) o admin
+    (cualquier plan)."""
     content = await file.read()
     try:
         event = await upload_event_flyer(
@@ -225,9 +234,8 @@ async def _handle_flyer_upload(
             event_id,
             current_user,
             file_content=content,
-            filename=file.filename or f"flyer-{size_type}",
+            filename=file.filename or "flyer",
             content_type=file.content_type or "application/octet-stream",
-            size_type=size_type,
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -238,75 +246,25 @@ async def _handle_flyer_upload(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return FlyerUploadResponse(
-        flyer_url_desktop=event.flyer_url_desktop, flyer_url_mobile=event.flyer_url_mobile
-    )
+    return FlyerUploadResponse(flyer_url=event.flyer_url)
 
 
-def _handle_flyer_delete(
-    session: Session, event_id: UUID, current_user: User, size_type: str
+@router.delete("/{event_id}/flyer", response_model=FlyerUploadResponse)
+@limiter.limit("20/minute")
+async def delete_event_flyer_endpoint(
+    request: Request,
+    event_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> FlyerUploadResponse:
     try:
-        event = delete_event_flyer(session, event_id, current_user, size_type=size_type)
+        event = delete_event_flyer(session, event_id, current_user)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-    return FlyerUploadResponse(
-        flyer_url_desktop=event.flyer_url_desktop, flyer_url_mobile=event.flyer_url_mobile
-    )
-
-
-@router.post("/{event_id}/flyer/desktop", response_model=FlyerUploadResponse)
-@limiter.limit("20/minute")
-async def post_event_flyer_desktop(
-    request: Request,
-    event_id: UUID,
-    file: UploadFile = File(...),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FlyerUploadResponse:
-    """Etapa 12b — flyer para desktop/tablet (horizontal o cuadrado). JPG,
-    PNG o WEBP, máx. 5MB. Organizador dueño (plan `pro`) o admin (cualquier
-    plan)."""
-    return await _handle_flyer_upload(session, event_id, current_user, file, "desktop")
-
-
-@router.post("/{event_id}/flyer/mobile", response_model=FlyerUploadResponse)
-@limiter.limit("20/minute")
-async def post_event_flyer_mobile(
-    request: Request,
-    event_id: UUID,
-    file: UploadFile = File(...),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FlyerUploadResponse:
-    """Etapa 12b — flyer para mobile (vertical o cuadrado), opcional. Si no
-    se sube, se usa el de desktop para todas las resoluciones."""
-    return await _handle_flyer_upload(session, event_id, current_user, file, "mobile")
-
-
-@router.delete("/{event_id}/flyer/desktop", response_model=FlyerUploadResponse)
-@limiter.limit("20/minute")
-async def delete_event_flyer_desktop(
-    request: Request,
-    event_id: UUID,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FlyerUploadResponse:
-    return _handle_flyer_delete(session, event_id, current_user, "desktop")
-
-
-@router.delete("/{event_id}/flyer/mobile", response_model=FlyerUploadResponse)
-@limiter.limit("20/minute")
-async def delete_event_flyer_mobile(
-    request: Request,
-    event_id: UUID,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> FlyerUploadResponse:
-    return _handle_flyer_delete(session, event_id, current_user, "mobile")
+    return FlyerUploadResponse(flyer_url=event.flyer_url)
 
 
 @router.patch("/{event_id}/status", response_model=EventRead, dependencies=[Depends(require_admin)])

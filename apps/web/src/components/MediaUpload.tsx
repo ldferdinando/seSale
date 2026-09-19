@@ -14,15 +14,14 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp";
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
-export type MediaUploadType = "flyer-desktop" | "flyer-mobile" | "cover";
+export type MediaUploadType = "flyer" | "cover";
 
 /** Config por tipo — Etapa 8e: FlyerUpload.tsx (Etapa 8b) generalizado a
  * MediaUpload.tsx para no duplicar código entre el flyer de eventos y la
- * portada de lugares gastronómicos. Etapa 12b: el flyer de eventos pasa a
- * ser dual (desktop/mobile) — dos entradas independientes que apuntan a
- * `.../flyer/desktop` y `.../flyer/mobile`. El wrapper FlyerUpload.tsx
- * compone las dos zonas. Mismos límites/formatos, solo cambian el endpoint,
- * el texto y el aspect-ratio de la preview. */
+ * portada de lugares gastronómicos. Etapa "Diseño v3": el flyer vuelve a
+ * ser único (4:5, 1080×1350), deprecando el flyer dual desktop/mobile de la
+ * Etapa 12b. Mismos límites/formatos, solo cambian el endpoint, el texto y
+ * el aspect-ratio de la preview. */
 const MEDIA_CONFIG: Record<
   MediaUploadType,
   {
@@ -34,32 +33,18 @@ const MEDIA_CONFIG: Record<
     remove: (id: string) => Promise<{ url: string | null }>;
   }
 > = {
-  "flyer-desktop": {
-    label: "Flyer para desktop y tablet",
+  flyer: {
+    label: "Flyer del evento",
     dropZoneLabel: "Subir flyer (JPG, PNG o WEBP, máx. 5MB)",
-    imageAlt: "Flyer del evento (desktop)",
-    aspectClassName: "aspect-[1200/630] w-full",
+    imageAlt: "Flyer del evento",
+    aspectClassName: "aspect-[1080/1350] w-full max-w-[280px]",
     upload: async (id, file) => {
-      const res = await uploadEventFlyer(id, "desktop", file);
-      return { url: res.flyer_url_desktop };
+      const res = await uploadEventFlyer(id, file);
+      return { url: res.flyer_url };
     },
     remove: async (id) => {
-      const res = await deleteEventFlyer(id, "desktop");
-      return { url: res.flyer_url_desktop };
-    },
-  },
-  "flyer-mobile": {
-    label: "Flyer para mobile (opcional)",
-    dropZoneLabel: "Subir flyer (JPG, PNG o WEBP, máx. 5MB)",
-    imageAlt: "Flyer del evento (mobile)",
-    aspectClassName: "aspect-[630/1200] w-full max-w-[220px]",
-    upload: async (id, file) => {
-      const res = await uploadEventFlyer(id, "mobile", file);
-      return { url: res.flyer_url_mobile };
-    },
-    remove: async (id) => {
-      const res = await deleteEventFlyer(id, "mobile");
-      return { url: res.flyer_url_mobile };
+      const res = await deleteEventFlyer(id);
+      return { url: res.flyer_url };
     },
   },
   cover: {

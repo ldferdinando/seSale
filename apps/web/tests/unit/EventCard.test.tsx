@@ -82,68 +82,73 @@ describe("EventCard", () => {
     expect(card.className).toContain("linear-gradient(135deg,#D4D94A26,#D4D94A0d)");
   });
 
-  it("plan='pro' with flyer_url_desktop shows the thumbnail image", () => {
-    const event = makeEvent({ plan: "pro", flyer_url_desktop: "/uploads/flyers/1/desktop/flyer.jpg" });
+  // Etapa "Diseño v3" — Destacado Plus pasa a ser una card de imagen
+  // completa 4:5 (el flyer de fondo) en vez de la fila con miniatura 44×44
+  // que tenía antes (flyer dual desktop/mobile, deprecado).
+  it("plan='pro' with flyer_url shows the flyer as a full-bleed background image, 4:5, pink border", () => {
+    const event = makeEvent({ plan: "pro", flyer_url: "/uploads/flyers/1/flyer.jpg" });
 
     const { container } = renderCard(<EventCard event={event} />);
 
     const card = screen.getByTestId("event-card");
-    expect(card.className).toContain("border-l-[6px]");
+    expect(card.className).toContain("aspect-[1080/1350]");
+    expect(card.className).toContain("border-brand-pink");
     const img = container.querySelector("img");
     expect(img).toHaveAttribute("src", expect.stringContaining("flyer.jpg"));
+    expect(img?.className).toContain("absolute");
   });
 
-  it("plan='pro' with a mobile flyer renders a <picture> with a max-width source", () => {
+  it("plan='pro' without a flyer shows the placeholder (no <img>), still in the 4:5 card", () => {
+    const event = makeEvent({ plan: "pro", flyer_url: null });
+
+    const { container } = renderCard(<EventCard event={event} />);
+
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    const card = screen.getByTestId("event-card");
+    expect(card.className).toContain("aspect-[1080/1350]");
+  });
+
+  it("plan='pro' shows the event data (date, name, hour/venue) in the translucent panel", () => {
     const event = makeEvent({
       plan: "pro",
-      flyer_url_desktop: "/uploads/flyers/1/desktop/d.jpg",
-      flyer_url_mobile: "/uploads/flyers/1/mobile/m.jpg",
+      title: "Show con flyer",
+      flyer_url: "/uploads/flyers/1/flyer.jpg",
+      date: "2099-01-01",
+      date_end: "2099-01-01",
+      time: "21:00:00",
     });
 
-    const { container } = renderCard(<EventCard event={event} />);
+    renderCard(<EventCard event={event} />);
 
-    const source = container.querySelector("picture source");
-    expect(source).toHaveAttribute("media", "(max-width: 767px)");
-    expect(source?.getAttribute("srcset")).toContain("m.jpg");
+    expect(screen.getByText("Show con flyer")).toBeInTheDocument();
+    expect(screen.getByTestId("event-card-hour")).toBeInTheDocument();
+    expect(screen.getByText("El Tinglado Bar")).toBeInTheDocument();
   });
 
-  it("plan='pro' without a mobile flyer has no <source> (falls back to desktop)", () => {
-    const event = makeEvent({
-      plan: "pro",
-      flyer_url_desktop: "/uploads/flyers/1/desktop/d.jpg",
-      flyer_url_mobile: null,
-    });
-
-    const { container } = renderCard(<EventCard event={event} />);
-
-    expect(container.querySelector("picture source")).toBeNull();
-    expect(container.querySelector("img")).toHaveAttribute("src", expect.stringContaining("d.jpg"));
-  });
-
-  it("plan='pro' without any flyer shows an image placeholder", () => {
-    const event = makeEvent({ plan: "pro", flyer_url_desktop: null, flyer_url_mobile: null });
+  // Etapa "Diseño v3": seSALE_v3.html elimina el ícono de categoría junto a
+  // la fecha para gratis/dest (ya no existe `.eico` en ningún lado) — el
+  // nivel/categoría solo se distingue por el texto de `.etipo`, sin ícono ni
+  // placeholder de imagen en la fila.
+  // Las únicas svg que quedan en la fila son las de reloj/ubicación (Clock/
+  // MapPin) junto a la hora y el lugar — ya no hay un ícono de categoría.
+  it("plan='gratis' without flyer shows no icon nor image, only the text category label", () => {
+    const event = makeEvent({ plan: "gratis", flyer_url: null, categories: ["musica"] });
 
     const { container } = renderCard(<EventCard event={event} />);
 
     expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("svg")).toHaveLength(2);
+    expect(screen.getByText("Música en vivo")).toBeInTheDocument();
   });
 
-  it("plan='gratis' without flyer shows the category icon, never a placeholder", () => {
-    const event = makeEvent({ plan: "gratis", flyer_url_desktop: null });
-
-    const { container } = renderCard(<EventCard event={event} />);
-
-    // el ícono de categoría es un <svg>, no un <img>; y no hay ImageIcon de placeholder
-    expect(container.querySelector("img")).not.toBeInTheDocument();
-    expect(container.querySelector("svg")).not.toBeNull();
-  });
-
-  it("plan='dest' without flyer shows the category icon, never a placeholder", () => {
-    const event = makeEvent({ plan: "dest", flyer_url_desktop: null });
+  it("plan='dest' without flyer shows no icon nor image, only the text category label", () => {
+    const event = makeEvent({ plan: "dest", flyer_url: null, categories: ["musica"] });
 
     const { container } = renderCard(<EventCard event={event} />);
 
     expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("svg")).toHaveLength(2);
+    expect(screen.getByText("Música en vivo")).toBeInTheDocument();
   });
 
   // Etapa 10a: EventCard antes no mostraba ninguna hora.

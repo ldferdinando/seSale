@@ -592,9 +592,6 @@ def delete_event(session: Session, event_id: UUID, current_user: User) -> Event:
     return event
 
 
-_FLYER_ATTR = {"desktop": "flyer_url_desktop", "mobile": "flyer_url_mobile"}
-
-
 def _check_flyer_permission_and_plan(event: Event, current_user: User) -> None:
     """Etapa 8b/12b — quién puede gestionar el flyer de un evento:
 
@@ -626,35 +623,25 @@ async def upload_event_flyer(
     file_content: bytes,
     filename: str,
     content_type: str,
-    size_type: str,
 ) -> Event:
-    """`size_type`: "desktop" | "mobile" — Etapa 12b, flyer dual."""
     event = session.get(Event, event_id)
     if event is None:
         raise LookupError("Evento no encontrado")
 
     _check_flyer_permission_and_plan(event, current_user)
 
-    attr = _FLYER_ATTR[size_type]
-
-    # Si ya tenía un flyer de este tamaño, se reemplaza en el storage — no se
-    # acumulan archivos huérfanos (validar el archivo nuevo primero: si es
-    # inválido, no se toca el flyer existente).
+    # Si ya tenía un flyer, se reemplaza en el storage — no se acumulan
+    # archivos huérfanos (validar el archivo nuevo primero: si es inválido,
+    # no se toca el flyer existente).
     validate_flyer_file(content_type, len(file_content))
-    current_url = getattr(event, attr)
-    if current_url:
-        delete_flyer(current_url, event.id, size_type)
+    if event.flyer_url:
+        delete_flyer(event.flyer_url, event.id)
 
-    setattr(
-        event,
-        attr,
-        await upload_flyer(
-            file_content=file_content,
-            filename=filename,
-            content_type=content_type,
-            event_id=event.id,
-            size_type=size_type,
-        ),
+    event.flyer_url = await upload_flyer(
+        file_content=file_content,
+        filename=filename,
+        content_type=content_type,
+        event_id=event.id,
     )
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
@@ -663,7 +650,7 @@ async def upload_event_flyer(
     return event
 
 
-def delete_event_flyer(session: Session, event_id: UUID, current_user: User, *, size_type: str) -> Event:
+def delete_event_flyer(session: Session, event_id: UUID, current_user: User) -> Event:
     event = session.get(Event, event_id)
     if event is None:
         raise LookupError("Evento no encontrado")
@@ -673,11 +660,9 @@ def delete_event_flyer(session: Session, event_id: UUID, current_user: User, *, 
     if not is_owner and not is_admin:
         raise PermissionError("No tenés permiso para gestionar el flyer de este evento")
 
-    attr = _FLYER_ATTR[size_type]
-    current_url = getattr(event, attr)
-    if current_url:
-        delete_flyer(current_url, event.id, size_type)
-    setattr(event, attr, None)
+    if event.flyer_url:
+        delete_flyer(event.flyer_url, event.id)
+    event.flyer_url = None
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
     session.commit()

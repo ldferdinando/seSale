@@ -1,7 +1,8 @@
-"""Etapa 8b/12b — POST/DELETE /api/events/{id}/flyer/{desktop|mobile}.
+"""Etapa 8b/12b/"Diseño v3" — POST/DELETE /api/events/{id}/flyer.
 
-Etapa 12b — flyer dual: dos tamaños independientes (`flyer_url_desktop` y
-`flyer_url_mobile`). Reglas de permiso:
+Etapa "Diseño v3": vuelve a un único flyer por evento (`flyer_url`, 4:5),
+deprecando el flyer dual desktop/mobile de la Etapa 12b. Reglas de permiso
+sin cambios:
 - Organizador dueño: solo con plan Destacado Plus (`pro`).
 - Admin: siempre, sin importar el plan del evento.
 - Cualquier otro: 403.
@@ -48,51 +49,42 @@ def _png_file(name: str = "flyer.png"):
     return {"file": (name, TINY_PNG, "image/png")}
 
 
-@pytest.mark.parametrize("size", ["desktop", "mobile"])
 async def test_upload_flyer_with_plan_pro_succeeds_and_updates_url(
-    client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers, tmp_path, size
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers, tmp_path
 ):
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
     with patch("app.core.storage._UPLOADS_DIR", tmp_path):
         response = await client.post(
-            f"/api/events/{event.id}/flyer/{size}", files=_png_file(), headers=user_token_headers
+            f"/api/events/{event.id}/flyer", files=_png_file(), headers=user_token_headers
         )
 
     assert response.status_code == 200
     body = response.json()
-    field = f"flyer_url_{size}"
-    other_field = "flyer_url_mobile" if size == "desktop" else "flyer_url_desktop"
-    assert body[field]
-    assert f"/{size}/" in body[field]
-    assert body[other_field] is None
+    assert body["flyer_url"]
+    assert f"/{event.id}/" in body["flyer_url"]
 
     session.refresh(event)
-    assert getattr(event, field) == body[field]
-    assert getattr(event, other_field) is None
+    assert event.flyer_url == body["flyer_url"]
 
 
-async def test_upload_flyer_desktop_with_plan_gratis_by_organizer_returns_400(
+async def test_upload_flyer_with_plan_gratis_by_organizer_returns_400(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers
 ):
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.gratis)
 
-    response = await client.post(
-        f"/api/events/{event.id}/flyer/desktop", files=_png_file(), headers=user_token_headers
-    )
+    response = await client.post(f"/api/events/{event.id}/flyer", files=_png_file(), headers=user_token_headers)
 
     assert response.status_code == 400
     assert "Gratuito" in response.json()["detail"]
 
 
-async def test_upload_flyer_desktop_with_plan_dest_by_organizer_returns_400(
+async def test_upload_flyer_with_plan_dest_by_organizer_returns_400(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers
 ):
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.dest)
 
-    response = await client.post(
-        f"/api/events/{event.id}/flyer/mobile", files=_png_file(), headers=user_token_headers
-    )
+    response = await client.post(f"/api/events/{event.id}/flyer", files=_png_file(), headers=user_token_headers)
 
     assert response.status_code == 400
     assert "Destacado" in response.json()["detail"]
@@ -106,11 +98,11 @@ async def test_upload_flyer_by_admin_succeeds_with_any_plan(
 
     with patch("app.core.storage._UPLOADS_DIR", tmp_path):
         response = await client.post(
-            f"/api/events/{event.id}/flyer/desktop", files=_png_file(), headers=admin_token_headers
+            f"/api/events/{event.id}/flyer", files=_png_file(), headers=admin_token_headers
         )
 
     assert response.status_code == 200
-    assert response.json()["flyer_url_desktop"]
+    assert response.json()["flyer_url"]
 
 
 async def test_upload_flyer_invalid_format_returns_422(
@@ -119,7 +111,7 @@ async def test_upload_flyer_invalid_format_returns_422(
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
     response = await client.post(
-        f"/api/events/{event.id}/flyer/desktop",
+        f"/api/events/{event.id}/flyer",
         files={"file": ("flyer.pdf", b"%PDF-1.4 fake", "application/pdf")},
         headers=user_token_headers,
     )
@@ -134,7 +126,7 @@ async def test_upload_flyer_too_large_returns_422(
     too_big = b"0" * (5 * 1024 * 1024 + 1)
 
     response = await client.post(
-        f"/api/events/{event.id}/flyer/desktop",
+        f"/api/events/{event.id}/flyer",
         files={"file": ("flyer.png", too_big, "image/png")},
         headers=user_token_headers,
     )
@@ -159,64 +151,52 @@ async def test_upload_flyer_by_non_organizer_returns_403(
 
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
-    response = await client.post(
-        f"/api/events/{event.id}/flyer/desktop", files=_png_file(), headers=other_token
-    )
+    response = await client.post(f"/api/events/{event.id}/flyer", files=_png_file(), headers=other_token)
 
     assert response.status_code == 403
 
 
 async def test_upload_flyer_event_not_found_returns_404(client: AsyncClient, user_token_headers):
-    response = await client.post(
-        f"/api/events/{uuid.uuid4()}/flyer/desktop", files=_png_file(), headers=user_token_headers
-    )
+    response = await client.post(f"/api/events/{uuid.uuid4()}/flyer", files=_png_file(), headers=user_token_headers)
 
     assert response.status_code == 404
 
 
-async def test_upload_flyer_replaces_previous_file_of_same_size(
+async def test_upload_flyer_replaces_previous_file(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers, tmp_path
 ):
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
     with patch("app.core.storage._UPLOADS_DIR", tmp_path):
         first = await client.post(
-            f"/api/events/{event.id}/flyer/desktop", files=_png_file("primero.png"), headers=user_token_headers
+            f"/api/events/{event.id}/flyer", files=_png_file("primero.png"), headers=user_token_headers
         )
         assert first.status_code == 200
-        size_dir = tmp_path / str(event.id) / "desktop"
-        assert len(list(size_dir.iterdir())) == 1
+        event_dir = tmp_path / str(event.id)
+        assert len(list(event_dir.iterdir())) == 1
 
         second = await client.post(
-            f"/api/events/{event.id}/flyer/desktop", files=_png_file("segundo.png"), headers=user_token_headers
+            f"/api/events/{event.id}/flyer", files=_png_file("segundo.png"), headers=user_token_headers
         )
         assert second.status_code == 200
-        assert len(list(size_dir.iterdir())) == 1
+        assert len(list(event_dir.iterdir())) == 1
 
 
-async def test_delete_flyer_mobile_clears_only_mobile(
+async def test_delete_flyer_clears_url(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, user_token_headers, tmp_path
 ):
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
     with patch("app.core.storage._UPLOADS_DIR", tmp_path):
-        await client.post(
-            f"/api/events/{event.id}/flyer/desktop", files=_png_file(), headers=user_token_headers
-        )
-        await client.post(
-            f"/api/events/{event.id}/flyer/mobile", files=_png_file(), headers=user_token_headers
-        )
+        await client.post(f"/api/events/{event.id}/flyer", files=_png_file(), headers=user_token_headers)
 
-        response = await client.delete(f"/api/events/{event.id}/flyer/mobile", headers=user_token_headers)
+        response = await client.delete(f"/api/events/{event.id}/flyer", headers=user_token_headers)
 
     assert response.status_code == 200
-    body = response.json()
-    assert body["flyer_url_mobile"] is None
-    assert body["flyer_url_desktop"]
+    assert response.json()["flyer_url"] is None
 
     session.refresh(event)
-    assert event.flyer_url_mobile is None
-    assert event.flyer_url_desktop is not None
+    assert event.flyer_url is None
 
 
 async def test_delete_flyer_by_non_organizer_returns_403(
@@ -236,12 +216,12 @@ async def test_delete_flyer_by_non_organizer_returns_403(
 
     event = _make_event(session, city=city, organizer=organizer, location=location, plan=PlanType.pro)
 
-    response = await client.delete(f"/api/events/{event.id}/flyer/desktop", headers=other_token)
+    response = await client.delete(f"/api/events/{event.id}/flyer", headers=other_token)
 
     assert response.status_code == 403
 
 
-async def test_event_detail_includes_both_flyer_fields(
+async def test_event_detail_includes_flyer_url(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location
 ):
     event = _make_event(
@@ -250,13 +230,11 @@ async def test_event_detail_includes_both_flyer_fields(
         organizer=organizer,
         location=location,
         plan=PlanType.pro,
-        flyer_url_desktop="https://cdn.example/d.jpg",
-        flyer_url_mobile="https://cdn.example/m.jpg",
+        flyer_url="https://cdn.example/flyer.jpg",
     )
 
     response = await client.get(f"/api/events/{event.id}")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["flyer_url_desktop"] == "https://cdn.example/d.jpg"
-    assert body["flyer_url_mobile"] == "https://cdn.example/m.jpg"
+    assert body["flyer_url"] == "https://cdn.example/flyer.jpg"

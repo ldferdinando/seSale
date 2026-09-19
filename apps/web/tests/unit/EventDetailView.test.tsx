@@ -406,52 +406,25 @@ describe("EventDetailView", () => {
     expect(container.querySelector(".leaflet-container")).toBeNull();
   });
 
-  describe("flyer (Etapa 12b — bloque de imagen/placeholder solo para Destacado Plus)", () => {
+  describe("flyer (Etapa \"Diseño v3\" — flyer único 4:5, bloque de imagen/placeholder solo para Destacado Plus)", () => {
     it("shows the placeholder when plan is pro and there is no flyer", () => {
-      const { container } = renderWithClient(
-        makeEventDetail({ plan: "pro", flyer_url_desktop: null, flyer_url_mobile: null }),
-      );
+      const { container } = renderWithClient(makeEventDetail({ plan: "pro", flyer_url: null }));
 
       expect(container.querySelector('[data-testid="flyer-placeholder"]')).not.toBeNull();
     });
 
-    it("shows the desktop flyer image as clickable when plan is pro", () => {
-      const event = makeEventDetail({ plan: "pro", flyer_url_desktop: "https://example.com/d.jpg" });
-      renderWithClient(event);
+    it("shows the flyer image as clickable when plan is pro, in a 4:5 box", () => {
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
+      const { container } = renderWithClient(event);
 
       const img = screen.getByAltText(event.title) as HTMLImageElement;
-      expect(img.src).toBe("https://example.com/d.jpg");
+      expect(img.src).toBe("https://example.com/flyer.jpg");
       expect(screen.getByText("Ver flyer")).toBeInTheDocument();
-    });
-
-    it("uses a <picture> with a mobile <source> when flyer_url_mobile is set", () => {
-      const event = makeEventDetail({
-        plan: "pro",
-        flyer_url_desktop: "https://example.com/d.jpg",
-        flyer_url_mobile: "https://example.com/m.jpg",
-      });
-      const { container } = renderWithClient(event);
-
-      const source = container.querySelector("picture source") as HTMLSourceElement;
-      expect(source).not.toBeNull();
-      expect(source.getAttribute("media")).toBe("(max-width: 767px)");
-      expect(source.getAttribute("srcset")).toBe("https://example.com/m.jpg");
-    });
-
-    it("has no <source> when there is no mobile flyer (picture falls back to desktop img)", () => {
-      const event = makeEventDetail({
-        plan: "pro",
-        flyer_url_desktop: "https://example.com/d.jpg",
-        flyer_url_mobile: null,
-      });
-      const { container } = renderWithClient(event);
-
-      expect(container.querySelector("picture source")).toBeNull();
-      expect((screen.getByAltText(event.title) as HTMLImageElement).src).toBe("https://example.com/d.jpg");
+      expect(container.querySelector(".aspect-\\[4\\/5\\]")).not.toBeNull();
     });
 
     it("opens the lightbox when clicking the flyer image on a pro plan event", async () => {
-      const event = makeEventDetail({ plan: "pro", flyer_url_desktop: "https://example.com/d.jpg" });
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
       renderWithClient(event);
 
       screen.getByAltText(event.title).click();
@@ -460,7 +433,7 @@ describe("EventDetailView", () => {
     });
 
     it("closes the lightbox with the close button", async () => {
-      const event = makeEventDetail({ plan: "pro", flyer_url_desktop: "https://example.com/d.jpg" });
+      const event = makeEventDetail({ plan: "pro", flyer_url: "https://example.com/flyer.jpg" });
       renderWithClient(event);
 
       screen.getByAltText(event.title).click();
@@ -470,8 +443,8 @@ describe("EventDetailView", () => {
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     });
 
-    it("renders no image and no placeholder for plan dest, even with a flyer_url_desktop", () => {
-      const event = makeEventDetail({ plan: "dest", flyer_url_desktop: "https://example.com/d.jpg" });
+    it("renders no image and no placeholder for plan dest, even with a flyer_url", () => {
+      const event = makeEventDetail({ plan: "dest", flyer_url: "https://example.com/flyer.jpg" });
       const { container } = renderWithClient(event);
 
       expect(screen.queryByAltText(event.title)).not.toBeInTheDocument();
@@ -479,7 +452,7 @@ describe("EventDetailView", () => {
     });
 
     it("renders no image and no placeholder for plan gratis", () => {
-      const event = makeEventDetail({ plan: "gratis", flyer_url_desktop: null });
+      const event = makeEventDetail({ plan: "gratis", flyer_url: null });
       const { container } = renderWithClient(event);
 
       expect(screen.queryByAltText(event.title)).not.toBeInTheDocument();

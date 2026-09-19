@@ -123,7 +123,7 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
         disabledReason={lockedForOwner ? "Este evento ya pasó y no se puede editar." : undefined}
       />
 
-      {/* Etapa 8b/12b — flyer dual (desktop + mobile), exclusivo del plan
+      {/* Etapa 8b — flyer único (4:5, Etapa "Diseño v3"), exclusivo del plan
           Destacado Plus para el organizador; el admin lo puede gestionar con
           cualquier plan. La subida ocurre acá (no en /planes): el evento
           recién pasa a plan="pro" cuando se confirma el pago. */}
@@ -131,8 +131,7 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
         <div className="rounded-2xl border border-border bg-card p-4">
           <FlyerUpload
             eventId={eventId}
-            flyerUrlDesktop={event.flyer_url_desktop}
-            flyerUrlMobile={event.flyer_url_mobile}
+            flyerUrl={event.flyer_url}
             canUpload={isAdmin || event.plan === "pro"}
             onChange={() => queryClient.invalidateQueries({ queryKey: ["event", eventId] })}
           />

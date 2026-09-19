@@ -75,7 +75,11 @@ export function PlanBadge({ plan }: { plan: Event["plan"] }) {
 }
 
 /**
- * Jerarquía visual de plan, calcada de seSALE.html (`.evi`/`.evi-dest`/`.evi-plus`):
+ * Jerarquía visual de plan para gratis/dest, calcada de seSALE.html
+ * (`.evi`/`.evi-dest`) — Destacado Plus (`.evi-plus`) ya no comparte este
+ * criterio de fondo/borde: desde la Etapa "Diseño v3" es una card de imagen
+ * completa con su propio armado, ver el branch `isPro` en `EventCard` más
+ * abajo.
  * - gratis: SIN recuadro — `.evi` en la referencia no tiene fondo ni borde
  *   propios (es una fila plana dentro de la lista, solo separada por
  *   `border-bottom`). Se pisan el `border`/`bg-card` que trae `Card` por
@@ -83,19 +87,9 @@ export function PlanBadge({ plan }: { plan: Event["plan"] }) {
  *   con el recuadro completo del componente base, distinto de la
  *   referencia).
  * - dest: fondo degradé sutil + borde completo 1.5px en rosa.
- * - pro: mismo criterio + borde más grueso (1.75px) y una rayita de acento
- *   de 6px a la izquierda, exclusiva de este nivel.
- * Ningún nivel pago lleva etiqueta de texto — la diferencia es 100% visual.
+ * Ningún nivel lleva etiqueta de texto — la diferencia es 100% visual.
  */
 function planCardClasses(plan: Event["plan"]): string {
-  if (plan === "pro") {
-    // Etapa "Cambios de diseño TIPO A v2.2": borde 1.75px→2.5px (seSALE_v2.html
-    // mantiene el mismo color de borde #E91E8C99, no lo actualiza a --F nuevo).
-    // `sesale-evi-plus-bg` (Etapa "Ajustes de diseño reportados") reemplaza
-    // el bg-[linear-gradient(...)] hardcodeado por uno reactivo al tema —
-    // ver --evi-plus-grad-1/2 en globals.css.
-    return "border-[2.5px] border-[#E91E8C99] border-l-[6px] border-l-brand-pink sesale-evi-plus-bg";
-  }
   if (plan === "dest") {
     // Fondo pasa de rosa a lime en seSALE_v2.html; el borde (#E91E8C77) no
     // cambia (no está en el alcance de esta etapa).
@@ -114,7 +108,6 @@ export function EventCard({ event }: EventCardProps) {
   const { categories } = useCategoryCatalog();
   const style = CATEGORY_STYLES[category] ?? DEFAULT_CATEGORY_STYLE;
   const categoryLabel = categories.find((c) => c.key === category)?.name ?? category;
-  const Icon = style.icon;
   const isPro = event.plan === "pro";
 
   // Etapa 10c: rango completo (fin en otro día que el inicio, ej. fiestas
@@ -123,6 +116,90 @@ export function EventCard({ event }: EventCardProps) {
   const dateRange = formatEventDateRange(event.date, event.time, event.date_end, event.time_end);
   const showsNextDaySuffix = dateRange.endsWith(" +1");
   const dateRangeMain = showsNextDaySuffix ? dateRange.slice(0, -" +1".length) : dateRange;
+
+  const inactiveBadge = !event.is_active && (
+    <span
+      data-testid="event-inactive-badge"
+      className="flex-shrink-0 rounded-full bg-surface-5 px-2 py-0.5 text-[9px] font-bold text-ink-3"
+    >
+      Dado de baja
+    </span>
+  );
+
+  // Etapa "Diseño v3" — Destacado Plus (.evi-plus en seSALE_v3.html): card
+  // de imagen completa (el flyer de fondo, 4:5) con los datos del evento
+  // solapados en un panel translúcido abajo, en vez de la fila con
+  // miniatura 44×44 que tenía antes. Ya no comparte layout con
+  // gratis/dest — ver planCardClasses más arriba.
+  if (isPro) {
+    const flyerUrl = resolveMediaUrl(event.flyer_url);
+    return (
+      <Link href={`/eventos/${event.id}`} data-testid="event-card-link">
+        <Card
+          data-testid="event-card"
+          className={cn(
+            "relative aspect-[1080/1350] overflow-hidden rounded-2xl border-2 border-brand-pink p-0 transition-colors",
+            !event.is_active && "opacity-50",
+          )}
+        >
+          <CardContent className="relative h-full w-full p-0">
+            {flyerUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={flyerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="sesale-evi-plus-bg absolute inset-0 flex items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-ink-5" aria-hidden />
+              </div>
+            )}
+            <div className="sesale-plus-scrim absolute inset-0" aria-hidden />
+            <div className="sesale-plus-panel absolute inset-x-2.5 bottom-2.5 flex items-start gap-3.5 rounded-xl p-3.5">
+              <div className="flex min-w-[40px] flex-col items-center text-center">
+                <span className="text-[26px] font-extrabold leading-none tracking-tight text-white">
+                  {format(eventDate, "d")}
+                </span>
+                <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-[#ff5c9b]">
+                  {format(eventDate, "MMM", { locale: es })}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                {categoryLabel && (
+                  <p
+                    className="truncate text-xs font-extrabold uppercase tracking-[0.6px]"
+                    style={{ color: style.color }}
+                  >
+                    {categoryLabel}
+                  </p>
+                )}
+                <p
+                  className="flex min-w-0 items-center gap-1.5 truncate text-[17px] font-extrabold text-white"
+                  style={{ textShadow: "0 2px 10px rgba(0,0,0,.6)" }}
+                >
+                  <span className="truncate">{event.title}</span>
+                  {inactiveBadge}
+                </p>
+                <p className="mt-1 flex items-center gap-2 truncate text-sm text-[#e8e8e8]">
+                  <span
+                    data-testid="event-card-hour"
+                    className="flex flex-shrink-0 items-center gap-1 font-bold text-[#ff6fa5]"
+                  >
+                    <Clock className="h-3 w-3" aria-hidden />
+                    {dateRangeMain}
+                    {showsNextDaySuffix && <span className="text-[10px] font-normal opacity-80"> +1</span>}
+                    {" hs"}
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1 truncate">
+                    <MapPin className="h-3 w-3 flex-shrink-0 text-[#ff6fa5]" aria-hidden />
+                    <span className="truncate">{event.location.name}</span>
+                  </span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  }
 
   return (
     <Link href={`/eventos/${event.id}`} data-testid="event-card-link">
@@ -137,75 +214,40 @@ export function EventCard({ event }: EventCardProps) {
           !event.is_active && "opacity-50",
         )}
       >
-        <CardContent className={cn("flex items-center gap-3", isPro ? "px-3.5 py-4" : "p-3")}>
-          <div className="flex min-w-[34px] flex-col items-center text-center">
-            <span className="text-lg font-extrabold leading-none tracking-tight text-primary">
+        <CardContent className={cn("flex items-start gap-3.5", event.plan === "dest" ? "p-3.5" : "p-3")}>
+          <div className="flex min-w-[40px] flex-col items-center text-center">
+            <span
+              className={cn(
+                "font-extrabold leading-none tracking-tight text-primary",
+                event.plan === "dest" ? "text-[26px]" : "text-lg",
+              )}
+            >
               {format(eventDate, "d")}
             </span>
-            <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-ink-4">
+            <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-ink-3">
               {format(eventDate, "MMM", { locale: es })}
             </span>
           </div>
 
-          {/* Destacado Plus: miniatura de flyer (o placeholder) 44×44 en vez
-              del ícono de categoría — exclusivo de este nivel (ver `.evi-plus-thumb`
-              en seSALE.html). Los demás niveles siguen mostrando el ícono de
-              categoría (dest/gratis nunca suben flyer, ver ARCHITECTURE.md). */}
-          {isPro ? (
-            event.flyer_url_desktop ? (
-              <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg">
-                {/* Etapa 12b — flyer dual: mobile en viewport <768px si existe,
-                    desktop en el resto (y como fallback si no hay mobile). */}
-                <picture>
-                  {event.flyer_url_mobile && (
-                    <source
-                      media="(max-width: 767px)"
-                      srcSet={resolveMediaUrl(event.flyer_url_mobile) ?? undefined}
-                    />
-                  )}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={resolveMediaUrl(event.flyer_url_desktop) ?? undefined}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                </picture>
-              </div>
-            ) : (
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-surface-2">
-                <ImageIcon className="h-4 w-4 text-ink-4" aria-hidden />
-              </div>
-            )
-          ) : (
-            <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg"
-              style={{ backgroundColor: `${style.color}22` }}
-            >
-              <Icon className="h-[18px] w-[18px]" style={{ color: style.color }} aria-hidden />
-            </div>
-          )}
-
           <div className="min-w-0 flex-1">
             {categoryLabel && (
               <p
-                className="truncate text-[9px] font-bold uppercase tracking-[0.5px]"
+                className="truncate text-xs font-extrabold uppercase tracking-[0.6px]"
                 style={{ color: style.color }}
               >
                 {categoryLabel}
               </p>
             )}
-            <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-bold text-foreground">
-              <span className="truncate">{event.title}</span>
-              {!event.is_active && (
-                <span
-                  data-testid="event-inactive-badge"
-                  className="flex-shrink-0 rounded-full bg-surface-5 px-2 py-0.5 text-[9px] font-bold text-ink-3"
-                >
-                  Dado de baja
-                </span>
+            <p
+              className={cn(
+                "flex min-w-0 items-center gap-1.5 truncate text-foreground",
+                event.plan === "dest" ? "text-[17px] font-extrabold" : "text-base font-bold",
               )}
+            >
+              <span className="truncate">{event.title}</span>
+              {inactiveBadge}
             </p>
-            <p className="mt-1 flex items-center gap-2 truncate text-xs text-ink-4">
+            <p className="mt-1 flex items-center gap-2 truncate text-sm text-ink-4">
               {/* Etapa "Cambios de diseño TIPO B v2.2" (punto 9): hora y
                   lugar por separado — la hora destacada en negrita y color
                   principal (antes ambos heredaban `text-ink-4` del <p>

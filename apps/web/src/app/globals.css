@@ -146,6 +146,22 @@
   background: linear-gradient(160deg, var(--evi-plus-grad-1), var(--evi-plus-grad-2));
 }
 
+/* Etapa "Diseño v3" — card Destacado Plus rediseñada (.evi-plus en
+   seSALE_v3.html): flyer 4:5 de fondo completo con un panel translúcido de
+   datos solapado abajo. Colores fijos (no reactivos al tema, a diferencia
+   de --evi-plus-grad-1/2 de arriba): el panel siempre va sobre una foto, así
+   que el contraste blanco-sobre-oscuro tiene que sostenerse en ambos temas
+   del sitio. */
+.sesale-plus-scrim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 38%);
+}
+.sesale-plus-panel {
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background: rgba(13, 13, 13, 0.66);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 /* Etapa "Logo: usar la imagen original en vez del texto animado con CSS".
    El logo ahora es el asset real (apps/web/public/logo-sesale.png, un PNG
    con transparencia extraído del <mask> en base64 de seSALE_v2.html — ver

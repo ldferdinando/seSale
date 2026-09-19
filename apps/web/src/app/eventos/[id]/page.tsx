@@ -31,9 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const description = (event.description ?? "").slice(0, 160);
-  // Etapa 12b — el OG image usa el flyer de desktop (horizontal, mejor para
-  // preview de link); si no hay, cae al de mobile.
-  const image = event.flyer_url_desktop ?? event.flyer_url_mobile ?? undefined;
+  const image = event.flyer_url ?? undefined;
 
   return {
     title: `${event.title} — seSALE`,

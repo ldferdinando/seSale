@@ -82,8 +82,7 @@ class EventRead(BaseModel):
     contact_facebook: str | None  # Etapa 12a
     contact_web: str | None
     contact_email: str | None
-    flyer_url_desktop: str | None  # Etapa 12b — antes `flyer_url`
-    flyer_url_mobile: str | None  # Etapa 12b — None => se usa el de desktop
+    flyer_url: str | None  # Etapa "Diseño v3" — flyer único 4:5, antes dual (Etapa 12b)
     location: LocationRead
     # Etapa 10b-2: se expone para que el organizador dueño del evento (o un
     # admin) puedan saber si su propio evento está dado de baja — antes solo
@@ -349,11 +348,9 @@ class EventsByStatus(BaseModel):
 
 
 class FlyerUploadResponse(BaseModel):
-    """Respuesta de POST/DELETE /api/events/{id}/flyer/{desktop|mobile}.
+    """Respuesta de POST/DELETE /api/events/{id}/flyer.
 
-    Etapa 8b (flyer único) → Etapa 12b (flyer dual): siempre devuelve el
-    estado completo de ambos tamaños, para que el frontend refresque las
-    dos zonas con una sola respuesta."""
+    Etapa 8b (flyer único) → Etapa 12b (flyer dual) → Etapa "Diseño v3"
+    (vuelta a flyer único, 4:5)."""
 
-    flyer_url_desktop: str | None
-    flyer_url_mobile: str | None
+    flyer_url: str | None
