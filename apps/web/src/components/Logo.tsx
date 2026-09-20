@@ -1,22 +1,36 @@
 import { useId } from "react";
 
+import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  /** "sm" — Navbar (marca siempre oscura, ver comentario en Navbar.tsx).
-   *  "lg" — pantallas de un solo logo grande (ej. /proximamente). */
+  /** "sm" — Navbar. "lg" — pantallas de un solo logo grande (ej.
+   *  /proximamente). */
   size?: "sm" | "lg";
-  /** "dark" (default) — "se" en gris oscuro, para fondos claros (Navbar,
-   *  que siempre queda fijo en tema claro — ver `.sesale-navbar-fixed-light`
-   *  en globals.css). "light" — "se" en blanco (`logo-sesale-light.png`,
-   *  generado a partir del original recoloreando solo el glyph oscuro,
-   *  "Sale." se mantiene rosa en los dos), para fondos oscuros fijos como
-   *  el hero de "¿Qué es seSale?" (`.qe-logo-img` en seSALE_v2.html usa un
-   *  asset White-on-dark separado del logo del nav, por la misma razón:
-   *  con el original, "se" casi no se lee sobre un fondo oscuro). */
+  /** Sin especificar (default) — el logo sigue el tema activo de la app
+   *  (`useTheme`): "se" en gris oscuro en tema claro, en blanco en tema
+   *  oscuro (`logo-sesale-dark.png`). Pasar "dark"/"light" explícito fuerza
+   *  una variante fija, ignorando el tema — para fondos que no siguen el
+   *  tema global, como el hero de "¿Qué es seSale?" (fondo oscuro fijo,
+   *  `tone="light"`; `logo-sesale-light.png`, "se" en blanco, "Sale." se
+   *  mantiene rosa en las tres variantes). */
   tone?: "dark" | "light";
   className?: string;
 }
+
+// Asset fijo cuando se pasa `tone` explícito (ignora el tema activo).
+const TONE_LOGO_SRC: Record<"dark" | "light", string> = {
+  dark: "/logo-sesale.png",
+  light: "/logo-sesale-light.png",
+};
+
+// Asset cuando el logo sigue el tema activo (sin `tone` explícito). No
+// confundir con TONE_LOGO_SRC.light: es un asset distinto (ver comentario
+// de `tone` en LogoProps).
+const THEME_LOGO_SRC: Record<"dark" | "light", string> = {
+  light: "/logo-sesale.png",
+  dark: "/logo-sesale-dark.png",
+};
 
 const SIZE_CLASSES: Record<NonNullable<LogoProps["size"]>, string> = {
   sm: "h-[30px]",
@@ -49,12 +63,16 @@ const VIEWBOX_HEIGHT = 239.06;
  * globals.css. `prefers-reduced-motion: reduce` deshabilita ambas
  * animaciones y muestra el logo completo y estático.
  *
- * El logo no reacciona al tema claro/oscuro: es una imagen de colores
- * fijos (igual que en la referencia, donde el nav/marca se mantiene
- * siempre oscuro/fijo) — es intencional, no hay que hacerlo variar.
+ * Etapa "Logo: variante para modo oscuro": el logo pasó a reaccionar al
+ * tema activo (`useTheme`) cuando no se pasa `tone` explícito — asset con
+ * "se" oscuro en tema claro, blanco en tema oscuro (`logo-sesale-dark.png`,
+ * extraído de seSALE.html igual que el resto — ver a_revisar.md). `tone`
+ * sigue existiendo para fondos que no siguen el tema global de la app (ej.
+ * el hero fijo-oscuro de "¿Qué es seSale?").
  */
-export function Logo({ size = "sm", tone = "dark", className }: LogoProps) {
-  const logoSrc = tone === "light" ? "/logo-sesale-light.png" : "/logo-sesale.png";
+export function Logo({ size = "sm", tone, className }: LogoProps) {
+  const { theme } = useTheme();
+  const logoSrc = tone ? TONE_LOGO_SRC[tone] : THEME_LOGO_SRC[theme];
   const uid = useId();
   const clipId = `logo-clip-${uid}`;
   const maskId = `logo-mask-${uid}`;

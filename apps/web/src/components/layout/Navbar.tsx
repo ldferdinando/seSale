@@ -110,11 +110,12 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        // Fondo del nav siempre claro, sin importar el tema activo — ver
-        // el comentario grande de `.sesale-navbar-fixed-light` en
-        // globals.css (necesario desde que el logo pasó a ser una imagen
-        // de colores fijos, que pierde contraste sobre un nav oscuro).
-        "sesale-navbar-fixed-light sticky top-0 z-50 border-b border-border bg-background",
+        // Etapa "Logo: variante para modo oscuro": el nav ya no fuerza
+        // fondo claro fijo (ver `.sesale-navbar-fixed-light`, eliminado de
+        // globals.css) — el logo ahora tiene variante blanca para tema
+        // oscuro (`Logo.tsx`), así que el nav puede seguir el tema activo
+        // de la app como el resto de la UI, igual que en seSALE.html.
+        "sticky top-0 z-50 border-b border-border bg-background",
         // `w-full` es necesario acá, no solo decorativo: <body> es un flex
         // container (`flex flex-col`, ver app/layout.tsx) y este <header>
         // es un flex item — con `mx-auto` solo (sin `width` explícito) un
