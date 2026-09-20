@@ -5,6 +5,7 @@ import { es } from "date-fns/locale";
 import { CalendarDays } from "lucide-react";
 
 import { useEvents } from "@/features/events/hooks/useEvents";
+import { useActiveCity } from "@/hooks/useActiveCity";
 
 interface TodayBannerProps {
   onClick: () => void;
@@ -21,6 +22,7 @@ interface TodayBannerProps {
 export function TodayBanner({ onClick }: TodayBannerProps) {
   const today = format(new Date(), "yyyy-MM-dd");
   const isNight = new Date().getHours() >= 20;
+  const { activeCity } = useActiveCity();
 
   const { data } = useEvents(
     isNight ? { dateFrom: today, dateTo: today, moment: "nocturno" } : { dateFrom: today, dateTo: today },
@@ -39,6 +41,7 @@ export function TodayBanner({ onClick }: TodayBannerProps) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-white">{isNight ? "Ahora" : "¿Qué hay hoy?"}</p>
         <p className="mt-0.5 truncate text-xs text-white/60">{format(new Date(), "EEEE d 'de' MMMM", { locale: es })}</p>
+        {activeCity && <p className="mt-0.5 truncate text-xs text-white/60">{activeCity.name}</p>}
       </div>
       <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white">
         {count === 1 ? "1 plan" : `${count} planes`}

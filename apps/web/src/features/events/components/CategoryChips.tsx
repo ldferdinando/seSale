@@ -19,9 +19,9 @@ export function CategoryChips({ category, onChange }: CategoryChipsProps) {
   const { categories } = useCategoryCatalog();
 
   return (
-    <div className="flex flex-col gap-2 px-4 pt-3.5">
-      <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
-        <Tag className="h-3 w-3 text-primary" aria-hidden />
+    <div className="flex flex-col gap-1.5">
+      <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+        <Tag className="h-3.5 w-3.5 text-primary" aria-hidden />
         Explorar por categoría
       </p>
       <div className="flex flex-wrap gap-2">

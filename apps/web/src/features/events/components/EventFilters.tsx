@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Search, Sun, Ticket, X } from "lucide-react";
 
 import { DateFilter } from "@/features/events/components/DateFilter";
@@ -10,6 +12,11 @@ import { cn } from "@/lib/utils";
 interface EventFiltersProps {
   filters: EventFiltersState;
   onChange: (filters: EventFiltersState) => void;
+  /** Etapa "Labels transversales + orden de filtros": en seSALE.html los
+   * chips de categoría van entre el filtro de fecha y el de momento, dentro
+   * del mismo bloque de filtros — se inyectan acá en vez de fijar el orden
+   * dentro de page.tsx, para no duplicar el layout de filtros. */
+  categorySlot?: ReactNode;
 }
 
 /** Etapa 11b — Parte 3c: cuenta solo los filtros "de chip" (categoría, fecha,
@@ -21,13 +28,13 @@ function countActiveFilters(filters: EventFiltersState): number {
   ).length;
 }
 
-const TICKET_TYPE_OPTIONS: { value: TicketTypeFilter | undefined; label: string }[] = [
+export const TICKET_TYPE_OPTIONS: { value: TicketTypeFilter | undefined; label: string }[] = [
   { value: undefined, label: "Todos" },
   { value: "gratis", label: "Gratis" },
   { value: "pago", label: "Pago" },
 ];
 
-export function EventFilters({ filters, onChange }: EventFiltersProps) {
+export function EventFilters({ filters, onChange, categorySlot }: EventFiltersProps) {
   function clearAllFilters() {
     onChange({
       ...filters,
@@ -55,12 +62,14 @@ export function EventFilters({ filters, onChange }: EventFiltersProps) {
 
       <DateFilter filters={filters} onChange={onChange} />
 
+      {categorySlot}
+
       {/* Etapa 11b — Parte 3c: los chips de día/noche viven en la sección de
           filtros del listado (debajo de categorías), igual que seSALE.html
           (.fwrap "¿En qué momento?"). */}
       <div className="flex flex-col gap-1.5">
-        <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
-          <Sun className="h-3 w-3 text-primary" aria-hidden />
+        <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+          <Sun className="h-3.5 w-3.5 text-primary" aria-hidden />
           ¿En qué momento?
         </p>
         <MomentPills
@@ -72,8 +81,8 @@ export function EventFilters({ filters, onChange }: EventFiltersProps) {
       {/* Etapa 12b — filtro de tipo de entrada. "Pago" incluye eventos con
           anticipo (lo resuelve el backend). */}
       <div className="flex flex-col gap-1.5">
-        <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
-          <Ticket className="h-3 w-3 text-primary" aria-hidden />
+        <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+          <Ticket className="h-3.5 w-3.5 text-primary" aria-hidden />
           Tipo de entrada
         </p>
         <div className="flex gap-2" role="group" aria-label="Tipo de entrada">

@@ -1,16 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { TodayBanner } from "@/features/events/components/TodayBanner";
 
+import { renderWithActiveCity } from "./test-utils";
+
 function renderBanner() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <TodayBanner onClick={vi.fn()} />
-    </QueryClientProvider>,
-  );
+  return renderWithActiveCity(<TodayBanner onClick={vi.fn()} />);
 }
 
 describe("TodayBanner", () => {
@@ -24,5 +20,13 @@ describe("TodayBanner", () => {
 
     const button = screen.getByRole("button");
     expect(button.className).toContain("w-[calc(100%-2rem)]");
+  });
+
+  // Etapa "Labels transversales + orden de filtros" (Parte 4): tercera línea
+  // con la ciudad activa, calcada de `#en-loc` en seSALE.html.
+  it("shows the active city as a third line", async () => {
+    renderBanner();
+
+    await waitFor(() => expect(screen.getByText("General Roca")).toBeInTheDocument());
   });
 });

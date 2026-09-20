@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarX, Sun, X } from "lucide-react";
+import { CalendarX, Sun, Ticket, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -10,9 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DateFilter } from "@/features/events/components/DateFilter";
 import { EventList } from "@/features/events/components/EventList";
 import { MomentPills } from "@/features/events/components/MomentPills";
+import { TICKET_TYPE_OPTIONS } from "@/features/events/components/EventFilters";
 import type { Category, EventFiltersState } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { useBannerSlots } from "@/hooks/useBannerSlots";
+import { cn } from "@/lib/utils";
 
 interface CategoriaDetalleContentProps {
   category: Category;
@@ -53,7 +55,9 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
   const gridPool = useMemo(() => gridBanners.slots.flatMap((slot) => slot.items), [gridBanners.slots]);
   const gridRotationIntervalSeconds = gridBanners.slots[0]?.rotation_interval_seconds ?? 5;
 
-  const hasActiveFilters = Boolean(filters.moment || filters.dateFrom || filters.dateTo);
+  const hasActiveFilters = Boolean(
+    filters.moment || filters.dateFrom || filters.dateTo || filters.ticketType,
+  );
   const showGridInsteadOfList = !hasActiveFilters && !gridBanners.isLoading && gridPool.length > 0;
 
   const effectiveFilters: EventFiltersState = {
@@ -91,14 +95,49 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         <DateFilter filters={filters} onChange={setFilters} />
 
         <div className="flex flex-col gap-1.5">
-          <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
-            <Sun className="h-3 w-3 text-primary" aria-hidden />
+          <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+            <Sun className="h-3.5 w-3.5 text-primary" aria-hidden />
             ¿En qué momento?
           </p>
           <MomentPills
             value={filters.moment}
             onChange={(moment) => setFilters((f) => ({ ...f, moment }))}
           />
+        </div>
+
+        {/* Etapa "Labels transversales + orden de filtros" (Parte 3): tercer
+            grupo de filtro que ya existía en Home (EventFilters.tsx) pero
+            faltaba acá — reusa TICKET_TYPE_OPTIONS para no duplicar los
+            valores, con su propio botón-group (se optó por no extraer todo
+            el bloque a un componente compartido: es chico y el criterio de
+            "hasActiveFilters"/reset difiere entre Home y esta vista — ver
+            a_revisar.md). */}
+        <div className="flex flex-col gap-1.5">
+          <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+            <Ticket className="h-3.5 w-3.5 text-primary" aria-hidden />
+            Tipo de entrada
+          </p>
+          <div className="flex gap-2" role="group" aria-label="Tipo de entrada">
+            {TICKET_TYPE_OPTIONS.map((option) => {
+              const active = (filters.ticketType ?? undefined) === option.value;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setFilters((f) => ({ ...f, ticketType: option.value }))}
+                  className={cn(
+                    "flex flex-1 items-center justify-center rounded-full border px-3 py-2 text-xs font-bold transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-ink-2",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Etapa "Cambios de diseño TIPO B v2.2" (punto 8): resetea los

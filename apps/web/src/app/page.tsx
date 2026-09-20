@@ -55,7 +55,7 @@ export default function HomePage() {
           <h1 className="mb-2.5 text-[clamp(27px,6.8vw,42px)] font-black leading-tight tracking-tight">
             Todo lo que pasa en <em className="text-primary not-italic">{activeCity?.name ?? "tu ciudad"}</em>,
             <br />
-            en un lugar.
+            en un solo lugar.
           </h1>
           <p className="text-sm leading-relaxed text-ink-4">
             Música, teatro, ferias, fiestas y más. Los mejores planes cerca tuyo.
@@ -82,16 +82,20 @@ export default function HomePage() {
 
         <AdSlots />
 
-        <CategoryChips
-          category={filters.category}
-          onChange={(category) => setFilters((f) => ({ ...f, category }))}
-        />
-
-        {/* Filtros (categoría se elige arriba, en CategoryChips) — siempre
-            visibles y por encima de las tabs de vista: filtran tanto la
-            grilla como el mapa. */}
+        {/* Filtros — siempre visibles y por encima de las tabs de vista:
+            filtran tanto la grilla como el mapa. Orden (seSALE.html):
+            buscador → fecha → categorías → momento → tipo de entrada. */}
         <div className="px-4 pt-3.5">
-          <EventFilters filters={filters} onChange={setFilters} />
+          <EventFilters
+            filters={filters}
+            onChange={setFilters}
+            categorySlot={
+              <CategoryChips
+                category={filters.category}
+                onChange={(category) => setFilters((f) => ({ ...f, category }))}
+              />
+            }
+          />
         </div>
 
         {/* Tabs de vista — DEBAJO de los filtros (orden de seSALE.html).

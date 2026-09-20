@@ -106,7 +106,7 @@ function Step({ icon: Icon, iconClassName, step, title, description }: StepProps
 
 function SectionLabel({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+    <p className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-[2px] text-primary">
       <Icon className="h-3.5 w-3.5" aria-hidden />
       {children}
     </p>
@@ -134,7 +134,7 @@ export function QueEsSesaleContent() {
         <div className="mx-auto flex flex-col items-center gap-3">
           <Logo size="lg" tone="light" />
 
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.3em] text-brand-pink">
+          <p className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-[3px] text-brand-pink">
             <MapPin className="h-3.5 w-3.5" aria-hidden />
             Agenda cultural digital
           </p>

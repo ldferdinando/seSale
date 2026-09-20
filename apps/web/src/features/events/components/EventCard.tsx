@@ -240,11 +240,11 @@ export function EventCard({ event }: EventCardProps) {
             )}
             <p
               className={cn(
-                "flex min-w-0 items-center gap-1.5 truncate text-foreground",
+                "flex min-w-0 items-start gap-1.5 text-foreground",
                 event.plan === "dest" ? "text-[17px] font-extrabold" : "text-base font-bold",
               )}
             >
-              <span className="truncate">{event.title}</span>
+              <span className="min-w-0 flex-1 leading-snug">{event.title}</span>
               {inactiveBadge}
             </p>
             <p className="mt-1 flex items-center gap-2 truncate text-sm text-ink-4">

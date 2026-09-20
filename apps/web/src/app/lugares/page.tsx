@@ -49,8 +49,8 @@ export default function LugaresPage() {
   // ya presente en el mismo bloque de Home (ver AdSlots.tsx) pero ausente
   // acá — mismo patrón de clases, sin inventar valores nuevos.
   const bannersLabel = (
-    <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-brand-lime">
-      <Megaphone className="h-2.5 w-2.5 text-primary" aria-hidden />
+    <span className="flex items-center gap-1 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+      <Megaphone className="h-3.5 w-3.5 text-primary" aria-hidden />
       Publicidad
     </span>
   );

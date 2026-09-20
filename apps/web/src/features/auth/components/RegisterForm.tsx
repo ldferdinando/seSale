@@ -33,7 +33,7 @@ interface FieldLabelProps {
 
 function FieldLabel({ icon: Icon, htmlFor, required, children }: FieldLabelProps) {
   return (
-    <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+    <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide text-ink-3">
       <Icon className="h-3 w-3 text-primary" aria-hidden />
       {children}
       {required && <em className="not-italic text-primary"> *</em>}

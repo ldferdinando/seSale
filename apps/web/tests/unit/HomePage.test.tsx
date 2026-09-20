@@ -41,7 +41,10 @@ describe("HomePage", () => {
   it("shows the active city's name in the hero title, not hardcoded (Etapa 9b, bug real reportado)", async () => {
     renderWithActiveCity(<HomePage />);
 
-    expect(await screen.findByText("General Roca")).toBeInTheDocument();
+    // Etapa "Labels transversales + orden de filtros" (Parte 4): TodayBanner
+    // ahora también muestra la ciudad activa (tercera línea), así que el
+    // nombre de la ciudad aparece más de una vez en la página.
+    expect(await screen.findAllByText("General Roca")).not.toHaveLength(0);
   });
 
   it("shows the 3 eventos banner slots once the city is detected", async () => {
@@ -118,7 +121,7 @@ describe("HomePage", () => {
     );
 
     renderWithActiveCity(<HomePage />);
-    await screen.findByText("General Roca");
+    await screen.findAllByText("General Roca");
 
     fireEvent.click(screen.getByRole("button", { name: /Ahora|Qué hay hoy/i }));
 

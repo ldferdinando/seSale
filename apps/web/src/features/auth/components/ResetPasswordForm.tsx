@@ -64,7 +64,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-1">
-        <Label htmlFor="new_password" className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+        <Label htmlFor="new_password" className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide text-ink-3">
           <Lock className="h-3 w-3 text-primary" aria-hidden />
           Nueva contraseña
         </Label>
@@ -73,7 +73,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor="confirm_password" className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+        <Label htmlFor="confirm_password" className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide text-ink-3">
           <Lock className="h-3 w-3 text-primary" aria-hidden />
           Confirmar contraseña
         </Label>
