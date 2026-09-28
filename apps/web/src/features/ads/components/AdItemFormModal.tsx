@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { adItemFormSchema } from "@/features/ads/schemas/ad-item-schema";
 import { useUploadAdItemImage } from "@/features/ads/hooks/useAdminAds";
 import type { AdItemAdmin, AdSlotAdmin } from "@/features/ads/types";
-import { useUsersList } from "@/features/users/hooks/useUsersList";
+import type { User } from "@/features/auth/types";
+import { UserPicker } from "@/features/users/components/UserPicker";
 import { ApiError } from "@/lib/api-client";
 import { resolveMediaUrl } from "@/lib/media";
+import { cn } from "@/lib/utils";
 
 interface AdItemFormModalProps {
   slot: AdSlotAdmin;
@@ -31,11 +32,14 @@ interface AdItemFormModalProps {
   onCancel: () => void;
 }
 
+/** Orden visual de los campos validados: al fallar la validación se enfoca
+ * el primero de esta lista que tenga error. */
+const FIELD_ORDER = ["user_id", "img_url", "link_url", "starts_at", "ends_at"] as const;
+type FieldKey = (typeof FIELD_ORDER)[number];
+
 /** Carga/edición de un AdItem (Etapa 8d, PARTE 8c/8d). El slot y (al editar)
  * el anunciante no se pueden cambiar — ver a_revisar.md/consigna. */
 export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCancel }: AdItemFormModalProps) {
-  const [search, setSearch] = useState("");
-  const { data: users, isLoading: isLoadingUsers } = useUsersList(search);
   const uploadImage = useUploadAdItemImage();
 
   const [userId, setUserId] = useState(item?.user_id ?? "");
@@ -49,15 +53,54 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
   const [displayOrder, setDisplayOrder] = useState(
     item?.display_order ?? (slot.items.length > 0 ? Math.max(...slot.items.map((i) => i.display_order)) + 1 : 0),
   );
+  // Nombre que se autocompletó desde el usuario elegido: si el admin no lo
+  // editó, se reemplaza al cambiar de anunciante; si lo editó, se respeta.
+  const [autoAdvertiserName, setAutoAdvertiserName] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const selectedUser = users?.find((u) => u.id === userId);
+  const fieldRefs = useRef<Partial<Record<FieldKey, HTMLElement | null>>>({});
   const isEditing = !!item;
 
-  function handleUserChange(id: string) {
-    setUserId(id);
-    const user = users?.find((u) => u.id === id);
-    if (user && !advertiserName) setAdvertiserName(user.public_name);
+  function handleUserChange(user: User | null) {
+    setUserId(user?.id ?? "");
+    if (user) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.user_id;
+        return next;
+      });
+      if (!advertiserName || advertiserName === autoAdvertiserName) {
+        setAdvertiserName(user.public_name);
+        setAutoAdvertiserName(user.public_name);
+      }
+    } else {
+      // "Cambiar": el foco vuelve al buscador que reaparece.
+      requestAnimationFrame(() => fieldRefs.current.user_id?.focus());
+    }
+  }
+
+  function focusFirstInvalid(fieldErrors: Record<string, string>) {
+    const first = FIELD_ORDER.find((key) => fieldErrors[key]);
+    const el = first ? fieldRefs.current[first] : null;
+    if (!el) return;
+    el.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
+  }
+
+  function fieldProps(key: FieldKey) {
+    return {
+      "aria-invalid": errors[key] ? true : undefined,
+      "aria-describedby": errors[key] ? `ad-error-${key}` : undefined,
+    };
+  }
+
+  function fieldError(field: FieldKey) {
+    if (!errors[field]) return null;
+    return (
+      <p id={`ad-error-${field}`} role="alert" className="text-xs font-medium text-destructive">
+        {errors[field]}
+      </p>
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -80,6 +123,7 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
         fieldErrors[String(issue.path[0])] = issue.message;
       }
       setErrors(fieldErrors);
+      focusFirstInvalid(fieldErrors);
       return;
     }
     setErrors({});
@@ -113,6 +157,8 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
       onClick={onCancel}
     >
       <form
+        noValidate
+        autoComplete="off"
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-2xl bg-card p-5 sm:rounded-2xl"
@@ -129,63 +175,63 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
           {isEditing ? (
             <p className="text-sm text-ink-2">{item.user_public_name}</p>
           ) : (
-            <>
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nombre o email..."
-                aria-label="Buscar anunciante"
-              />
-              <Select value={userId || undefined} onValueChange={handleUserChange}>
-                <SelectTrigger id="ad-user" aria-label="Anunciante">
-                  <SelectValue placeholder="Elegí un usuario" />
-                </SelectTrigger>
-                <SelectContent>
-                  {isLoadingUsers ? (
-                    <div className="px-2 py-1.5 text-sm text-ink-5">Cargando usuarios...</div>
-                  ) : users && users.length > 0 ? (
-                    users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.public_name} — {u.email}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-sm text-ink-5">No se encontraron usuarios.</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </>
+            <UserPicker
+              ref={(el) => {
+                fieldRefs.current.user_id = el;
+              }}
+              id="ad-user"
+              value={userId || null}
+              onChange={handleUserChange}
+              searchLabel="Buscar anunciante"
+              invalid={!!errors.user_id}
+              errorId={errors.user_id ? "ad-error-user_id" : undefined}
+            />
           )}
-          {errors.user_id && <p className="text-xs text-destructive">{errors.user_id}</p>}
+          {fieldError("user_id")}
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor="ad-advertiser-name">Nombre del anunciante</Label>
           <Input
             id="ad-advertiser-name"
+            name="ad-advertiser-label"
+            autoComplete="off"
             value={advertiserName}
             onChange={(e) => setAdvertiserName(e.target.value)}
-            placeholder={selectedUser?.public_name ?? "Se copia del anunciante si se deja vacío"}
+            placeholder="Se copia del anunciante si se deja vacío"
+            aria-describedby="ad-advertiser-name-help"
           />
+          <p id="ad-advertiser-name-help" className="text-xs text-ink-4">
+            Se completa con el nombre público del anunciante elegido. Podés editarlo.
+          </p>
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor="ad-image-file">Imagen</Label>
           <input
+            ref={(el) => {
+              fieldRefs.current.img_url = el;
+            }}
             id="ad-image-file"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-ink-3"
+            {...fieldProps("img_url")}
+            className={cn(
+              "rounded-md text-sm text-ink-3",
+              errors.img_url && "outline outline-1 outline-offset-2 outline-destructive",
+            )}
           />
           <Label htmlFor="ad-image-url" className="mt-1">
             O pegá una URL ya hosteada
           </Label>
           <Input
             id="ad-image-url"
+            autoComplete="off"
             value={imgUrl}
             onChange={(e) => setImgUrl(e.target.value)}
             placeholder="https://..."
+            {...fieldProps("img_url")}
           />
           {imgUrl && (
             <img
@@ -194,31 +240,62 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
               className="mt-1 h-24 w-full rounded-lg object-cover"
             />
           )}
-          {errors.img_url && <p className="text-xs text-destructive">{errors.img_url}</p>}
+          {fieldError("img_url")}
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor="ad-link">Link de destino</Label>
-          <Input id="ad-link" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." />
-          {errors.link_url && <p className="text-xs text-destructive">{errors.link_url}</p>}
+          <Input
+            ref={(el) => {
+              fieldRefs.current.link_url = el;
+            }}
+            id="ad-link"
+            autoComplete="off"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://..."
+            {...fieldProps("link_url")}
+          />
+          {fieldError("link_url")}
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor="ad-alt">Texto alternativo</Label>
-          <Input id="ad-alt" value={altText} onChange={(e) => setAltText(e.target.value)} />
+          <Input id="ad-alt" autoComplete="off" value={altText} onChange={(e) => setAltText(e.target.value)} />
         </div>
 
         <div className="flex gap-2">
           <div className="flex flex-1 flex-col gap-1">
             <Label htmlFor="ad-starts">Fecha de inicio *</Label>
-            <Input id="ad-starts" type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            <Input
+              ref={(el) => {
+                fieldRefs.current.starts_at = el;
+              }}
+              id="ad-starts"
+              type="date"
+              autoComplete="off"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+              {...fieldProps("starts_at")}
+            />
           </div>
           <div className="flex flex-1 flex-col gap-1">
             <Label htmlFor="ad-ends">Fecha de fin</Label>
-            <Input id="ad-ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <Input
+              ref={(el) => {
+                fieldRefs.current.ends_at = el;
+              }}
+              id="ad-ends"
+              type="date"
+              autoComplete="off"
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+              {...fieldProps("ends_at")}
+            />
           </div>
         </div>
-        {errors.ends_at && <p className="text-xs text-destructive">{errors.ends_at}</p>}
+        {fieldError("starts_at")}
+        {fieldError("ends_at")}
 
         {slot.rotation_mode === "sequential" && (
           <div className="flex flex-col gap-1">
@@ -227,10 +304,20 @@ export function AdItemFormModal({ slot, item, onSave, isSaving, saveError, onCan
               id="ad-order"
               type="number"
               min={0}
+              autoComplete="off"
               value={displayOrder}
               onChange={(e) => setDisplayOrder(Number(e.target.value))}
             />
           </div>
+        )}
+
+        {Object.keys(errors).length > 0 && (
+          <p
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive"
+          >
+            Completá los campos marcados.
+          </p>
         )}
 
         {saveError && (
