@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { BannerSlot } from "@/components/BannerSlot";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import {
@@ -153,29 +154,18 @@ export function AdSlotCard({ slot }: { slot: AdSlotAdmin }) {
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h3 className="text-sm font-bold text-foreground">{title}</h3>
           {slot.rotation_mode === "random" && <p className="text-xs text-ink-5">Rotación aleatoria</p>}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={slot.is_active}
+        <div className="flex shrink-0 items-center gap-3">
+          <Switch
+            checked={slot.is_active}
+            onCheckedChange={(isActive) => toggleActive.mutate({ slotId: slot.id, isActive })}
             aria-label={slot.is_active ? "Deshabilitar posición" : "Habilitar posición"}
             disabled={toggleActive.isPending}
-            onClick={() => toggleActive.mutate({ slotId: slot.id, isActive: !slot.is_active })}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-              slot.is_active ? "bg-[#1D9E75]" : "bg-surface-5"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                slot.is_active ? "translate-x-5" : "translate-x-0.5"
-              }`}
-            />
-          </button>
+          />
           {!showForm && (
             <Button type="button" size="sm" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden />
