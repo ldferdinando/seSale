@@ -10,17 +10,21 @@ tipos existentes no cambian de grupo) y carga los 3 tipos nuevos del grupo
 "espacios" (club, centro cultural, salón de eventos) — ver TIPO_GRUPO en
 seSALE.html y ARCHITECTURE.md/a_revisar.md.
 
-Idempotente, mismo patrón que 0021_add_category_and_gastro_type_catalogs.py:
-busca por `key` antes de insertar.
-"""
-from typing import Sequence, Union
+Idempotente: busca por `key` antes de insertar.
 
-from sqlmodel import Session, select
+No usa el modelo ORM `GastroTypeCatalog` (aunque hoy, al ser la migración
+HEAD, sus columnas coincidirían 1:1) — usa una tabla liviana
+(`sa.table`/`sa.column`) igual que el resto de las migraciones de datos
+(ver 0017/0021 y a_revisar.md): así esta migración sigue siendo válida sin
+tocarla el día que `GastroTypeCatalog` gane una columna nueva más adelante.
+"""
+from datetime import datetime, timezone
+from typing import Sequence, Union
+from uuid import uuid4
 
 import sqlalchemy as sa
 
 from alembic import op
-from app.models.gastro_type_catalog import GastroTypeCatalog
 
 # revision identifiers, used by Alembic.
 revision: str = "da5f20b4cbd9"
@@ -34,6 +38,20 @@ ESPACIOS_TYPES = [
     {"key": "salon", "name": "Salón de eventos", "emoji": "🎪", "sort_order": 13, "grupo": "espacios"},
 ]
 
+# Tabla liviana — solo las columnas que esta migración necesita tocar
+# (`key` para el chequeo de idempotencia, el resto para el INSERT).
+gastro_types_catalog = sa.table(
+    "gastro_types_catalog",
+    sa.column("id", sa.Uuid()),
+    sa.column("key", sa.String(length=50)),
+    sa.column("name", sa.String(length=100)),
+    sa.column("emoji", sa.String(length=10)),
+    sa.column("sort_order", sa.Integer()),
+    sa.column("grupo", sa.String(length=20)),
+    sa.column("is_active", sa.Boolean()),
+    sa.column("created_at", sa.DateTime()),
+)
+
 
 def upgrade() -> None:
     op.add_column(
@@ -41,26 +59,21 @@ def upgrade() -> None:
         sa.Column("grupo", sa.String(length=20), nullable=False, server_default="gastro"),
     )
 
-    bind = op.get_bind()
-    with Session(bind=bind) as session:
-        for data in ESPACIOS_TYPES:
-            existing = session.exec(
-                select(GastroTypeCatalog).where(GastroTypeCatalog.key == data["key"])
-            ).first()
-            if existing is None:
-                session.add(GastroTypeCatalog(**data))
-        session.commit()
+    conn = op.get_bind()
+    now = datetime.now(timezone.utc)
+    for data in ESPACIOS_TYPES:
+        existing = conn.execute(
+            sa.select(gastro_types_catalog.c.id).where(gastro_types_catalog.c.key == data["key"])
+        ).first()
+        if existing is None:
+            conn.execute(
+                sa.insert(gastro_types_catalog).values(id=uuid4(), is_active=True, created_at=now, **data)
+            )
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    with Session(bind=bind) as session:
-        for data in ESPACIOS_TYPES:
-            existing = session.exec(
-                select(GastroTypeCatalog).where(GastroTypeCatalog.key == data["key"])
-            ).first()
-            if existing is not None:
-                session.delete(existing)
-        session.commit()
+    conn = op.get_bind()
+    for data in ESPACIOS_TYPES:
+        conn.execute(sa.delete(gastro_types_catalog).where(gastro_types_catalog.c.key == data["key"]))
 
     op.drop_column("gastro_types_catalog", "grupo")

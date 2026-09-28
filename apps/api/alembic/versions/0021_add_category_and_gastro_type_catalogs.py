@@ -17,19 +17,27 @@ hardcodeados como `VALID_CATEGORIES` (app/schemas/event.py) y `GASTRO_TYPES`
 su categoría/tipo, y de acá en más el admin puede agregar/editar/desactivar
 sin cambio de código (ver ARCHITECTURE.md, a_revisar.md).
 
-Idempotente (mismo patrón que 0017_insert_base_data.py): busca por `key`
-antes de insertar, con un ORM Session sobre los modelos reales, dentro de la
-misma transacción que envuelve la migración.
-"""
-from typing import Sequence, Union
+Idempotente: busca por `key` antes de insertar.
 
-from sqlmodel import Session, select
+Fix (2026-09-27): usaba los modelos ORM ACTUALES (`EventCategoryCatalog`,
+`GastroTypeCatalog`) para el SELECT/INSERT — `GastroTypeCatalog` ganó la
+columna `grupo` en la migración 0029 (posterior a esta), así que
+`select(GastroTypeCatalog)` generaba SQL con una columna que todavía no
+existe en este punto de la historia: rompía con `UndefinedColumn:
+gastro_types_catalog.grupo does not exist` en una base nueva corriendo
+`alembic upgrade head` desde cero. Reescrita para usar tablas livianas
+(`sa.table`/`sa.column`, con exactamente las columnas que esta misma
+migración crea un poco más arriba, ni una más) en vez de los modelos
+reales — ver 0017_insert_base_data.py y a_revisar.md para el mismo fix y
+el detalle completo.
+"""
+from datetime import datetime, timezone
+from typing import Sequence, Union
+from uuid import uuid4
 
 import sqlalchemy as sa
 
 from alembic import op
-from app.models.event_category_catalog import EventCategoryCatalog
-from app.models.gastro_type_catalog import GastroTypeCatalog
 
 # revision identifiers, used by Alembic.
 revision: str = "f5a6b7c8d9e0"
@@ -95,21 +103,60 @@ def upgrade() -> None:
         sa.UniqueConstraint("key"),
     )
 
-    bind = op.get_bind()
-    with Session(bind=bind) as session:
-        for data in CATEGORIES:
-            existing = session.exec(
-                select(EventCategoryCatalog).where(EventCategoryCatalog.key == data["key"])
-            ).first()
-            if existing is None:
-                session.add(EventCategoryCatalog(**data))
-        for data in GASTRO_TYPES:
-            existing = session.exec(
-                select(GastroTypeCatalog).where(GastroTypeCatalog.key == data["key"])
-            ).first()
-            if existing is None:
-                session.add(GastroTypeCatalog(**data))
-        session.commit()
+    # Tablas livianas — exactamente las columnas creadas arriba, no las del
+    # modelo ORM actual (que en el caso de gastro_types_catalog ya tiene
+    # `grupo`, agregado recién en 0029).
+    event_categories_catalog = sa.table(
+        "event_categories_catalog",
+        sa.column("id", sa.Uuid()),
+        sa.column("key", sa.String(length=50)),
+        sa.column("name", sa.String(length=100)),
+        sa.column("emoji", sa.String(length=10)),
+        sa.column("color", sa.String(length=20)),
+        sa.column("sort_order", sa.Integer()),
+        sa.column("is_active", sa.Boolean()),
+        sa.column("created_at", sa.DateTime()),
+    )
+    gastro_types_catalog = sa.table(
+        "gastro_types_catalog",
+        sa.column("id", sa.Uuid()),
+        sa.column("key", sa.String(length=50)),
+        sa.column("name", sa.String(length=100)),
+        sa.column("emoji", sa.String(length=10)),
+        sa.column("sort_order", sa.Integer()),
+        sa.column("is_active", sa.Boolean()),
+        sa.column("created_at", sa.DateTime()),
+    )
+
+    conn = op.get_bind()
+    now = datetime.now(timezone.utc)
+    for data in CATEGORIES:
+        existing = conn.execute(
+            sa.select(event_categories_catalog.c.id).where(event_categories_catalog.c.key == data["key"])
+        ).first()
+        if existing is None:
+            conn.execute(
+                sa.insert(event_categories_catalog).values(
+                    id=uuid4(),
+                    color=None,
+                    is_active=True,
+                    created_at=now,
+                    **data,
+                )
+            )
+    for data in GASTRO_TYPES:
+        existing = conn.execute(
+            sa.select(gastro_types_catalog.c.id).where(gastro_types_catalog.c.key == data["key"])
+        ).first()
+        if existing is None:
+            conn.execute(
+                sa.insert(gastro_types_catalog).values(
+                    id=uuid4(),
+                    is_active=True,
+                    created_at=now,
+                    **data,
+                )
+            )
 
 
 def downgrade() -> None:
