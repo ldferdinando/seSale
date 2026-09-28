@@ -70,6 +70,12 @@ jobs:
       - name: Run migrations (contra Postgres real)
         run: uv run alembic upgrade head
 
+      # autogenerate no compara valores de enums nativos: este chequeo falla
+      # si a algún tipo de la DB le falta una etiqueta que el modelo usa
+      # (caso subscriptionstatus/pending_payment, ver migración 0030).
+      - name: Check Postgres native enums vs models
+        run: uv run python scripts/check_pg_enums.py
+
       - name: Run tests with coverage (SQLite in-memory)
         run: |
           uv run pytest \
