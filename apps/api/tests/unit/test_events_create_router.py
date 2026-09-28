@@ -146,10 +146,20 @@ async def test_create_event_missing_title_returns_422(
 async def test_create_event_past_date_returns_422(
     client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
+    """Flaky con `date.today()` real (CI corre en UTC): la validación del
+    servidor compara contra `argentina_today()` (UTC-3), no contra la fecha
+    del sistema — entre las 00:00 y las 03:00 UTC, "ayer en UTC" todavía es
+    "hoy en Argentina", así que el evento no quedaba en el pasado y el test
+    fallaba con 201 en vez de 422 (visto en CI). Mismo patrón de
+    `test_create_event_still_rejects_dates_before_argentina_today` (arriba):
+    se fija `argentina_today()` con un mock en vez de depender de la hora
+    real de la corrida."""
+    fake_argentina_today = date(2026, 8, 11)
     payload = _valid_payload(str(location.id))
-    payload["date"] = (date.today() - timedelta(days=1)).isoformat()
+    payload["date"] = (fake_argentina_today - timedelta(days=1)).isoformat()
 
-    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+    with patch("app.schemas.event.argentina_today", return_value=fake_argentina_today):
+        response = await client.post("/api/events", json=payload, headers=user_token_headers)
 
     assert response.status_code == 422
 
