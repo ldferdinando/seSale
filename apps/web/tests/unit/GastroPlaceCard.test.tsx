@@ -220,4 +220,10 @@ describe("GastroPlaceCard", () => {
 
     expect(screen.queryByText(/evento/)).not.toBeInTheDocument();
   });
+
+  it("renders a type key without style entry using the default style", () => {
+    render(<GastroPlaceCard place={makeGastroPlace({ gastro_types: ["teatro-independiente"], plan: "gratis" })} />);
+
+    expect(screen.getAllByText("teatro-independiente").length).toBeGreaterThan(0);
+  });
 });

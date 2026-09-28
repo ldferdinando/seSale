@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
+import { EmojiPicker } from "@/components/EmojiPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,15 +14,33 @@ import {
   useToggleGastroType,
   useUpdateGastroType,
 } from "@/features/gastro/hooks/useAdminGastroTypes";
-import type { GastroTypeAdmin } from "@/features/gastro/types";
+import type { GastroTypeAdmin, GastroTypeGrupo } from "@/features/gastro/types";
 import { ApiError } from "@/lib/api-client";
 
+const GRUPO_OPTIONS: { value: GastroTypeGrupo; label: string }[] = [
+  { value: "gastro", label: "Gastronomía" },
+  { value: "espacios", label: "Espacios" },
+];
+
+const GRUPO_LABELS: Record<GastroTypeGrupo, string> = { gastro: "Gastronomía", espacios: "Espacios" };
+
+// Quita tildes antes de filtrar ("salón" → "salon", no "saln"); el backend
+// valida el mismo formato (^[a-z0-9_-]+$) y la unicidad (409). Se aplica en
+// cada tecla, así que no hace trim del final: un espacio al final pasa a "-"
+// para que "teatro independiente" no quede "teatroindependiente". Los "-"
+// sobrantes de los extremos se sacan al enviar (finalizeKey).
 function normalizeKey(raw: string): string {
   return raw
-    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/^\s+/, "")
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9_-]/g, "");
+}
+
+function finalizeKey(raw: string): string {
+  return normalizeKey(raw).replace(/^-+|-+$/g, "");
 }
 
 interface GastroTypeFormProps {
@@ -37,6 +56,8 @@ function GastroTypeForm({ gastroType, onSaved, onCancel }: GastroTypeFormProps) 
   const [name, setName] = useState(gastroType?.name ?? "");
   const [emoji, setEmoji] = useState(gastroType?.emoji ?? "");
   const [sortOrder, setSortOrder] = useState(String(gastroType?.sort_order ?? 99));
+  const [grupo, setGrupo] = useState<GastroTypeGrupo>(gastroType?.grupo ?? "gastro");
+  const grupoChanged = Boolean(gastroType) && grupo !== gastroType?.grupo;
 
   const mutation = gastroType ? updateGastroType : createGastroType;
 
@@ -44,13 +65,19 @@ function GastroTypeForm({ gastroType, onSaved, onCancel }: GastroTypeFormProps) 
     e.preventDefault();
     try {
       if (gastroType) {
-        await updateGastroType.mutateAsync({ name, emoji: emoji || undefined, sort_order: Number(sortOrder) || 99 });
-      } else {
-        await createGastroType.mutateAsync({
-          key: normalizeKey(key),
+        await updateGastroType.mutateAsync({
           name,
           emoji: emoji || undefined,
           sort_order: Number(sortOrder) || 99,
+          grupo,
+        });
+      } else {
+        await createGastroType.mutateAsync({
+          key: finalizeKey(key),
+          name,
+          emoji: emoji || undefined,
+          sort_order: Number(sortOrder) || 99,
+          grupo,
         });
       }
       onSaved();
@@ -61,7 +88,7 @@ function GastroTypeForm({ gastroType, onSaved, onCancel }: GastroTypeFormProps) 
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-      <h3 className="text-sm font-bold text-foreground">{gastroType ? "Editar tipo" : "Nuevo tipo gastronómico"}</h3>
+      <h3 className="text-sm font-bold text-foreground">{gastroType ? "Editar tipo de lugar" : "Nuevo tipo de lugar"}</h3>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="gt-key">Key {gastroType && "(no editable)"}</Label>
@@ -80,20 +107,47 @@ function GastroTypeForm({ gastroType, onSaved, onCancel }: GastroTypeFormProps) 
         <Input id="gt-name" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
 
-      <div className="flex gap-3">
-        <div className="flex flex-1 flex-col gap-1">
-          <Label htmlFor="gt-emoji">Emoji</Label>
-          <Input id="gt-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={10} placeholder="🍺" />
-        </div>
-        <div className="flex flex-1 flex-col gap-1">
-          <Label htmlFor="gt-sort">Orden</Label>
-          <Input id="gt-sort" type="number" min={0} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
-        </div>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="gt-grupo">Grupo</Label>
+        <select
+          id="gt-grupo"
+          value={grupo}
+          onChange={(e) => setGrupo(e.target.value as GastroTypeGrupo)}
+          className="rounded-lg border border-border bg-card px-2 py-2 text-sm"
+        >
+          {GRUPO_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {grupoChanged && (
+          <p data-testid="gt-grupo-warning" className="text-xs text-ink-4">
+            Los lugares con este tipo pasarán a verse en el otro grupo.
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="gt-emoji">Emoji</Label>
+        <EmojiPicker id="gt-emoji" value={emoji} onChange={setEmoji} placeholder="🍺" />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="gt-sort">Orden</Label>
+        <Input
+          id="gt-sort"
+          type="number"
+          min={0}
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="w-24"
+        />
       </div>
 
       {mutation.isError && (
         <p role="alert" className="text-xs text-destructive">
-          {mutation.error instanceof ApiError ? mutation.error.message : "No pudimos guardar el tipo gastronómico."}
+          {mutation.error instanceof ApiError ? mutation.error.message : "No pudimos guardar el tipo de lugar."}
         </p>
       )}
 
@@ -118,7 +172,7 @@ function GastroTypeRow({ gastroType, onEdit }: { gastroType: GastroTypeAdmin; on
     try {
       await toggle.mutateAsync(gastroType.id);
     } catch (err) {
-      setToggleError(err instanceof ApiError ? err.message : "No pudimos actualizar el tipo gastronómico.");
+      setToggleError(err instanceof ApiError ? err.message : "No pudimos actualizar el tipo de lugar.");
     }
   }
 
@@ -128,7 +182,17 @@ function GastroTypeRow({ gastroType, onEdit }: { gastroType: GastroTypeAdmin; on
         <div className="flex items-center gap-2">
           {gastroType.emoji && <span aria-hidden>{gastroType.emoji}</span>}
           <div>
-            <p className="text-sm font-bold text-foreground">{gastroType.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-foreground">{gastroType.name}</p>
+              <span
+                data-testid="admin-gastro-type-grupo"
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  gastroType.grupo === "espacios" ? "bg-[#7F77DD]/15 text-[#7F77DD]" : "bg-[#EF9F27]/15 text-[#B8741A]"
+                }`}
+              >
+                {GRUPO_LABELS[gastroType.grupo]}
+              </span>
+            </div>
             <p className="text-xs text-ink-4">{gastroType.key}</p>
           </div>
         </div>
@@ -170,6 +234,8 @@ export function AdminGastroTypesPanel() {
   const { data: gastroTypes, isLoading, isError } = useAdminGastroTypes(
     isActiveFilter === "" ? undefined : isActiveFilter === "true",
   );
+  const [grupoFilter, setGrupoFilter] = useState<GastroTypeGrupo | "">("");
+  const visibleGastroTypes = gastroTypes?.filter((t) => grupoFilter === "" || t.grupo === grupoFilter);
   const [creating, setCreating] = useState(false);
   const [editingGastroType, setEditingGastroType] = useState<GastroTypeAdmin | null>(null);
   const showForm = creating || editingGastroType;
@@ -177,7 +243,7 @@ export function AdminGastroTypesPanel() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2 px-1">
-        <h2 className="text-lg font-bold text-foreground">Tipos gastronómicos</h2>
+        <h2 className="text-lg font-bold text-foreground">Tipos de lugar</h2>
         {!showForm && (
           <Button type="button" size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -213,6 +279,19 @@ export function AdminGastroTypesPanel() {
               <option value="true">Activos</option>
               <option value="false">Inactivos</option>
             </select>
+            <select
+              value={grupoFilter}
+              onChange={(e) => setGrupoFilter(e.target.value as GastroTypeGrupo | "")}
+              aria-label="Filtrar por grupo"
+              className="rounded-lg border border-border bg-card px-2 py-1 text-sm"
+            >
+              <option value="">Todos los grupos</option>
+              {GRUPO_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {isLoading && (
@@ -224,17 +303,17 @@ export function AdminGastroTypesPanel() {
 
           {isError && (
             <p role="alert" className="text-sm text-muted-foreground">
-              No pudimos cargar los tipos gastronómicos. Intentá de nuevo más tarde.
+              No pudimos cargar los tipos de lugar. Intentá de nuevo más tarde.
             </p>
           )}
 
-          {gastroTypes && gastroTypes.length === 0 && (
+          {visibleGastroTypes && visibleGastroTypes.length === 0 && (
             <p className="text-sm text-muted-foreground">No hay tipos cargados.</p>
           )}
 
-          {gastroTypes && gastroTypes.length > 0 && (
+          {visibleGastroTypes && visibleGastroTypes.length > 0 && (
             <div className="flex flex-col gap-3">
-              {gastroTypes.map((gastroType) => (
+              {visibleGastroTypes.map((gastroType) => (
                 <GastroTypeRow
                   key={gastroType.id}
                   gastroType={gastroType}

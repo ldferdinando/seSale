@@ -110,4 +110,11 @@ describe("GastroDetailView", () => {
 
     expect(screen.getByRole("dialog", { name: "Reportar este lugar" })).toBeInTheDocument();
   });
+
+  it("renders a type key without style entry using the default style", () => {
+    const place = makeGastroPlace({ gastro_types: ["teatro-independiente"] });
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    expect(screen.getByText("teatro-independiente")).toBeInTheDocument();
+  });
 });

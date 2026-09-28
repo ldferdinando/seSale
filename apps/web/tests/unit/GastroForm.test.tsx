@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import { GastroForm } from "@/features/admin/components/GastroForm";
+import { server } from "./mocks/server";
 
 function renderWithClient() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -53,5 +55,26 @@ describe("GastroForm", () => {
       await user.click(checkbox);
     }
     expect(checkboxes[5]).toBeDisabled();
+  });
+
+  it("offers a type created from the admin (any grupo) as an option", async () => {
+    server.use(
+      http.get("http://localhost:8000/api/gastro-types", () =>
+        HttpResponse.json([
+          { id: "gt-bar", key: "bar", name: "Bares", emoji: null, sort_order: 4, grupo: "gastro" },
+          {
+            id: "gt-teatro",
+            key: "teatro-independiente",
+            name: "Teatro independiente",
+            emoji: null,
+            sort_order: 99,
+            grupo: "espacios",
+          },
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    expect(await screen.findByRole("checkbox", { name: "Teatro independiente" })).toBeInTheDocument();
   });
 });

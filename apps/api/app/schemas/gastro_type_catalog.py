@@ -43,9 +43,13 @@ class GastroTypeCreate(BaseModel):
 
 class GastroTypeUpdate(BaseModel):
     """Edita nombre/emoji/sort_order/grupo — nunca `key`. Sin campo `color`:
-    los tipos gastronómicos no tienen color de acento en el diseño."""
+    los tipos gastronómicos no tienen color de acento en el diseño.
+
+    `grupo` omitido (None) conserva el grupo actual: antes el default era
+    "gastro", y editar un tipo de "espacios" sin mandar el campo lo movía a
+    Gastronomía sin aviso."""
 
     name: str = Field(min_length=1, max_length=100)
     emoji: str | None = Field(default=None, max_length=10)
     sort_order: int = 99
-    grupo: GastroTypeGrupo = "gastro"
+    grupo: GastroTypeGrupo | None = None

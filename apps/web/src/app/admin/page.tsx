@@ -23,7 +23,7 @@ const ADMIN_TABS = [
   { value: "lugares", label: "Lugares" },
   { value: "gastronomia", label: "Gastronomía" },
   { value: "categorias", label: "Categorías" },
-  { value: "tipos-gastronomicos", label: "Tipos gastronómicos" },
+  { value: "tipos-gastronomicos", label: "Tipos de lugar" },
   { value: "banners", label: "Banners" },
   { value: "ciudades", label: "Ciudades" },
   { value: "usuarios", label: "Usuarios" },

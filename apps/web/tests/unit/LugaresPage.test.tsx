@@ -1,9 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import LugaresPage from "@/app/lugares/page";
+import { makeGastroPlace } from "./mocks/handlers";
+import { server } from "./mocks/server";
 import { renderWithActiveCity } from "./test-utils";
+
+const API_URL = "http://localhost:8000";
 
 describe("LugaresPage", () => {
   it("shows the type chips, wrapping instead of scrolling", async () => {
@@ -150,6 +155,63 @@ describe("LugaresPage", () => {
         expect(screen.getByText("Club Andino")).toBeInTheDocument();
         expect(screen.queryByText("El Tinglado Bar")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("tipo nuevo creado desde el admin en el grupo Espacios", () => {
+    function useCatalogWithNewEspaciosType() {
+      server.use(
+        http.get(`${API_URL}/api/gastro-types`, () =>
+          HttpResponse.json([
+            { id: "gt-bar", key: "bar", name: "Bares", emoji: null, sort_order: 4, grupo: "gastro" },
+            { id: "gt-club", key: "club", name: "Clubes", emoji: null, sort_order: 11, grupo: "espacios" },
+            {
+              id: "gt-teatro",
+              key: "teatro-independiente",
+              name: "Teatro independiente",
+              emoji: null,
+              sort_order: 99,
+              grupo: "espacios",
+            },
+          ]),
+        ),
+        http.get(`${API_URL}/api/gastro`, () =>
+          HttpResponse.json([
+            makeGastroPlace({ id: "p-bar", name: "Solo Bar", gastro_types: ["bar"], plan: "gratis" }),
+            makeGastroPlace({ id: "p-teatro", name: "La Sala", gastro_types: ["teatro-independiente"], plan: "gratis" }),
+            makeGastroPlace({ id: "p-mixto", name: "Bar y Club", gastro_types: ["bar", "club"], plan: "gratis" }),
+          ]),
+        ),
+      );
+    }
+
+    it("shows its chip only in Espacios and its places there (no style entry needed)", async () => {
+      useCatalogWithNewEspaciosType();
+      const user = userEvent.setup();
+      renderWithActiveCity(<LugaresPage />);
+
+      await waitFor(() => expect(screen.getByText("Solo Bar")).toBeInTheDocument());
+      expect(within(screen.getByTestId("gastro-type-chips")).queryByText("Teatro independiente")).not.toBeInTheDocument();
+      expect(screen.queryByText("La Sala")).not.toBeInTheDocument();
+
+      await user.click(within(screen.getByTestId("lugares-grupo-selector")).getByRole("button", { name: /Espacios/ }));
+
+      expect(within(screen.getByTestId("gastro-type-chips")).getByText("Teatro independiente")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText("La Sala")).toBeInTheDocument());
+      expect(screen.queryByText("Solo Bar")).not.toBeInTheDocument();
+    });
+
+    it("a place mixing types of both grupos shows up in both views", async () => {
+      useCatalogWithNewEspaciosType();
+      const user = userEvent.setup();
+      renderWithActiveCity(<LugaresPage />);
+
+      await waitFor(() => expect(screen.getByText("Bar y Club")).toBeInTheDocument());
+
+      await user.click(within(screen.getByTestId("lugares-grupo-selector")).getByRole("button", { name: /Espacios/ }));
+
+      await waitFor(() => expect(screen.getByText("La Sala")).toBeInTheDocument());
+      expect(screen.getByText("Bar y Club")).toBeInTheDocument();
     });
   });
 });

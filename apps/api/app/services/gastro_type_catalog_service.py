@@ -39,7 +39,7 @@ def get_active_gastro_type_keys(session: Session) -> set[str]:
 def create_gastro_type(session: Session, data: GastroTypeCreate) -> GastroTypeCatalog:
     existing = session.exec(select(GastroTypeCatalog).where(GastroTypeCatalog.key == data.key)).first()
     if existing is not None:
-        raise ValueError(f"Ya existe un tipo gastronómico con key '{data.key}'")
+        raise ValueError(f"Ya existe un tipo de lugar con la key '{data.key}'. Elegí otra.")
     gastro_type = GastroTypeCatalog(**data.model_dump())
     session.add(gastro_type)
     session.commit()
@@ -51,7 +51,10 @@ def update_gastro_type(session: Session, gastro_type_id: UUID, data: GastroTypeU
     gastro_type = session.get(GastroTypeCatalog, gastro_type_id)
     if gastro_type is None:
         raise LookupError("Tipo gastronómico no encontrado")
-    for field, value in data.model_dump().items():
+    updates = data.model_dump()
+    if updates["grupo"] is None:
+        del updates["grupo"]
+    for field, value in updates.items():
         setattr(gastro_type, field, value)
     session.add(gastro_type)
     session.commit()

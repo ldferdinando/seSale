@@ -768,6 +768,16 @@ export const handlers = [
         is_active: true,
         created_at: "2026-01-01T00:00:00Z",
       },
+      {
+        id: "gt-club",
+        key: "club",
+        name: "Club",
+        emoji: null,
+        sort_order: 11,
+        grupo: "espacios",
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+      },
     ]);
   }),
   http.post(`${API_URL}/api/admin/gastro-types`, async ({ request }) => {

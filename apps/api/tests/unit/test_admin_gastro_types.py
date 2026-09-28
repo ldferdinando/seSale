@@ -55,6 +55,7 @@ async def test_post_admin_gastro_type_duplicate_key_returns_409(
     response = await client.post("/api/admin/gastro-types", json=payload, headers=admin_token_headers)
 
     assert response.status_code == 409
+    assert response.json()["detail"] == "Ya existe un tipo de lugar con la key 'bar'. Elegí otra."
 
 
 async def test_post_admin_gastro_type_key_with_spaces_returns_422(
@@ -178,3 +179,83 @@ async def test_post_admin_gastro_type_with_espacios_grupo(
 
     assert response.status_code == 201
     assert response.json()["grupo"] == "espacios"
+
+
+async def test_put_admin_gastro_type_changes_grupo(
+    client: AsyncClient, session: Session, admin_token_headers: dict[str, str]
+):
+    gastro_type = session.exec(select(GastroTypeCatalog).where(GastroTypeCatalog.key == "bar")).one()
+    payload = {"name": "Bar", "sort_order": 4, "grupo": "espacios"}
+
+    response = await client.put(
+        f"/api/admin/gastro-types/{gastro_type.id}", json=payload, headers=admin_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grupo"] == "espacios"
+    session.refresh(gastro_type)
+    assert gastro_type.grupo == "espacios"
+
+
+async def test_put_admin_gastro_type_without_grupo_keeps_current_grupo(
+    client: AsyncClient, session: Session, admin_token_headers: dict[str, str]
+):
+    gastro_type = session.exec(select(GastroTypeCatalog).where(GastroTypeCatalog.key == "club")).one()
+    payload = {"name": "Clubes", "sort_order": 11}
+
+    response = await client.put(
+        f"/api/admin/gastro-types/{gastro_type.id}", json=payload, headers=admin_token_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grupo"] == "espacios"
+
+
+async def test_put_admin_gastro_type_invalid_grupo_returns_422(
+    client: AsyncClient, session: Session, admin_token_headers: dict[str, str]
+):
+    gastro_type = session.exec(select(GastroTypeCatalog).where(GastroTypeCatalog.key == "bar")).one()
+    payload = {"name": "Bar", "grupo": "otro-grupo"}
+
+    response = await client.put(
+        f"/api/admin/gastro-types/{gastro_type.id}", json=payload, headers=admin_token_headers
+    )
+
+    assert response.status_code == 422
+
+
+async def test_post_admin_gastro_type_invalid_grupo_returns_422(
+    client: AsyncClient, admin_token_headers: dict[str, str]
+):
+    payload = {"key": "teatro-independiente", "name": "Teatro independiente", "grupo": "teatros"}
+
+    response = await client.post("/api/admin/gastro-types", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_new_espacios_type_flows_to_public_catalog_and_gastro_places(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    """Flujo completo: tipo nuevo de Espacios → catálogo público con su grupo →
+    usable al cargar un lugar → el lugar lo lista en gastro_types."""
+    payload = {"key": "teatro-independiente", "name": "Teatro independiente", "grupo": "espacios"}
+    created = await client.post("/api/admin/gastro-types", json=payload, headers=admin_token_headers)
+    assert created.status_code == 201
+
+    public = await client.get("/api/gastro-types")
+    by_key = {t["key"]: t for t in public.json()}
+    assert by_key["teatro-independiente"]["grupo"] == "espacios"
+
+    place_payload = {
+        "name": "La Sala",
+        "address": "Calle 123",
+        "city_id": str(city.id),
+        "gastro_types": ["teatro-independiente"],
+    }
+    place = await client.post("/api/admin/gastro", json=place_payload, headers=admin_token_headers)
+    assert place.status_code == 201
+
+    listed = await client.get("/api/gastro", params={"city_id": str(city.id), "gastro_type": "teatro-independiente"})
+    assert listed.status_code == 200
+    assert [p["name"] for p in listed.json()] == ["La Sala"]
