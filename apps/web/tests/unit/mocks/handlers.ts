@@ -338,6 +338,10 @@ export const handlers = [
   http.get(`${API_URL}/api/admin/ad-slots`, () => {
     return HttpResponse.json([makeAdSlotAdmin()]);
   }),
+  http.patch(`${API_URL}/api/admin/ad-slots/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(makeAdSlotAdmin({ id: params.id as string, ...body } as Partial<AdSlotAdmin>));
+  }),
   http.get(`${API_URL}/api/admin/ad-items`, () => {
     return HttpResponse.json([makeAdItemAdmin()]);
   }),
@@ -592,6 +596,12 @@ export const handlers = [
     const places = [
       makeGastroPlace(),
       makeGastroPlace({ id: "66666666-6666-6666-6666-666666666666", name: "La Toscana", gastro_types: ["cafe"], plan: "gratis" }),
+      makeGastroPlace({
+        id: "77777777-7777-7777-7777-777777777777",
+        name: "Club Andino",
+        gastro_types: ["club"],
+        plan: "gratis",
+      }),
     ];
     const filtered = gastroType ? places.filter((p) => p.gastro_types.includes(gastroType)) : places;
     return HttpResponse.json(filtered);
@@ -731,16 +741,19 @@ export const handlers = [
     // fallback→datos reales no le mueve el piso a los tests que ya
     // asumían esas 10 opciones plurales.
     return HttpResponse.json([
-      { id: "gt-cerveceria", key: "cerveceria", name: "Cervecerías", emoji: null, sort_order: 1 },
-      { id: "gt-restaurante", key: "restaurante", name: "Restaurantes", emoji: null, sort_order: 2 },
-      { id: "gt-parrilla", key: "parrilla", name: "Parrillas", emoji: null, sort_order: 3 },
-      { id: "gt-bar", key: "bar", name: "Bares", emoji: null, sort_order: 4 },
-      { id: "gt-cafe", key: "cafe", name: "Cafés", emoji: null, sort_order: 5 },
-      { id: "gt-pizzeria", key: "pizzeria", name: "Pizzerías", emoji: null, sort_order: 6 },
-      { id: "gt-heladeria", key: "heladeria", name: "Heladerías", emoji: null, sort_order: 7 },
-      { id: "gt-rotiseria", key: "rotiseria", name: "Rotiserías", emoji: null, sort_order: 8 },
-      { id: "gt-vinoteca", key: "vinoteca", name: "Vinotecas", emoji: null, sort_order: 9 },
-      { id: "gt-otro", key: "otro", name: "Otros", emoji: null, sort_order: 10 },
+      { id: "gt-cerveceria", key: "cerveceria", name: "Cervecerías", emoji: null, sort_order: 1, grupo: "gastro" },
+      { id: "gt-restaurante", key: "restaurante", name: "Restaurantes", emoji: null, sort_order: 2, grupo: "gastro" },
+      { id: "gt-parrilla", key: "parrilla", name: "Parrillas", emoji: null, sort_order: 3, grupo: "gastro" },
+      { id: "gt-bar", key: "bar", name: "Bares", emoji: null, sort_order: 4, grupo: "gastro" },
+      { id: "gt-cafe", key: "cafe", name: "Cafés", emoji: null, sort_order: 5, grupo: "gastro" },
+      { id: "gt-pizzeria", key: "pizzeria", name: "Pizzerías", emoji: null, sort_order: 6, grupo: "gastro" },
+      { id: "gt-heladeria", key: "heladeria", name: "Heladerías", emoji: null, sort_order: 7, grupo: "gastro" },
+      { id: "gt-rotiseria", key: "rotiseria", name: "Rotiserías", emoji: null, sort_order: 8, grupo: "gastro" },
+      { id: "gt-vinoteca", key: "vinoteca", name: "Vinotecas", emoji: null, sort_order: 9, grupo: "gastro" },
+      { id: "gt-otro", key: "otro", name: "Otros", emoji: null, sort_order: 10, grupo: "gastro" },
+      { id: "gt-club", key: "club", name: "Clubes", emoji: null, sort_order: 11, grupo: "espacios" },
+      { id: "gt-centro", key: "centro", name: "Centros culturales", emoji: null, sort_order: 12, grupo: "espacios" },
+      { id: "gt-salon", key: "salon", name: "Salones de eventos", emoji: null, sort_order: 13, grupo: "espacios" },
     ]);
   }),
   http.get(`${API_URL}/api/admin/gastro-types`, () => {
@@ -751,6 +764,7 @@ export const handlers = [
         name: "Bar",
         emoji: "🍸",
         sort_order: 1,
+        grupo: "gastro",
         is_active: true,
         created_at: "2026-01-01T00:00:00Z",
       },
@@ -759,7 +773,15 @@ export const handlers = [
   http.post(`${API_URL}/api/admin/gastro-types`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(
-      { id: "new-gt", is_active: true, created_at: "2026-01-01T00:00:00Z", sort_order: 99, emoji: null, ...body },
+      {
+        id: "new-gt",
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+        sort_order: 99,
+        emoji: null,
+        grupo: "gastro",
+        ...body,
+      },
       { status: 201 },
     );
   }),
@@ -772,6 +794,7 @@ export const handlers = [
       created_at: "2026-01-01T00:00:00Z",
       emoji: null,
       sort_order: 99,
+      grupo: "gastro",
       ...body,
     });
   }),
@@ -782,6 +805,7 @@ export const handlers = [
       name: "Bar",
       emoji: "🍸",
       sort_order: 1,
+      grupo: "gastro",
       is_active: false,
       created_at: "2026-01-01T00:00:00Z",
     });

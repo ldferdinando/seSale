@@ -22,6 +22,7 @@ from app.schemas.ad_slot import (
     AdItemUpdate,
     AdSection,
     AdSlotAdminRead,
+    AdSlotUpdate,
 )
 from app.schemas.category_catalog import CategoryAdminRead, CategoryCreate, CategoryUpdate
 from app.schemas.city import CityAdminRead, CitySortOrderUpdate
@@ -54,6 +55,7 @@ from app.services.ad_service import (
     reorder_ad_items,
     toggle_ad_item_status,
     update_ad_item,
+    update_ad_slot,
     upload_ad_item_image,
 )
 from app.services.category_catalog_service import (
@@ -468,6 +470,21 @@ async def get_admin_ad_slots(
     sigue la misma convención que GET /api/ads (sin `category_key`: slots
     generales; con `category_key`: los de esa categoría)."""
     return list_admin_ad_slots(session, city_id=city_id, section=section, category_key=category_key)
+
+
+@router.patch("/ad-slots/{slot_id}", response_model=AdSlotAdminRead)
+async def patch_admin_ad_slot(
+    slot_id: UUID,
+    payload: AdSlotUpdate,
+    session: Session = Depends(get_session),
+) -> AdSlotAdminRead:
+    """Habilita/deshabilita una posición de banner (Parte 2 — control de qué
+    líneas de banner se muestran, ej. las 3 de Gastronomía sin banners
+    suficientes cargados)."""
+    try:
+        return update_ad_slot(session, slot_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/ad-items", response_model=list[AdItemAdminRead])

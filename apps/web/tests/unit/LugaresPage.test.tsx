@@ -6,11 +6,12 @@ import LugaresPage from "@/app/lugares/page";
 import { renderWithActiveCity } from "./test-utils";
 
 describe("LugaresPage", () => {
-  it("shows the type chips, horizontally scrollable", async () => {
+  it("shows the type chips, wrapping instead of scrolling", async () => {
     renderWithActiveCity(<LugaresPage />);
 
     const chips = await screen.findByTestId("gastro-type-chips");
-    expect(chips.className).toContain("overflow-x-auto");
+    expect(chips.className).toContain("flex-wrap");
+    expect(chips.className).not.toContain("overflow-x-auto");
     expect(screen.getByText("Todos")).toBeInTheDocument();
     expect(screen.getByText("Bares")).toBeInTheDocument();
     expect(screen.getByText("Cervecerías")).toBeInTheDocument();
@@ -112,6 +113,43 @@ describe("LugaresPage", () => {
 
       await user.click(chips.getByText("Todos"));
       await waitFor(() => expect(bannersComeBeforePlaces()).toBe(true));
+    });
+  });
+
+  describe("selector de grupo Gastronomía | Espacios", () => {
+    it('defaults to "Gastronomía" and shows only gastro-group chips and places', async () => {
+      renderWithActiveCity(<LugaresPage />);
+
+      const selector = within(await screen.findByTestId("lugares-grupo-selector"));
+      expect(selector.getByRole("button", { name: /Gastronomía/ })).toHaveAttribute("aria-pressed", "true");
+      expect(selector.getByRole("button", { name: /Espacios/ })).toHaveAttribute("aria-pressed", "false");
+
+      const chips = within(screen.getByTestId("gastro-type-chips"));
+      expect(chips.getByText("Bares")).toBeInTheDocument();
+      expect(chips.queryByText("Clubes")).not.toBeInTheDocument();
+
+      await waitFor(() => expect(screen.getAllByTestId("gastro-place-card").length).toBeGreaterThan(0));
+      expect(screen.getByText("El Tinglado Bar")).toBeInTheDocument();
+      expect(screen.queryByText("Club Andino")).not.toBeInTheDocument();
+    });
+
+    it('switching to "Espacios" swaps the chips and filters the results', async () => {
+      const user = userEvent.setup();
+      renderWithActiveCity(<LugaresPage />);
+
+      await waitFor(() => expect(screen.getAllByTestId("gastro-place-card").length).toBeGreaterThan(0));
+
+      const selector = within(screen.getByTestId("lugares-grupo-selector"));
+      await user.click(selector.getByRole("button", { name: /Espacios/ }));
+
+      const chips = within(screen.getByTestId("gastro-type-chips"));
+      expect(chips.getByText("Clubes")).toBeInTheDocument();
+      expect(chips.queryByText("Bares")).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText("Club Andino")).toBeInTheDocument();
+        expect(screen.queryByText("El Tinglado Bar")).not.toBeInTheDocument();
+      });
     });
   });
 });

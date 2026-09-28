@@ -1,30 +1,55 @@
 "use client";
 
-import { ArrowLeft, Info, Megaphone, Search, Store } from "lucide-react";
+import { ArrowLeft, Building2, Info, Megaphone, Search, Store, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BannerSlot } from "@/components/BannerSlot";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GastroPlaceCard } from "@/features/gastro/components/GastroPlaceCard";
 import { GastroTypeChips } from "@/features/gastro/components/GastroTypeChips";
+import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
+import type { GastroTypeGrupo } from "@/features/gastro/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { useBannerSlots } from "@/hooks/useBannerSlots";
 import { useGastroPlaces } from "@/hooks/useGastroPlaces";
+import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+const GRUPOS: { value: GastroTypeGrupo; label: string; icon: typeof UtensilsCrossed }[] = [
+  { value: "gastro", label: "Gastronomía", icon: UtensilsCrossed },
+  { value: "espacios", label: "Espacios", icon: Building2 },
+];
+
 /** Sección Gastronomía y otros — Etapa 8e. Reemplaza el placeholder de la
- * Etapa 8b (a_revisar.md). Ver #s-lugares en seSALE.html. */
+ * Etapa 8b (a_revisar.md). Ver #s-lugares en seSALE.html. Etapa "Gastronomía
+ * y otros": suma el selector de grupo Gastronomía | Espacios (setGrupoLug en
+ * seSALE.html). */
 export default function LugaresPage() {
-  const { activeCity } = useActiveCity();
-  const { slots, isLoading: isLoadingBanners } = useBannerSlots({
+  const { activeCity, isDetecting } = useActiveCity();
+  const { slots, isLoading: isLoadingBannersQuery } = useBannerSlots({
     cityId: activeCity?.id ?? null,
     section: "gastronomia",
   });
+  // Bug reportado (Parte 3): el placeholder "Espacio publicitario
+  // disponible" se veía un instante y desaparecía. Causa: `useBannerSlots`
+  // solo se `enabled` con `cityId`, así que mientras la ciudad activa
+  // todavía se está detectando (`isDetecting`, ver ActiveCityContext) la
+  // query queda deshabilitada e `isLoading` da `false` — con `slots` en su
+  // valor por defecto `[]`, el bloque de banners no renderizaba ni skeleton
+  // ni placeholder (nada), y recién al terminar la detección pasaba a
+  // mostrar el skeleton y después sí el placeholder — ese primer instante
+  // en blanco, seguido de contenido que aparece, es lo que se percibía
+  // como el placeholder "apareciendo y desapareciendo" en cargas rápidas.
+  // Fix: mientras se detecta la ciudad también se considera "cargando", así
+  // el skeleton se muestra desde el primer render y el placeholder queda
+  // fijo apenas hay datos, sin ningún estado intermedio en blanco.
+  const isLoadingBanners = isDetecting || isLoadingBannersQuery;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [grupo, setGrupo] = useState<GastroTypeGrupo>("gastro");
   const [gastroType, setGastroType] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,11 +57,31 @@ export default function LugaresPage() {
     return () => clearTimeout(timeout);
   }, [search]);
 
-  const { places, isLoading: isLoadingPlaces } = useGastroPlaces({
+  const { places: allPlaces, isLoading: isLoadingPlacesQuery } = useGastroPlaces({
     cityId: activeCity?.id ?? null,
     gastroType,
     search: debouncedSearch,
   });
+  const isLoadingPlaces = isDetecting || isLoadingPlacesQuery;
+
+  // Con "Todos" (gastroType null) el fetch trae lugares de ambos grupos —
+  // se filtran acá por el grupo activo (mismo criterio que TIPO_GRUPO/
+  // setGrupoLug en seSALE.html). Con un tipo puntual elegido, el filtro del
+  // backend ya alcanza (un tipo pertenece a un solo grupo).
+  const { types: allTypes } = useGastroTypeCatalog();
+  const grupoTypeKeys = useMemo(
+    () => new Set(allTypes.filter((t) => t.grupo === grupo).map((t) => t.key)),
+    [allTypes, grupo],
+  );
+  const places =
+    gastroType !== null
+      ? allPlaces
+      : allPlaces.filter((place) => place.gastro_types.some((key) => grupoTypeKeys.has(key)));
+
+  function handleGrupoChange(next: GastroTypeGrupo) {
+    setGrupo(next);
+    setGastroType(null);
+  }
 
   // Etapa "Cambios de diseño TIPO B v2.2" (punto 11): con "Todos" (sin
   // filtro de tipo) los banners van antes del listado, igual que hasta
@@ -85,6 +130,27 @@ export default function LugaresPage() {
         <span className="text-sm font-medium">Gastronomía y otros</span>
       </header>
 
+      {/* Selector de grupo — Gastronomía | Espacios (.lug-grupos en seSALE.html). */}
+      <div className="mx-4 flex gap-3" data-testid="lugares-grupo-selector">
+        {GRUPOS.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => handleGrupoChange(value)}
+            aria-pressed={grupo === value}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-extrabold",
+              grupo === value
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-ink-2",
+            )}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Etapa "Ajustes de diseño reportados" (Parte 3): rounded-full→
           rounded-lg + ícono ink-4→ink-5, para calzar con `.sbar` de
           seSALE_v2.html y con la barra de búsqueda de Home (EventFilters.tsx),
@@ -101,7 +167,7 @@ export default function LugaresPage() {
         />
       </div>
 
-      <GastroTypeChips gastroType={gastroType} onChange={handleGastroTypeChange} />
+      <GastroTypeChips grupo={grupo} gastroType={gastroType} onChange={handleGastroTypeChange} />
 
       {/* "Todos" (gastroType === null): banners antes de los resultados. */}
       {gastroType === null && (
@@ -142,7 +208,10 @@ export default function LugaresPage() {
           ink-5 (la referencia usa var(--t5) para `.no-deliv`, no --t4). */}
       <div className="mx-4 flex items-start gap-2 rounded-xl bg-surface-1 p-3 text-[11px] leading-relaxed text-ink-5">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
-        <span>Solo lugares para salir — bares, restaurantes, cafés y otros. Sin delivery, sin clases, sin servicios.</span>
+        <span>
+          Solo lugares para salir — bares, restaurantes, cafés, clubes, centros culturales y salones de eventos. Sin
+          delivery, sin clases, sin servicios.
+        </span>
       </div>
     </main>
   );

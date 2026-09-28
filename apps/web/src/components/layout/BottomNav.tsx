@@ -35,7 +35,7 @@ const TABS: NavTab[] = [
   },
   {
     href: "/lugares",
-    label: "Gastronomía",
+    label: "Gastronomía y otros",
     icon: Store,
     activeMatch: (pathname) => pathname === "/lugares" || pathname.startsWith("/lugares/"),
   },

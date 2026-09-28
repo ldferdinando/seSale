@@ -4,30 +4,36 @@ import { LayoutGrid } from "lucide-react";
 
 import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
+import type { GastroTypeGrupo } from "@/features/gastro/types";
 import { cn } from "@/lib/utils";
 
 interface GastroTypeChipsProps {
+  grupo: GastroTypeGrupo;
   gastroType: string | null;
   onChange: (gastroType: string | null) => void;
 }
 
 /**
  * Chips de tipo gastronómico — calcados de #s-lugares .tipo-chips en
- * seSALE.html (setTipo()), scrolleables horizontalmente en una sola fila
- * (pedido explícito de la Etapa 8e — ver a_revisar.md sobre la diferencia
- * con el CSS del HTML, que en cambio hace flex-wrap). Etapa 12a: tipos
+ * seSALE.html (setTipo()): `flex-wrap`, bajan de línea cuando no entran en
+ * una fila (no hay scroll horizontal — fix del error de la etapa anterior,
+ * que le había agregado overflow-x + scrollbar oculta). Etapa 12a: tipos
  * cargados dinámicamente desde GET /api/gastro-types (ver useGastroTypeCatalog).
+ * Etapa "Gastronomía y otros": `grupo` filtra qué tipos se muestran
+ * (Gastronomía | Espacios, ver setGrupoLug en seSALE.html) — mismo listado
+ * de chips de siempre, solo cambia el subconjunto según el grupo activo.
  */
-export function GastroTypeChips({ gastroType, onChange }: GastroTypeChipsProps) {
-  const { types } = useGastroTypeCatalog();
+export function GastroTypeChips({ grupo, gastroType, onChange }: GastroTypeChipsProps) {
+  const { types: allTypes } = useGastroTypeCatalog();
+  const types = allTypes.filter((t) => t.grupo === grupo);
 
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-1" data-testid="gastro-type-chips">
+    <div className="flex flex-wrap gap-2 px-4 pb-1" data-testid="gastro-type-chips">
       <button
         type="button"
         onClick={() => onChange(null)}
         className={cn(
-          "flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
+          "flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
           gastroType === null ? "on bg-primary text-primary-foreground" : "border border-border bg-card text-ink-2",
         )}
       >
@@ -45,7 +51,7 @@ export function GastroTypeChips({ gastroType, onChange }: GastroTypeChipsProps) 
             type="button"
             onClick={() => onChange(on ? null : option.key)}
             className={cn(
-              "flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
+              "flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
               on ? "on bg-primary text-primary-foreground" : "border border-border bg-card text-ink-2",
             )}
           >

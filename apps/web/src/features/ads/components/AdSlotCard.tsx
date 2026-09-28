@@ -12,6 +12,7 @@ import {
   useDeleteAdItem,
   useReorderAdItems,
   useToggleAdItemStatus,
+  useToggleAdSlotActive,
   useUpdateAdItem,
 } from "@/features/ads/hooks/useAdminAds";
 import { AdItemFormModal, saveErrorMessage } from "@/features/ads/components/AdItemFormModal";
@@ -131,6 +132,7 @@ export function AdSlotCard({ slot }: { slot: AdSlotAdmin }) {
   const createItem = useCreateAdItem();
   const updateItem = useUpdateAdItem(editingItem?.id ?? "");
   const reorder = useReorderAdItems();
+  const toggleActive = useToggleAdSlotActive();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const title = slot.section === "eventos-grid" ? `Tile ${slot.slot_position + 1}` : `Carrusel ${slot.slot_position + 1}`;
@@ -156,13 +158,36 @@ export function AdSlotCard({ slot }: { slot: AdSlotAdmin }) {
           <h3 className="text-sm font-bold text-foreground">{title}</h3>
           {slot.rotation_mode === "random" && <p className="text-xs text-ink-5">Rotación aleatoria</p>}
         </div>
-        {!showForm && (
-          <Button type="button" size="sm" onClick={() => setAdding(true)}>
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Agregar banner
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={slot.is_active}
+            aria-label={slot.is_active ? "Deshabilitar posición" : "Habilitar posición"}
+            disabled={toggleActive.isPending}
+            onClick={() => toggleActive.mutate({ slotId: slot.id, isActive: !slot.is_active })}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+              slot.is_active ? "bg-[#1D9E75]" : "bg-surface-5"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                slot.is_active ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          {!showForm && (
+            <Button type="button" size="sm" onClick={() => setAdding(true)}>
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Agregar banner
+            </Button>
+          )}
+        </div>
       </div>
+
+      {!slot.is_active && (
+        <p className="text-xs text-ink-5">Posición deshabilitada — no aparece en la app aunque tenga banners cargados.</p>
+      )}
 
       <BannerSlot slot={slot} />
 

@@ -1,9 +1,12 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.category_catalog import _normalize_key
+
+GastroTypeGrupo = Literal["gastro", "espacios"]
 
 
 class GastroTypeRead(BaseModel):
@@ -15,6 +18,7 @@ class GastroTypeRead(BaseModel):
     name: str
     emoji: str | None
     sort_order: int
+    grupo: GastroTypeGrupo
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +33,7 @@ class GastroTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     emoji: str | None = Field(default=None, max_length=10)
     sort_order: int = 99
+    grupo: GastroTypeGrupo = "gastro"
 
     @field_validator("key")
     @classmethod
@@ -37,9 +42,10 @@ class GastroTypeCreate(BaseModel):
 
 
 class GastroTypeUpdate(BaseModel):
-    """Edita nombre/emoji/sort_order — nunca `key`. Sin campo `color`: los
-    tipos gastronómicos no tienen color de acento en el diseño."""
+    """Edita nombre/emoji/sort_order/grupo — nunca `key`. Sin campo `color`:
+    los tipos gastronómicos no tienen color de acento en el diseño."""
 
     name: str = Field(min_length=1, max_length=100)
     emoji: str | None = Field(default=None, max_length=10)
     sort_order: int = 99
+    grupo: GastroTypeGrupo = "gastro"

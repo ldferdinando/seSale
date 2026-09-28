@@ -55,3 +55,7 @@ export async function uploadAdItemImage(adItemId: string, file: File): Promise<A
 export async function reorderAdItems(slotId: string, orderedIds: string[]): Promise<AdItemAdmin[]> {
   return apiPatch<AdItemAdmin[]>("/api/admin/ad-items/reorder", { slot_id: slotId, ordered_ids: orderedIds });
 }
+
+export async function toggleAdSlotActive(slotId: string, isActive: boolean): Promise<AdSlotAdmin> {
+  return apiPatch<AdSlotAdmin>(`/api/admin/ad-slots/${slotId}`, { is_active: isActive });
+}

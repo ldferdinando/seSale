@@ -30,6 +30,9 @@ _SEED_GASTRO_TYPES = [
     "cerveceria", "restaurante", "parrilla", "bar", "cafe", "pizzeria",
     "heladeria", "rotiseria", "vinoteca", "otro",
 ]
+# Etapa "Gastronomía y otros" — grupo "espacios" (migración
+# 0029_add_grupo_to_gastro_types.py), mismo patrón que _SEED_GASTRO_TYPES.
+_SEED_ESPACIOS_TYPES = ["club", "centro", "salon"]
 
 
 @pytest.fixture(autouse=True)
@@ -53,6 +56,8 @@ def session_fixture() -> Generator[Session, None, None]:
             session.add(EventCategoryCatalog(key=key, name=key, sort_order=i))
         for i, key in enumerate(_SEED_GASTRO_TYPES):
             session.add(GastroTypeCatalog(key=key, name=key, sort_order=i))
+        for i, key in enumerate(_SEED_ESPACIOS_TYPES):
+            session.add(GastroTypeCatalog(key=key, name=key, sort_order=len(_SEED_GASTRO_TYPES) + i, grupo="espacios"))
         session.commit()
         yield session
 

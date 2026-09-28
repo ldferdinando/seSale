@@ -1,11 +1,14 @@
 import {
   Beer,
+  Building2,
   Coffee,
   Flame,
   GlassWater,
   IceCreamCone,
+  Landmark,
   type LucideIcon,
   Martini,
+  PartyPopper,
   Pizza,
   Store,
   UtensilsCrossed,
@@ -32,6 +35,10 @@ export const GASTRO_TYPE_STYLES: Record<string, GastroTypeStyle> = {
   rotiseria: { icon: Store, color: "#1D9E75" },
   vinoteca: { icon: Wine, color: "#7F77DD" },
   otro: { icon: Martini, color: "#888888" },
+  // Grupo "espacios" — Etapa "Gastronomía y otros".
+  club: { icon: PartyPopper, color: "#7F77DD" },
+  centro: { icon: Landmark, color: "#1D9E75" },
+  salon: { icon: Building2, color: "#E91E8C" },
 };
 
 export const DEFAULT_GASTRO_TYPE_STYLE: GastroTypeStyle = { icon: Store, color: "#888888" };

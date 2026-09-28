@@ -144,3 +144,37 @@ async def test_patch_admin_gastro_type_toggle_reactivates_without_restriction(
 
     assert response.status_code == 200
     assert response.json()["is_active"] is True
+
+
+async def test_get_gastro_types_public_includes_grupo(client: AsyncClient):
+    response = await client.get("/api/gastro-types")
+
+    assert response.status_code == 200
+    body = response.json()
+    by_key = {t["key"]: t for t in body}
+    assert by_key["bar"]["grupo"] == "gastro"
+    assert by_key["club"]["grupo"] == "espacios"
+    assert by_key["centro"]["grupo"] == "espacios"
+    assert by_key["salon"]["grupo"] == "espacios"
+
+
+async def test_post_admin_gastro_type_defaults_grupo_to_gastro(
+    client: AsyncClient, admin_token_headers: dict[str, str]
+):
+    payload = {"key": "foodtruck", "name": "Foodtruck"}
+
+    response = await client.post("/api/admin/gastro-types", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["grupo"] == "gastro"
+
+
+async def test_post_admin_gastro_type_with_espacios_grupo(
+    client: AsyncClient, admin_token_headers: dict[str, str]
+):
+    payload = {"key": "salon-fiestas", "name": "Salón de fiestas", "grupo": "espacios"}
+
+    response = await client.post("/api/admin/gastro-types", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["grupo"] == "espacios"

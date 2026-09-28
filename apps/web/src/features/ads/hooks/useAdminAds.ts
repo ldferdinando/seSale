@@ -6,6 +6,7 @@ import {
   fetchAdminAdSlots,
   reorderAdItems,
   toggleAdItemStatus,
+  toggleAdSlotActive,
   updateAdItem,
   uploadAdItemImage,
 } from "@/features/ads/services/admin-ads-api";
@@ -68,6 +69,14 @@ export function useUploadAdItemImage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ adItemId, file }: { adItemId: string; file: File }) => uploadAdItemImage(adItemId, file),
+    onSuccess: () => invalidateAds(queryClient),
+  });
+}
+
+export function useToggleAdSlotActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slotId, isActive }: { slotId: string; isActive: boolean }) => toggleAdSlotActive(slotId, isActive),
     onSuccess: () => invalidateAds(queryClient),
   });
 }

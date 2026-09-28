@@ -83,6 +83,14 @@ class AdSlotCreate(BaseModel):
         return self
 
 
+class AdSlotUpdate(BaseModel):
+    """PATCH /admin/ad-slots/{id} — habilita/deshabilita la posición (Parte
+    2 del pedido: control de qué líneas de banner se muestran). Único campo
+    editable: `is_active` ya existía en el modelo, no se agrega nada nuevo."""
+
+    is_active: bool
+
+
 class AdItemCreate(BaseModel):
     slot_id: UUID
     user_id: UUID

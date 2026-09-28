@@ -25,6 +25,14 @@ class GastroTypeCatalog(SQLModel, table=True):
 
     sort_order: int = Field(default=99)
 
+    grupo: str = Field(default="gastro", max_length=20)
+    # "gastro" (cervecería/restaurante/parrilla/bar/café/pizzería/...) o
+    # "espacios" (club/centro cultural/salón de eventos) — Etapa "Gastronomía
+    # y otros": separa los tipos en los 2 grupos que arma el selector de
+    # #s-lugares (setGrupoLug en seSALE.html). No cambia nada del resto del
+    # modelo: un Location con un tipo "espacios" sigue siendo un Location
+    # con is_gastro=True normal, comparte card/ficha con los de "gastro".
+
     is_active: bool = Field(default=True)
     # False = eliminación lógica: no aparece en el selector de tipos del ABM
     # de gastronomía, pero los lugares existentes con este tipo lo conservan.

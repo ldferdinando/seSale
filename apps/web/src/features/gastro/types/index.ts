@@ -109,6 +109,11 @@ export interface GastroPlaceCreateInput {
 
 export type GastroPlaceUpdateInput = Partial<GastroPlaceCreateInput> & { is_active?: boolean };
 
+/** "gastro" (cervecería/restaurante/...) o "espacios" (club/centro cultural/
+ * salón de eventos) — Etapa "Gastronomía y otros". Ver TIPO_GRUPO en
+ * seSALE.html. */
+export type GastroTypeGrupo = "gastro" | "espacios";
+
 /** Tipo gastronómico del catálogo dinámico (GET /api/gastro-types) — Etapa 12a. */
 export interface GastroType {
   id: string;
@@ -116,6 +121,7 @@ export interface GastroType {
   name: string;
   emoji: string | null;
   sort_order: number;
+  grupo: GastroTypeGrupo;
 }
 
 export interface GastroTypeAdmin extends GastroType {
@@ -128,6 +134,7 @@ export interface GastroTypeCreateInput {
   name: string;
   emoji?: string;
   sort_order?: number;
+  grupo?: GastroTypeGrupo;
 }
 
 export type GastroTypeUpdateInput = Omit<GastroTypeCreateInput, "key">;
@@ -136,17 +143,20 @@ export type GastroTypeUpdateInput = Omit<GastroTypeCreateInput, "key">;
  * useGastroTypeCatalog) y en los pocos lugares que todavía no migraron a la
  * lista dinámica. Mapeados 1:1 a los valores que hasta la Etapa 12a vivían
  * hardcodeados como GASTRO_TYPES (app/models/location_gastro_type.py). */
-export const GASTRO_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "cerveceria", label: "Cervecerías" },
-  { value: "restaurante", label: "Restaurantes" },
-  { value: "parrilla", label: "Parrillas" },
-  { value: "bar", label: "Bares" },
-  { value: "cafe", label: "Cafés" },
-  { value: "pizzeria", label: "Pizzerías" },
-  { value: "heladeria", label: "Heladerías" },
-  { value: "rotiseria", label: "Rotiserías" },
-  { value: "vinoteca", label: "Vinotecas" },
-  { value: "otro", label: "Otros" },
+export const GASTRO_TYPE_OPTIONS: { value: string; label: string; grupo: GastroTypeGrupo }[] = [
+  { value: "cerveceria", label: "Cervecerías", grupo: "gastro" },
+  { value: "restaurante", label: "Restaurantes", grupo: "gastro" },
+  { value: "parrilla", label: "Parrillas", grupo: "gastro" },
+  { value: "bar", label: "Bares", grupo: "gastro" },
+  { value: "cafe", label: "Cafés", grupo: "gastro" },
+  { value: "pizzeria", label: "Pizzerías", grupo: "gastro" },
+  { value: "heladeria", label: "Heladerías", grupo: "gastro" },
+  { value: "rotiseria", label: "Rotiserías", grupo: "gastro" },
+  { value: "vinoteca", label: "Vinotecas", grupo: "gastro" },
+  { value: "otro", label: "Otros", grupo: "gastro" },
+  { value: "club", label: "Clubes", grupo: "espacios" },
+  { value: "centro", label: "Centros culturales", grupo: "espacios" },
+  { value: "salon", label: "Salones de eventos", grupo: "espacios" },
 ];
 
 export const GASTRO_TYPE_LABELS: Record<string, string> = Object.fromEntries(

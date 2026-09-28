@@ -489,3 +489,61 @@ async def test_patch_admin_ad_items_reorder_random_slot_returns_400(
     )
 
     assert response.status_code == 400
+
+
+async def test_patch_admin_ad_slot_disables_position(
+    client: AsyncClient, session: Session, city: City, admin_token_headers
+):
+    slot = _make_slot(session, city=city, section="gastronomia", slot_position=0)
+
+    response = await client.patch(
+        f"/api/admin/ad-slots/{slot.id}",
+        json={"is_active": False},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+    session.refresh(slot)
+    assert slot.is_active is False
+
+
+async def test_patch_admin_ad_slot_reenables_position(
+    client: AsyncClient, session: Session, city: City, admin_token_headers
+):
+    slot = _make_slot(session, city=city, section="gastronomia", slot_position=0, is_active=False)
+
+    response = await client.patch(
+        f"/api/admin/ad-slots/{slot.id}",
+        json={"is_active": True},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+
+async def test_patch_admin_ad_slot_not_found_returns_404(client: AsyncClient, admin_token_headers):
+    import uuid
+
+    response = await client.patch(
+        f"/api/admin/ad-slots/{uuid.uuid4()}",
+        json={"is_active": False},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 404
+
+
+async def test_patch_admin_ad_slot_by_user_returns_403(
+    client: AsyncClient, session: Session, city: City, user_token_headers
+):
+    slot = _make_slot(session, city=city, section="gastronomia", slot_position=0)
+
+    response = await client.patch(
+        f"/api/admin/ad-slots/{slot.id}",
+        json={"is_active": False},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 403

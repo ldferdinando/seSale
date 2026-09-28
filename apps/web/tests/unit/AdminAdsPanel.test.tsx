@@ -139,4 +139,34 @@ describe("AdminAdsPanel", () => {
       screen.queryByText("Estos banners aparecen en la página principal de Categorías (/categorias)."),
     ).not.toBeInTheDocument();
   });
+
+  it("toggles a slot's is_active via the position switch (Parte 2 — control de posiciones de banner)", async () => {
+    let lastPatchBody: Record<string, unknown> | null = null;
+    let isActive = true;
+    server.use(
+      http.get(`${API_URL}/api/admin/ad-slots`, () =>
+        HttpResponse.json([makeAdSlotAdmin({ id: "s0", section: "gastronomia", slot_position: 0, is_active: isActive })]),
+      ),
+      http.patch(`${API_URL}/api/admin/ad-slots/:id`, async ({ request, params }) => {
+        lastPatchBody = (await request.json()) as Record<string, unknown>;
+        isActive = lastPatchBody.is_active as boolean;
+        return HttpResponse.json(
+          makeAdSlotAdmin({ id: params.id as string, section: "gastronomia", slot_position: 0, is_active: isActive }),
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(screen.getByRole("combobox", { name: "Ciudad" }));
+    await user.click(await screen.findByRole("option", { name: /General Roca/ }));
+    await user.click(screen.getByRole("combobox", { name: "Sección" }));
+    await user.click(await screen.findByRole("option", { name: "Gastronomía" }));
+
+    const toggle = await screen.findByRole("switch", { name: "Deshabilitar posición" });
+    await user.click(toggle);
+
+    await waitFor(() => expect(lastPatchBody).toEqual({ is_active: false }));
+    expect(await screen.findByText(/Posición deshabilitada/)).toBeInTheDocument();
+  });
 });

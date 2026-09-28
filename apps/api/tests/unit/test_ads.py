@@ -177,3 +177,18 @@ async def test_get_ads_categoria_wide_with_category_key_without_slots_returns_em
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+async def test_get_ads_excludes_inactive_slot(client: AsyncClient, session: Session, city: City):
+    """Parte 2 — control de qué líneas de banner se muestran: una posición
+    deshabilitada (AdSlot.is_active=False) no aparece en el listado público
+    en absoluto (ni siquiera con items=[] para mostrar el placeholder)."""
+    _make_slot(session, city=city, section="gastronomia", slot_position=0, is_active=True)
+    _make_slot(session, city=city, section="gastronomia", slot_position=1, is_active=False)
+    _make_slot(session, city=city, section="gastronomia", slot_position=2, is_active=True)
+
+    response = await client.get("/api/ads", params={"city_id": str(city.id), "section": "gastronomia"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [slot["slot_position"] for slot in body] == [0, 2]

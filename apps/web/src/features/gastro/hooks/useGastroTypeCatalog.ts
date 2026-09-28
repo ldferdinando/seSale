@@ -28,6 +28,7 @@ export function useGastroTypeCatalog() {
     name: t.label,
     emoji: null,
     sort_order: i,
+    grupo: t.grupo,
   }));
 
   return {

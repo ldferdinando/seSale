@@ -22,6 +22,7 @@ from app.schemas.ad_slot import (
     AdSlotAdminRead,
     AdSlotCreate,
     AdSlotRead,
+    AdSlotUpdate,
 )
 
 _ITEM_LOAD_OPTIONS = (selectinload(AdSlot.items).selectinload(AdItem.user),)
@@ -136,7 +137,7 @@ def list_public_ad_slots(
     today = datetime.now(timezone.utc).date()
     stmt = (
         select(AdSlot)
-        .where(AdSlot.city_id == city_id, AdSlot.section == section)
+        .where(AdSlot.city_id == city_id, AdSlot.section == section, AdSlot.is_active == True)  # noqa: E712
         .options(*_ITEM_LOAD_OPTIONS)
         .order_by(AdSlot.slot_position.asc())
     )
@@ -188,23 +189,37 @@ def list_admin_ad_slots(
     slots = session.exec(stmt).all()
     slots = sorted(slots, key=lambda s: (s.section, s.slot_position))
 
-    result: list[AdSlotAdminRead] = []
-    for slot in slots:
-        items = sorted(slot.items, key=lambda item: item.display_order)
-        result.append(
-            AdSlotAdminRead(
-                id=slot.id,
-                city_id=slot.city_id,
-                section=slot.section,
-                slot_position=slot.slot_position,
-                category_key=slot.category_key,
-                rotation_mode=slot.rotation_mode,
-                rotation_interval_seconds=slot.rotation_interval_seconds,
-                is_active=slot.is_active,
-                items=[_to_admin_item_read(item) for item in items],
-            )
-        )
-    return result
+    return [_to_admin_slot_read(slot) for slot in slots]
+
+
+def _to_admin_slot_read(slot: AdSlot) -> AdSlotAdminRead:
+    items = sorted(slot.items, key=lambda item: item.display_order)
+    return AdSlotAdminRead(
+        id=slot.id,
+        city_id=slot.city_id,
+        section=slot.section,
+        slot_position=slot.slot_position,
+        category_key=slot.category_key,
+        rotation_mode=slot.rotation_mode,
+        rotation_interval_seconds=slot.rotation_interval_seconds,
+        is_active=slot.is_active,
+        items=[_to_admin_item_read(item) for item in items],
+    )
+
+
+def update_ad_slot(session: Session, slot_id: UUID, data: AdSlotUpdate) -> AdSlotAdminRead:
+    """Habilita/deshabilita una posición de banner puntual (Parte 2 — control
+    de qué líneas de banner se muestran). Reusa `AdSlot.is_active`, que ya
+    existía en el modelo pero hasta ahora no se exponía en ningún ABM ni se
+    respetaba en el listado público (ver `list_public_ad_slots`)."""
+    slot = session.get(AdSlot, slot_id)
+    if slot is None:
+        raise LookupError("Slot no encontrado")
+    slot.is_active = data.is_active
+    session.add(slot)
+    session.commit()
+    session.refresh(slot)
+    return _to_admin_slot_read(slot)
 
 
 def list_admin_ad_items(
