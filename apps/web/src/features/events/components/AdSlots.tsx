@@ -58,6 +58,15 @@ export function AdSlotsGrid() {
 
   return (
     <div className="pt-4 pb-3.5">
+      {/* Mismo label "Publicidad" que los carruseles de arriba (AdSlots) y
+          Gastronomía — el grid también es un slot vendible (ver a_revisar.md). */}
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex items-center gap-1 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
+          <Megaphone className="h-3.5 w-3.5 text-primary" aria-hidden />
+          Publicidad
+        </span>
+      </div>
+
       {grid.isLoading ? (
         <div className="grid grid-cols-2 gap-2.5" data-testid="ad-slots-grid-loading">
           <Skeleton className="aspect-square w-full rounded-xl md:aspect-[6/5]" />

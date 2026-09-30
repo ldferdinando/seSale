@@ -78,6 +78,11 @@ describe("AdSlotsGrid (pool único de sección eventos-grid, 2 columnas)", () =>
     await waitFor(() => expect(screen.getAllByTestId("ad-grid-tile-empty")).toHaveLength(2));
   });
 
+  it("shows the 'Publicidad' label above the grid", () => {
+    renderWithFixedCity(<AdSlotsGrid />);
+    expect(screen.getByText("Publicidad")).toBeInTheDocument();
+  });
+
   it("shows 1 item and 1 placeholder when the combined pool has a single item", async () => {
     server.use(
       http.get(`${API_URL}/api/ads`, ({ request }) => {
