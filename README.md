@@ -163,7 +163,6 @@ archivos `.env.staging`/`.env.production` del repo.
 | `NEXT_PUBLIC_MAINTENANCE_MODE` | `false` | `true` hasta el lanzamiento público | `false` desde el lanzamiento |
 | `NEXT_PUBLIC_LAUNCH_DATE` | vacío | fecha estimada de lanzamiento (opcional) | vacío una vez lanzado |
 | `NEXT_PUBLIC_SESALE_WHATSAPP` | número de prueba | número real | número real |
-| `NEXT_PUBLIC_BANK_INFO` | datos de prueba | datos bancarios reales | datos bancarios reales |
 
 > Detalle completo de cada variable, con comentarios de cómo generarla u
 > obtenerla, en [`.env.example`](./.env.example).

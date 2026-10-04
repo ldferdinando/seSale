@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { BankInfoCard } from "@/features/plans/components/BankInfoCard";
+import { PaymentAliasCard } from "@/features/plans/components/PaymentAliasCard";
 import { sesaleWhatsappHref } from "@/features/plans/lib/whatsapp";
 import { usePlans } from "@/features/plans/hooks/usePlans";
 import { useTransferSubscription } from "@/features/subscriptions/hooks/useTransferSubscription";
@@ -81,12 +81,12 @@ export function TransferenciaContent() {
             <CardContent className="flex items-center justify-between p-4">
               <span className="text-sm font-bold text-foreground">{plan.name}</span>
               <span className="text-lg font-black text-primary">
-                {plan.price ? formatPrice(plan.price.amount) : "—"}
+                {plan.price && plan.price.amount > 0 ? formatPrice(plan.price.amount) : "Consultar precio"}
               </span>
             </CardContent>
           </Card>
 
-          <BankInfoCard />
+          <PaymentAliasCard planName={plan.name} />
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
@@ -120,12 +120,12 @@ export function TransferenciaContent() {
             )}
 
             <Button type="submit" disabled={transfer.isPending} className="h-12 w-full rounded-xl text-base">
-              {transfer.isPending ? "Enviando..." : "Ya envié el comprobante"}
+              {transfer.isPending ? "Enviando aviso..." : "Avisar que ya hice una transferencia"}
             </Button>
 
             <p className="text-xs text-ink-4">
-              Una vez que verifiquemos tu pago, tu plan se activará y tus eventos aparecerán como destacados. Te
-              avisamos por email.
+              Esto es un aviso para que nuestro equipo revise tu pago: el plan no se activa automáticamente. Una vez
+              que lo confirmemos, tu evento va a aparecer como destacado. Te avisamos por email.
             </p>
           </form>
         </>

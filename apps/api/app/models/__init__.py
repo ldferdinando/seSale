@@ -11,6 +11,7 @@ from app.models.moment import EventMoment
 from app.models.password_reset_token import PasswordResetToken
 from app.models.plan import Plan, PlanPrice, PlanType, PricingType
 from app.models.report import Report
+from app.models.site_settings import SiteSettings
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User
 
@@ -33,6 +34,7 @@ __all__ = [
     "PlanType",
     "PricingType",
     "Report",
+    "SiteSettings",
     "Subscription",
     "SubscriptionStatus",
     "User",

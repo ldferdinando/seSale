@@ -533,6 +533,16 @@ export const handlers = [
       makePlan({ id: "banner-plan", name: "Banner web", plan_type: "banner", pricing_type: "custom", price: null }),
     ]);
   }),
+  http.get(`${API_URL}/api/site-settings`, () => {
+    return HttpResponse.json({ payment_alias: "sesale.pagos" });
+  }),
+  http.get(`${API_URL}/api/admin/site-settings`, () => {
+    return HttpResponse.json({ payment_alias: "sesale.pagos", updated_at: "2026-10-04T12:00:00Z" });
+  }),
+  http.patch(`${API_URL}/api/admin/site-settings`, async ({ request }) => {
+    const body = (await request.json()) as { payment_alias: string | null };
+    return HttpResponse.json({ payment_alias: body.payment_alias, updated_at: "2026-10-04T12:00:00Z" });
+  }),
   http.post(`${API_URL}/api/subscriptions/checkout`, () => {
     return HttpResponse.json({ init_point: "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123" });
   }),

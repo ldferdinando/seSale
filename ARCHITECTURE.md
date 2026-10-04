@@ -1175,12 +1175,16 @@ agrega upload real en el futuro.
 
 ```
 Usuario ve /planes?event_id={id} → plan dest/pro → además de "Contratar con
-MercadoPago", ve "Ya realicé una transferencia bancaria"
+MercadoPago", ve "Pagar por transferencia" (mismo texto en "Elegí
+visibilidad" del alta, EventPlanChooser)
         │
         ▼
-  /planes/transferencia?plan_id={id}&event_id={id}: datos bancarios
-  (NEXT_PUBLIC_BANK_INFO, con botón copiar), botón WhatsApp con mensaje
-  prellenado, nota opcional, botón "Ya envié el comprobante"
+  /planes/transferencia?plan_id={id}&event_id={id}: alias de pago
+  (GET /api/site-settings → payment_alias, editable en admin →
+  Configuración; con botón copiar — si es null, "Contactanos por WhatsApp
+  para coordinar el pago"), botón WhatsApp con mensaje prellenado, nota
+  opcional, botón "Avisar que ya hice una transferencia" (es un aviso para
+  que el admin confirme el pago, no activa el plan)
         │
         ▼
   POST /api/subscriptions/transfer { plan_id, event_id, note? }
@@ -1193,7 +1197,7 @@ MercadoPago", ve "Ya realicé una transferencia bancaria"
   email (Resend, best-effort)
         │
         ▼
-  Frontend navega a /planes/transferencia/enviado ("Ver mis eventos",
+  Frontend navega a /planes/transferencia/enviado ("¡Recibimos tu aviso!", "Ver mis eventos",
   "Contactar por WhatsApp"). Mientras tanto, en /mi-cuenta el usuario ve un
   banner "Tu comprobante de pago está siendo revisado" (por evento — puede
   haber varios simultáneos, uno por cada evento con un aviso pendiente) y
@@ -1714,6 +1718,22 @@ hardcodeados) como validación de `EventCreate.categories`/
 `LocationGastroCreate.gastro_types` — ver `_validate_categories_active`/
 `_validate_gastro_types_active` en la sección 3 (modelo de datos).
 
+### Configuración del sitio (`/api/site-settings`, `/api/admin/site-settings`)
+
+```
+GET    /api/site-settings              Público (60/min). { payment_alias } —
+                                       alias de pago por transferencia, null
+                                       si no está cargado
+GET    /api/admin/site-settings        Admin. { payment_alias, updated_at }
+PATCH  /api/admin/site-settings        Admin. Body: SiteSettingsUpdate
+                                       (payment_alias ≤100, vacío → null)
+```
+
+Tabla `site_settings` (migración 0031): una sola fila (`id=1`), una columna
+por dato de configuración (hoy solo `payment_alias`) — se suman columnas
+nuevas con su migración, no un key/value genérico. Se edita desde el panel
+admin → Configuración (`AdminSiteSettingsPanel.tsx`).
+
 ### Estadísticas (`/api/stats`)
 ```
 GET    /api/stats                      Estadísticas agregadas (público)         ✓ Etapa 4.5
@@ -2002,9 +2022,6 @@ DISABLE_SETUP_ENDPOINT=false               # Etapa 9d — "true" desactiva POST 
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_MP_PUBLIC_KEY=tu-public-key-de-mp   # no se usa en Etapa 6 (checkout es redirect, no Bricks)
 NEXT_PUBLIC_SESALE_WHATSAPP=549XXXXXXXXXX       # mismo número que SESALE_WHATSAPP, expuesto al cliente
-NEXT_PUBLIC_BANK_INFO=                          # Etapa 6b-1 — datos bancarios para /planes/transferencia
-                                                 # formato "Label:valor|Label:valor", ej:
-                                                 # "Alias:sesale.pagos|CBU:000...|Titular:seSALE SRL|Banco:..."
 NEXT_PUBLIC_MAINTENANCE_MODE=false              # Etapa 9d — "true" muestra /proximamente a todo el sitio
                                                  # salvo /login y /api (middleware.ts, edge runtime)
 NEXT_PUBLIC_LAUNCH_DATE=                        # Etapa 9d — fecha ISO opcional para el countdown de

@@ -167,6 +167,7 @@ root/
 │   │   │   │   ├── ads/            # Banners: types/services/hooks/schemas + AdItemFormModal.tsx/AdSlotCard.tsx (admin) — Etapa 8d
 │   │   │   │   ├── plans/          # Selección de plan y checkout — Etapa 6, aviso de transferencia — Etapa 6b-1
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
+│   │   │   │   ├── site-settings/  # Config general del sitio (alias de pago): types/services/hooks — fix transferencia
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b,
 │   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e;
 │   │   │   │                      #   listado de usuarios — AdminUsersTable.tsx/UserDetailModal.tsx — Etapa 9b;
@@ -225,6 +226,7 @@ root/
 │       │   │   │                  #   eliminado en Etapa 12a (reemplazado por gastro_types_catalog)
 │       │   │   ├── plan.py         # Plan, PlanPrice — Etapa 6
 │       │   │   ├── subscription.py
+│       │   │   ├── site_settings.py  # SiteSettings (site_settings, fila única: payment_alias) — fix transferencia
 │       │   │   ├── ad_slot.py      # AdSlot (espacio publicitario) — rediseñado Etapa 8d-pre; +category_key — Etapa 13b
 │       │   │   └── ad_item.py      # AdItem (pieza publicitaria) — Etapa 8d-pre
 │       │   ├── schemas/            # Pydantic — esquemas de request/response
@@ -245,6 +247,7 @@ root/
 │       │   │   ├── gastro_types.py # GET /api/gastro-types, público — Etapa 12a
 │       │   │   ├── reports.py      # POST /api/events/{id}/report, público — Etapa 6.5
 │       │   │   ├── users.py        # + GET /api/users/me/banners — Etapa 8d; PATCH .../verify acepta body {is_verified} — Etapa 9d
+│       │   │   ├── site_settings.py  # GET /api/site-settings, público (alias de pago) — fix transferencia
 │       │   │   ├── setup.py        # POST /api/setup/admin — setup del primer admin, público hasta que exista uno — Etapa 9d
 │       │   │   ├── cities.py
 │       │   │   ├── locations.py    # GET /api/locations (+ filtros), GET /api/locations/{id} — Etapa 7b
@@ -264,6 +267,7 @@ root/
 │       │       ├── city_service.py
 │       │       ├── payment_service.py
 │       │       ├── report_service.py  # Etapa 6.5
+│       │       ├── site_settings_service.py  # get/update de la fila única de site_settings — fix transferencia
 │       │       └── ad_service.py   # ABM de AdItem, listados públicos/admin, reorder — Etapa 8d;
 │       │                          #   +ensure_base_ad_slots_for_city/ensure_category_ad_slots — Etapa 13b
 │       ├── tests/                  # Tests del backend

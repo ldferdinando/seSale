@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCheckout } from "@/features/plans/hooks/useCheckout";
 import { usePlans } from "@/features/plans/hooks/usePlans";
+import { formatPlanPrice } from "@/features/plans/lib/plan-price";
 import type { Plan } from "@/features/plans/types";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
 import { EVENT_PLAN_COPY } from "@/features/events/lib/publishPlans";
@@ -15,13 +16,6 @@ import type { Event, EventCreateInput, EventPlan } from "@/features/events/types
 import { ApiError } from "@/lib/api-client";
 
 const PLAN_ORDER: EventPlan[] = ["gratis", "dest", "pro"];
-
-function formatPrice(plan: Plan): string {
-  if (plan.plan_type === "gratis") return "Gratis";
-  if (!plan.price) return "Consultar precio";
-  if (plan.price.amount === 0) return "Gratis";
-  return `$${new Intl.NumberFormat("es-AR").format(plan.price.amount)}/mes`;
-}
 
 interface EventPlanChooserProps {
   payload: EventCreateInput;
@@ -119,7 +113,7 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
                   {plan.price?.promo_label && <Badge variant="pro">{plan.price.promo_label}</Badge>}
                 </div>
                 <p className="text-xs text-ink-4">{copy.desc}</p>
-                <p className="text-sm font-bold text-primary">{formatPrice(plan)}</p>
+                <p className="text-sm font-bold text-primary">{formatPlanPrice(plan)}</p>
 
                 {isFree ? (
                   <Button
@@ -149,7 +143,7 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
                       onClick={() => handleTransferencia(plan.id)}
                       className="h-10 w-full rounded-xl text-sm"
                     >
-                      {pendingAction === `transfer-${plan.id}` ? "Redirigiendo..." : "Ya hice una transferencia"}
+                      {pendingAction === `transfer-${plan.id}` ? "Redirigiendo..." : "Pagar por transferencia"}
                     </Button>
                   </>
                 )}

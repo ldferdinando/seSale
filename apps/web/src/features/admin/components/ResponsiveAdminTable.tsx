@@ -75,8 +75,14 @@ export function ResponsiveAdminTable<T>({
   }
 
   if (isDesktop) {
+    // Las acciones van en una fila propia debajo de cada registro, a todo
+    // el ancho, y no como última columna: el panel admin es angosto
+    // (max-w-2xl) y con 5-6 columnas la columna "Acciones" quedaba cortada
+    // por el `overflow-hidden` del contenedor — en desktop no se veían
+    // Aprobar/Rechazar. Cada registro es su propio <tbody> (con el testid)
+    // para que fila de datos + fila de acciones sigan siendo una unidad.
     return (
-      <div className={cn("overflow-hidden rounded-lg border border-border", className)}>
+      <div className={cn("overflow-x-auto rounded-lg border border-border", className)}>
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-ink-4">
             <tr>
@@ -85,29 +91,28 @@ export function ResponsiveAdminTable<T>({
                   {column.label}
                 </th>
               ))}
-              {renderActions && (
-                <th scope="col" className="px-3 py-2">
-                  Acciones
-                </th>
-              )}
             </tr>
           </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={getRowKey(row)} data-testid={rowTestId} className="border-t border-border align-top">
+          {data.map((row) => (
+            <tbody key={getRowKey(row)} data-testid={rowTestId} className="border-t border-border">
+              <tr className="align-top">
                 {columns.map((column) => (
-                  <td key={column.key} className={cn("px-3 py-3", column.className)}>
+                  <td key={column.key} className={cn("px-3 pt-3", renderActions ? "pb-2" : "pb-3", column.className)}>
                     {column.render(row)}
                   </td>
                 ))}
-                {renderActions && (
-                  <td className="px-3 py-3">
-                    <div className="flex flex-wrap items-center gap-2">{renderActions(row)}</div>
-                  </td>
-                )}
               </tr>
-            ))}
-          </tbody>
+              {renderActions && (
+                <tr>
+                  <td colSpan={columns.length} className="px-3 pb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {renderActions(row)}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          ))}
         </table>
       </div>
     );

@@ -46,7 +46,13 @@ export function PlanCard({ plan, eventId, onContratar, isSubmitting }: PlanCardP
         {plan.description && <p className="text-xs text-ink-4">{plan.description}</p>}
 
         <p className="text-lg font-black text-primary">
-          {plan.plan_type === "banner" ? "Consultar" : plan.price ? formatPrice(plan.price.amount) : "—"}
+          {plan.plan_type === "banner"
+            ? "Consultar"
+            : plan.plan_type !== "gratis" && (!plan.price || plan.price.amount <= 0)
+              ? "Consultar precio"
+              : plan.price
+                ? formatPrice(plan.price.amount)
+                : "—"}
         </p>
 
         {plan.plan_type === "gratis" && (
@@ -69,7 +75,7 @@ export function PlanCard({ plan, eventId, onContratar, isSubmitting }: PlanCardP
             )}
             <Button asChild variant="ghost" className="h-10 w-full rounded-xl text-sm">
               <Link href={`/planes/transferencia?plan_id=${plan.id}&event_id=${eventId}`}>
-                Ya realicé una transferencia bancaria
+                Pagar por transferencia
               </Link>
             </Button>
           </>

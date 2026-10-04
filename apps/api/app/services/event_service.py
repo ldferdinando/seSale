@@ -348,8 +348,13 @@ def create_event(
     organizer = session.get(User, effective_organizer_id)
     if organizer is None:
         raise LookupError("Organizador no encontrado")
-    if organizer.city_id is None:
-        raise ValueError("El organizador no tiene una ciudad asignada")
+    # La ciudad del evento viene del formulario (`city_id`); la del
+    # organizador es solo el fallback si no se mandó. Antes se exigía
+    # siempre `organizer.city_id`, y los usuarios sin ciudad en el perfil
+    # (alta con Google, o registro sin elegir ciudad — es opcional) no
+    # podían publicar aunque el evento ya trajera su ciudad.
+    if city_id is None and organizer.city_id is None:
+        raise ValueError("Elegí la ciudad del evento")
 
     if not contact_whatsapp:
         contact_whatsapp = organizer.public_whatsapp

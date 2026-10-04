@@ -22,7 +22,6 @@ jobs:
       NEXT_PUBLIC_SESALE_WHATSAPP: "5492984000000"
       NEXT_PUBLIC_MAINTENANCE_MODE: "false"
       NEXT_PUBLIC_LAUNCH_DATE: ""
-      NEXT_PUBLIC_BANK_INFO: "Alias: sesale.test"
 
     defaults:
       run:

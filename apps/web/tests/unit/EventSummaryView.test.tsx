@@ -63,6 +63,9 @@ describe("EventSummaryView", () => {
     expect(screen.getByText("Destacado Plus")).toBeInTheDocument();
     // El precio viene de la API (mockeado en handlers.ts), no está hardcodeado.
     expect(screen.getByText("$3.500/mes")).toBeInTheDocument();
+    expect(screen.getByText("$6.500/mes")).toBeInTheDocument();
+    // "Gratis" solo para el plan gratuito, nunca debajo de Destacado/Plus.
+    expect(screen.getAllByText("Gratis")).toHaveLength(1);
     // El plan Banner no es una opción de visibilidad de evento.
     expect(screen.queryByText("Banner web")).not.toBeInTheDocument();
   });
@@ -111,11 +114,11 @@ describe("EventSummaryView", () => {
     window.location = originalLocation;
   });
 
-  it("'Ya hice una transferencia' navega a /planes/transferencia con el evento recién creado", async () => {
+  it("'Pagar por transferencia' navega a /planes/transferencia con el evento recién creado", async () => {
     const user = userEvent.setup();
     renderSummary();
 
-    const transferButtons = await screen.findAllByRole("button", { name: "Ya hice una transferencia" });
+    const transferButtons = await screen.findAllByRole("button", { name: "Pagar por transferencia" });
     await user.click(transferButtons[0]);
 
     await waitFor(() =>

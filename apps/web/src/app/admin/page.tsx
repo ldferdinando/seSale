@@ -14,6 +14,7 @@ import { AdminGastroTypesPanel } from "@/features/admin/components/AdminGastroTy
 import { AdminLocationsPanel } from "@/features/admin/components/AdminLocationsPanel";
 import { AdminReportsPanel } from "@/features/admin/components/AdminReportsPanel";
 import { AdminSectionNav } from "@/features/admin/components/AdminSectionNav";
+import { AdminSiteSettingsPanel } from "@/features/admin/components/AdminSiteSettingsPanel";
 import { AdminSubscriptionsPanel } from "@/features/admin/components/AdminSubscriptionsPanel";
 import { AdminUsersPanel } from "@/features/admin/components/AdminUsersPanel";
 
@@ -29,6 +30,7 @@ const ADMIN_TABS = [
   { value: "usuarios", label: "Usuarios" },
   { value: "suscripciones", label: "Suscripciones" },
   { value: "reportes", label: "Reportes" },
+  { value: "configuracion", label: "Configuración" },
 ];
 
 export default function AdminPage() {
@@ -67,6 +69,7 @@ export default function AdminPage() {
       {tab === "usuarios" && <AdminUsersPanel onViewUserEvents={handleViewUserEvents} />}
       {tab === "suscripciones" && <AdminSubscriptionsPanel />}
       {tab === "reportes" && <AdminReportsPanel />}
+      {tab === "configuracion" && <AdminSiteSettingsPanel />}
     </main>
   );
 }

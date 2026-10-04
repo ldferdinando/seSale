@@ -14,7 +14,7 @@ describe("TransferenciaEnviadoPage", () => {
 
     render(<TransferenciaEnviadoPage />);
 
-    expect(screen.getByText("¡Comprobante enviado!")).toBeInTheDocument();
+    expect(screen.getByText("¡Recibimos tu aviso!")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver mis eventos" })).toHaveAttribute("href", "/mi-cuenta");
     const whatsappLink = screen.getByRole("link", { name: "Contactar por WhatsApp" });
     expect(whatsappLink).toHaveAttribute("href", expect.stringContaining("wa.me"));

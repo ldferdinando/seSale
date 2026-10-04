@@ -329,8 +329,27 @@ def test_create_event_raises_when_organizer_has_no_city(session):
     session.commit()
     session.refresh(organizer)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Elegí la ciudad del evento"):
         create_event(session, user_id=organizer.id, **_create_event_kwargs(city=None))
+
+
+def test_create_event_uses_explicit_city_when_organizer_has_no_city(session, city):
+    """Fix "El organizador no tiene ciudad asignada": la ciudad del evento
+    viene del formulario — la del organizador es solo el fallback."""
+    organizer = User(
+        email="sin-ciudad@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Sin Ciudad",
+        public_name="Sin Ciudad",
+    )
+    session.add(organizer)
+    session.commit()
+    session.refresh(organizer)
+
+    event = create_event(session, user_id=organizer.id, city_id=city.id, **_create_event_kwargs(city=city))
+
+    assert event.city_id == city.id
+    assert event.organizer_id == organizer.id
 
 
 def test_get_events_for_organizer_groups_by_status(session, city, organizer, location):

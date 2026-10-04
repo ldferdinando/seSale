@@ -40,6 +40,7 @@ from app.schemas.location import (
     LocationVerifyUpdate,
 )
 from app.schemas.report import AdminReportRead, ReportStatusUpdate
+from app.schemas.site_settings import SiteSettingsAdminRead, SiteSettingsUpdate
 from app.schemas.subscription import (
     AdminSubscriptionRead,
     OrganizerSubscriptionRead,
@@ -97,6 +98,7 @@ from app.services.payment_service import (
     review_subscription,
 )
 from app.services.report_service import get_report_target, list_admin_reports, update_report_status
+from app.services.site_settings_service import get_site_settings, update_site_settings
 from app.services.user_service import create_user_by_admin, list_users_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -818,3 +820,19 @@ async def patch_admin_gastro_type_toggle(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return GastroTypeAdminRead.model_validate(gastro_type)
+
+
+# ── Configuración general del sitio (alias de pago) ────────────────────────
+
+
+@router.get("/site-settings", response_model=SiteSettingsAdminRead)
+async def get_admin_site_settings(session: Session = Depends(get_session)) -> SiteSettingsAdminRead:
+    return SiteSettingsAdminRead.model_validate(get_site_settings(session))
+
+
+@router.patch("/site-settings", response_model=SiteSettingsAdminRead)
+async def patch_admin_site_settings(
+    payload: SiteSettingsUpdate,
+    session: Session = Depends(get_session),
+) -> SiteSettingsAdminRead:
+    return SiteSettingsAdminRead.model_validate(update_site_settings(session, payload))

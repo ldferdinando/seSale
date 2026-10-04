@@ -256,4 +256,32 @@ describe("AdminEventsPanel", () => {
       });
     });
   });
+
+  describe("en viewport desktop", () => {
+    it("las acciones van en una fila a todo el ancho debajo del evento (no en una columna que se corta)", async () => {
+      mockMatchMedia();
+      setViewportWidth(1280);
+      server.use(
+        http.get(`${API_URL}/api/admin/events`, () =>
+          HttpResponse.json([makeAdminEvent({ id: "a", title: "Festival de Otoño", status: "pending", plan: "gratis" })]),
+        ),
+      );
+      renderWithClient();
+
+      const row = await screen.findByTestId("admin-event-row");
+      const columnCount = screen.getAllByRole("columnheader").length;
+      expect(screen.queryByRole("columnheader", { name: "Acciones" })).not.toBeInTheDocument();
+
+      const actions = [
+        within(row).getByRole("button", { name: /Aprobar/ }),
+        within(row).getByRole("button", { name: /Rechazar/ }),
+        within(row).getByRole("link", { name: /Ver detalle/ }),
+        within(row).getByRole("link", { name: /Editar/ }),
+        within(row).getByRole("button", { name: /Eliminar/ }),
+      ];
+      for (const action of actions) {
+        expect(action.closest("td")).toHaveAttribute("colspan", String(columnCount));
+      }
+    });
+  });
 });

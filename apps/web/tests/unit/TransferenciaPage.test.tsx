@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { useSearchParams } from "next/navigation";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import TransferenciaPage from "@/app/planes/transferencia/page";
 import { server } from "./mocks/server";
@@ -31,23 +31,42 @@ function renderPage(planId = DEST_PLAN_ID, eventId = EVENT_ID) {
 
 describe("TransferenciaPage", () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_BANK_INFO =
-      "Alias:sesale.pagos|CBU:0000003100000000000000|Titular:seSALE SRL|Banco:Banco Patagonia";
     pushMock.mockClear();
   });
 
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_BANK_INFO;
-  });
-
-  it("muestra el plan, los datos bancarios y el formulario de aviso", async () => {
+  it("muestra el plan, el alias de pago y el formulario de aviso", async () => {
     renderPage();
 
     expect(await screen.findByText("Destacado")).toBeInTheDocument();
+    expect(screen.getByText("$3.500")).toBeInTheDocument();
+    expect(await screen.findByText("sesale.pagos")).toBeInTheDocument();
     expect(screen.getByText("Alias")).toBeInTheDocument();
-    expect(screen.getByText("sesale.pagos")).toBeInTheDocument();
     expect(screen.getByLabelText(/Ya enviaste el comprobante/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ya envié el comprobante" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Avisar que ya hice una transferencia" })).toBeInTheDocument();
+  });
+
+  it("copia el alias al portapapeles", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    renderPage();
+
+    await screen.findByText("sesale.pagos");
+    await user.click(screen.getByRole("button", { name: "Copiar" }));
+
+    expect(writeText).toHaveBeenCalledWith("sesale.pagos");
+    expect(await screen.findByRole("button", { name: "Copiado" })).toBeInTheDocument();
+  });
+
+  it("sin alias cargado muestra el fallback de WhatsApp", async () => {
+    server.use(http.get(`${API_URL}/api/site-settings`, () => HttpResponse.json({ payment_alias: null })));
+    renderPage();
+
+    expect(await screen.findByText("Contactanos por WhatsApp para coordinar el pago.")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /Coordinar el pago por WhatsApp/ });
+    expect(link.getAttribute("href")).toMatch(/^https:\/\/wa\.me\//);
+    expect(screen.queryByText("Alias")).not.toBeInTheDocument();
+    // El aviso sigue disponible aunque no haya alias.
+    expect(screen.getByRole("button", { name: "Avisar que ya hice una transferencia" })).toBeInTheDocument();
   });
 
   it("al enviar con éxito navega a /planes/transferencia/enviado", async () => {
@@ -55,7 +74,7 @@ describe("TransferenciaPage", () => {
     renderPage();
 
     await screen.findByText("Destacado");
-    await user.click(screen.getByRole("button", { name: "Ya envié el comprobante" }));
+    await user.click(screen.getByRole("button", { name: "Avisar que ya hice una transferencia" }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith(expect.stringContaining("/planes/transferencia/enviado")));
   });
@@ -70,7 +89,7 @@ describe("TransferenciaPage", () => {
     renderPage();
 
     await screen.findByText("Destacado");
-    await user.click(screen.getByRole("button", { name: "Ya envié el comprobante" }));
+    await user.click(screen.getByRole("button", { name: "Avisar que ya hice una transferencia" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("No pudimos registrar tu aviso"));
     expect(pushMock).not.toHaveBeenCalled();

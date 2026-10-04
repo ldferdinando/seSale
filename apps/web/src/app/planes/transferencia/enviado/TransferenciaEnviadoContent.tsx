@@ -14,9 +14,9 @@ export function TransferenciaEnviadoContent() {
   return (
     <main className="container mx-auto flex max-w-md flex-col items-center gap-5 py-16 text-center">
       <CheckCircle2 className="h-14 w-14 text-[#1D9E75]" aria-hidden />
-      <h1 className="text-2xl font-black tracking-tight">¡Comprobante enviado!</h1>
+      <h1 className="text-2xl font-black tracking-tight">¡Recibimos tu aviso!</h1>
       <p className="text-sm text-ink-4">
-        Revisaremos tu pago en las próximas horas. Te avisamos por email cuando tu plan esté activo.
+        Vamos a revisar tu transferencia en las próximas horas. Tu plan se activa cuando confirmemos el pago — te avisamos por email.
       </p>
 
       <div className="flex w-full flex-col gap-2">
@@ -26,7 +26,7 @@ export function TransferenciaEnviadoContent() {
         <Button asChild variant="outline" className="h-12 w-full rounded-xl text-base">
           <a
             href={sesaleWhatsappHref(
-              `Hola, acabo de enviar el comprobante para el plan ${planName} en seSALE.`,
+              `Hola, avisé que hice una transferencia para el plan ${planName} en seSALE, te mando el comprobante.`,
             )}
             target="_blank"
             rel="noreferrer"

@@ -260,6 +260,31 @@ async def test_create_event_organizer_without_city_returns_422(
     response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=headers)
 
     assert response.status_code == 422
+    assert response.json()["detail"] == "Elegí la ciudad del evento"
+
+
+async def test_create_event_organizer_without_city_with_explicit_city_id_returns_201(
+    client: AsyncClient, session: Session, city: City, location: Location
+):
+    """Fix "El organizador no tiene ciudad asignada": un usuario sin ciudad en
+    el perfil (alta con Google) publica igual si el evento trae `city_id`."""
+    organizer_sin_ciudad = User(
+        email="sin-ciudad@sesale.com.ar",
+        hashed_password=hash_password("Password123!"),
+        full_name="Sin Ciudad",
+        public_name="Sin Ciudad",
+    )
+    session.add(organizer_sin_ciudad)
+    session.commit()
+    session.refresh(organizer_sin_ciudad)
+    headers = {"Authorization": f"Bearer {create_access_token(organizer_sin_ciudad.id, organizer_sin_ciudad.role)}"}
+    payload = _valid_payload(str(location.id))
+    payload["city_id"] = str(city.id)
+
+    response = await client.post("/api/events", json=payload, headers=headers)
+
+    assert response.status_code == 201
+    assert response.json()["city_id"] == str(city.id)
 
 
 async def test_create_event_with_explicit_city_id_overrides_organizer_city(
