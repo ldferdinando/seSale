@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { ContactLinks, type ContactLinkItem } from "@/components/ContactLinks";
 import { Badge } from "@/components/ui/badge";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
@@ -44,6 +45,10 @@ import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 import { resolveMediaUrl } from "@/lib/media";
+
+/** "Recordarme este evento" (botón + panel WhatsApp/Email) — pendiente de
+ * decisión de producto (no funcional, sin definir el caso sin sesión). */
+const SHOW_REMIND_ME = false;
 
 const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
 
@@ -161,6 +166,29 @@ export function EventDetailView({ event }: EventDetailViewProps) {
       : `https://${event.contact_web}`
     : null;
   const emailHref = event.contact_email ? `mailto:${event.contact_email}` : null;
+
+  const contactItems: ContactLinkItem[] = [
+    {
+      key: "whatsapp",
+      href: whatsappHref,
+      label: "WhatsApp",
+      icon: MessageCircle,
+      iconClassName: "text-[#25D366]",
+      testId: "ticket-whatsapp-link",
+    },
+    { key: "instagram", href: instagramHref, label: "Instagram", icon: InstagramIcon, iconClassName: "text-[#E91E8C]" },
+    {
+      key: "facebook",
+      href: facebookHref,
+      label: "Facebook",
+      icon: FacebookIcon,
+      iconClassName: "text-[#1877F2]",
+      testId: "ticket-facebook-link",
+    },
+    { key: "web", href: webHref, label: "Página web", icon: Globe, iconClassName: "text-[#378ADD]" },
+    { key: "email", href: emailHref, label: "Email", icon: Mail, iconClassName: "text-[#7F77DD]", external: false },
+  ];
+  const hasContact = contactItems.some((item) => Boolean(item.href));
 
   // Etapa 10b-2: botón "Llegar" del bloque Lugar (mismo criterio que
   // GastroPlaceCard.tsx/GastroDetailView.tsx en la Etapa 10b-1).
@@ -329,79 +357,6 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           </div>
         )}
 
-        {/* Etapa 10b-2: bloque "Organizador" separado del lugar (calcado de
-            `.org-card` en seSALE.html) — datos reales ya expuestos por
-            OrganizerPublicRead desde la Etapa 9a, solo se reorganiza el
-            layout. Sin banner de verificación si is_verified=False (ya era
-            así, se respeta). */}
-        <div
-          className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5"
-          data-testid="event-organizer-card"
-        >
-          <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Organizador</p>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-pink/15 text-xs font-bold text-primary">
-              {event.organizer.public_name.slice(0, 2).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
-                <span className="truncate">{event.organizer.public_name}</span>
-                {event.organizer.is_verified && (
-                  <ShieldCheck
-                    className="h-3.5 w-3.5 flex-shrink-0 text-brand-green"
-                    aria-label="Organizador verificado"
-                    data-testid="organizer-verified-icon"
-                  />
-                )}
-              </p>
-              {event.organizer.city && <p className="truncate text-xs text-ink-3">{event.organizer.city}</p>}
-            </div>
-          </div>
-
-          {/* Banner de verificación con datos reales — Etapa 9a. Solo se
-              muestra si el admin verificó la identidad (is_verified); si no,
-              no se muestra nada para no generar desconfianza innecesaria. */}
-          {event.organizer.is_verified && (
-            <div className="flex flex-col gap-1.5 rounded-lg border border-[#1D9E7544] bg-[#0d2a1a] p-2.5">
-              <p className="text-xs font-bold text-[#5DCAA5]">Identidad confirmada por seSALE</p>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge variant="muted" className="gap-1">
-                  <ShieldCheck className="h-3 w-3" aria-hidden />
-                  Documento verificado
-                </Badge>
-                {event.organizer.phone_verified && (
-                  <Badge variant="muted" className="gap-1">
-                    <MessageCircle className="h-3 w-3" aria-hidden />
-                    Celular verificado
-                  </Badge>
-                )}
-                {event.organizer.email_verified && (
-                  <Badge variant="muted" className="gap-1">
-                    <Mail className="h-3 w-3" aria-hidden />
-                    Email verificado
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-ink-4">
-                Miembro desde {format(parseISO(event.organizer.member_since), "MMMM yyyy", { locale: es })}
-              </p>
-            </div>
-          )}
-
-          {event.organizer.public_whatsapp && (
-            <a
-              href={`https://wa.me/${event.organizer.public_whatsapp.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="organizer-whatsapp-link"
-              className="flex w-fit items-center gap-1.5 rounded-full bg-[#0d1a12] px-3 py-1.5 text-xs font-bold text-[#25D366]"
-            >
-              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-              WhatsApp
-            </a>
-          )}
-        </div>
-
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-5">
             <Ticket className="h-3.5 w-3.5 text-primary" aria-hidden />
@@ -420,72 +375,6 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           )}
         </div>
 
-        {(whatsappHref || instagramHref || facebookHref || webHref || emailHref) && (
-          <div className="flex flex-col gap-2">
-            {/* Etapa 10b-2: se renombra de "Contacto del organizador" a
-                "Contacto para entradas" — con el bloque Organizador ya
-                separado más arriba (con su propio WhatsApp), el título
-                anterior generaba dos secciones "del organizador" distintas.
-                Mismos datos (event.contact_*), sin tocar lógica. */}
-            <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto para entradas</p>
-            {whatsappHref && (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noreferrer"
-                data-testid="ticket-whatsapp-link"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-              >
-                <MessageCircle className="h-4 w-4 text-[#25D366]" aria-hidden />
-                WhatsApp
-              </a>
-            )}
-            {instagramHref && (
-              <a
-                href={instagramHref}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-              >
-                <InstagramIcon className="h-4 w-4 text-[#E91E8C]" aria-hidden />
-                Instagram
-              </a>
-            )}
-            {facebookHref && (
-              <a
-                href={facebookHref}
-                target="_blank"
-                rel="noreferrer"
-                data-testid="ticket-facebook-link"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-              >
-                <FacebookIcon className="h-4 w-4 text-[#1877F2]" aria-hidden />
-                Facebook
-              </a>
-            )}
-            {webHref && (
-              <a
-                href={webHref}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-              >
-                <Globe className="h-4 w-4 text-[#378ADD]" aria-hidden />
-                Página web
-              </a>
-            )}
-            {emailHref && (
-              <a
-                href={emailHref}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-              >
-                <Mail className="h-4 w-4 text-[#7F77DD]" aria-hidden />
-                Email
-              </a>
-            )}
-          </div>
-        )}
-
         {event.available_on_site && (
           <div className="flex items-center gap-2 rounded-xl bg-surface-5 p-3 text-sm font-semibold text-ink-2">
             <MapPin className="h-4 w-4 text-primary" aria-hidden />
@@ -494,6 +383,9 @@ export function EventDetailView({ event }: EventDetailViewProps) {
         )}
 
         <div className="flex gap-2">
+          {/* "Recordarme este evento" oculto: no es funcional todavía y falta
+              decisión de producto sobre qué pasa sin sesión. No borrar. */}
+          {SHOW_REMIND_ME && (
           <button
             type="button"
             disabled
@@ -503,6 +395,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             <Bell className="h-4 w-4" aria-hidden />
             Avisame antes
           </button>
+          )}
           <button
             type="button"
             onClick={() => shareEvent(event)}
@@ -512,6 +405,30 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             Compartir
           </button>
         </div>
+
+        {/* Privacidad del organizador: nunca se muestra su nombre/avatar en
+            el detalle — solo el sello de verificación (texto fijo) y los
+            medios de contacto que cargó en el evento. Va debajo de
+            Compartir por decisión explícita de la usuaria (distinto de
+            seSALE.html, a propósito). */}
+        {(event.organizer.is_verified || hasContact) && (
+          <div
+            className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5"
+            data-testid="event-organizer-contact"
+          >
+            {event.organizer.is_verified && (
+              <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <ShieldCheck
+                  className="h-4 w-4 flex-shrink-0 text-brand-green"
+                  aria-hidden
+                  data-testid="organizer-verified-icon"
+                />
+                Usuario verificado
+              </p>
+            )}
+            <ContactLinks items={contactItems} />
+          </div>
+        )}
 
         {canEdit && (
           <Link

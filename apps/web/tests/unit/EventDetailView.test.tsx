@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -516,125 +516,100 @@ describe("EventDetailView", () => {
     });
   });
 
-  // Etapa 9a — banner "Organizador verificado" con datos reales del
-  // organizador (ver a_revisar.md).
-  describe("organizer verification banner", () => {
-    it("shows the banner when organizer.is_verified is true", () => {
-      const event = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: true,
-          email_verified: true,
-          member_since: "2024-03-01",
-        },
-      });
+  // Privacidad del organizador: el detalle nunca muestra su nombre/avatar,
+  // solo "Usuario verificado" + los medios de contacto del evento, debajo de
+  // Compartir y antes de "Reportar evento".
+  describe("organizer privacy block", () => {
+    const ORGANIZER = {
+      public_name: "Juana Pérez Producciones",
+      public_whatsapp: "2984111222",
+      city: "General Roca",
+      is_verified: true,
+      phone_verified: true,
+      email_verified: true,
+      member_since: "2024-03-01",
+    };
 
-      renderWithClient(event);
+    it("never renders the organizer's name nor its initials avatar", () => {
+      renderWithClient(makeEventDetail({ organizer: ORGANIZER }));
 
-      expect(screen.getByText("Identidad confirmada por seSALE")).toBeInTheDocument();
-      expect(screen.getByText("Documento verificado")).toBeInTheDocument();
+      expect(screen.queryByText(/Juana Pérez/)).not.toBeInTheDocument();
+      expect(screen.queryByText("JU")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("event-organizer-card")).not.toBeInTheDocument();
+      expect(screen.queryByText("Organizador")).not.toBeInTheDocument();
+      expect(document.body.textContent).not.toContain("Juana");
     });
 
-    it("does not show the banner when organizer.is_verified is false", () => {
-      const event = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: false,
-          phone_verified: false,
-          email_verified: false,
-          member_since: "2024-03-01",
-        },
-      });
+    it('shows the "Usuario verificado" seal when the organizer is verified', () => {
+      renderWithClient(makeEventDetail({ organizer: ORGANIZER }));
 
-      renderWithClient(event);
-
-      expect(screen.queryByText("Identidad confirmada por seSALE")).not.toBeInTheDocument();
+      const block = screen.getByTestId("event-organizer-contact");
+      expect(within(block).getByText("Usuario verificado")).toBeInTheDocument();
+      expect(within(block).getByTestId("organizer-verified-icon")).toBeInTheDocument();
     });
 
-    it('shows "Celular verificado" only when phone_verified is true', () => {
-      const verified = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: true,
-          email_verified: false,
-          member_since: "2024-03-01",
-        },
-      });
-      const { unmount } = renderWithClient(verified);
-      expect(screen.getByText("Celular verificado")).toBeInTheDocument();
-      unmount();
+    it("does not claim verification when the organizer is not verified", () => {
+      renderWithClient(
+        makeEventDetail({ organizer: { ...ORGANIZER, is_verified: false }, contact_whatsapp: "2984000000" }),
+      );
 
-      const notVerified = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: false,
-          email_verified: false,
-          member_since: "2024-03-01",
-        },
-      });
-      renderWithClient(notVerified);
-      expect(screen.queryByText("Celular verificado")).not.toBeInTheDocument();
+      expect(screen.queryByText("Usuario verificado")).not.toBeInTheDocument();
+      // Los medios de contacto se siguen mostrando.
+      expect(within(screen.getByTestId("event-organizer-contact")).getByText("WhatsApp")).toBeInTheDocument();
     });
 
-    it('shows "Email verificado" only when email_verified is true', () => {
-      const verified = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: false,
-          email_verified: true,
-          member_since: "2024-03-01",
-        },
-      });
-      const { unmount } = renderWithClient(verified);
-      expect(screen.getByText("Email verificado")).toBeInTheDocument();
-      unmount();
+    it("renders only the contact channels the organizer loaded", () => {
+      renderWithClient(
+        makeEventDetail({
+          organizer: ORGANIZER,
+          contact_whatsapp: "2984000000",
+          contact_instagram: "@eltinglado",
+          contact_facebook: null,
+          contact_web: null,
+          contact_email: "hola@tinglado.com",
+        }),
+      );
 
-      const notVerified = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: false,
-          email_verified: false,
-          member_since: "2024-03-01",
-        },
-      });
-      renderWithClient(notVerified);
-      expect(screen.queryByText("Email verificado")).not.toBeInTheDocument();
+      const block = screen.getByTestId("event-organizer-contact");
+      expect(within(block).getByText("WhatsApp")).toBeInTheDocument();
+      expect(within(block).getByText("Instagram")).toBeInTheDocument();
+      expect(within(block).getByText("Email")).toBeInTheDocument();
+      expect(within(block).queryByText("Facebook")).not.toBeInTheDocument();
+      expect(within(block).queryByText("Página web")).not.toBeInTheDocument();
     });
 
-    it('shows "Miembro desde" with month and year in Spanish', () => {
-      const event = makeEventDetail({
-        organizer: {
-          public_name: "El Tinglado Bar",
-          public_whatsapp: null,
-          city: null,
-          is_verified: true,
-          phone_verified: true,
-          email_verified: true,
-          member_since: "2024-03-15",
-        },
-      });
+    it("is placed below the Compartir button and before 'Reportar evento'", () => {
+      renderWithClient(makeEventDetail({ organizer: ORGANIZER, contact_whatsapp: "2984000000" }));
 
-      renderWithClient(event);
-
-      expect(screen.getByText("Miembro desde marzo 2024")).toBeInTheDocument();
+      const share = screen.getByRole("button", { name: /Compartir/ });
+      const block = screen.getByTestId("event-organizer-contact");
+      const report = screen.getByRole("button", { name: /Reportar evento/ });
+      expect(share.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(block.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+
+    it("hides the block entirely when the organizer is unverified and has no contact channels", () => {
+      renderWithClient(
+        makeEventDetail({
+          organizer: { ...ORGANIZER, is_verified: false },
+          contact_whatsapp: null,
+          contact_instagram: null,
+          contact_facebook: null,
+          contact_web: null,
+          contact_email: null,
+        }),
+      );
+
+      expect(screen.queryByTestId("event-organizer-contact")).not.toBeInTheDocument();
+    });
+  });
+
+  // "Recordarme este evento" — oculto hasta que haya decisión de producto.
+  it('does not render the "Avisame antes" (Recordarme) button', () => {
+    renderWithClient();
+
+    expect(screen.queryByRole("button", { name: /Avisame antes/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recordarme/)).not.toBeInTheDocument();
   });
 
   // Etapa 10b-2 — "Dar de baja"/"Volver a publicar" (autoservicio del organizador).

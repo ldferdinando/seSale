@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   CalendarRange,
   CalendarSearch,
+  LayoutGrid,
   Moon,
   Sun,
   X,
@@ -50,6 +51,8 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
     }
   }, [filters.dateFrom, filters.dateTo]);
 
+  const noDateFilter = !filters.dateFrom && !filters.dateTo;
+
   function applyPreset(preset: DatePreset) {
     const range = getDateRangeForPreset(preset);
     setActivePreset(preset);
@@ -62,6 +65,11 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
     setActivePreset(null);
     setSelectedDay(undefined);
     onChange({ ...filters, dateFrom: undefined, dateTo: undefined });
+  }
+
+  function selectAll() {
+    setShowCalendar(false);
+    clearDate();
   }
 
   function applyCalendarDay() {
@@ -79,7 +87,23 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
         ¿Cuándo?
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="¿Cuándo?">
+        {/* Chip "Todos" — primera opción, activa por defecto (sin filtro de
+            fecha). Elegir otra opción la desactiva; tocarla de nuevo quita
+            cualquier filtro de fecha aplicado (preset o día del calendario). */}
+        <button
+          type="button"
+          aria-pressed={noDateFilter}
+          onClick={selectAll}
+          className={cn(
+            "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",
+            noDateFilter ? "bg-primary text-primary-foreground" : "bg-surface-5 text-ink-1 hover:bg-surface-6",
+          )}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+          Todos
+        </button>
+
         {DATE_PRESETS.map((preset) => {
           const { label, icon: Icon } = PRESET_LABELS[preset];
           const on = activePreset === preset;
@@ -87,6 +111,7 @@ export function DateFilter({ filters, onChange }: DateFilterProps) {
             <button
               key={preset}
               type="button"
+              aria-pressed={on}
               onClick={() => applyPreset(preset)}
               className={cn(
                 "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",

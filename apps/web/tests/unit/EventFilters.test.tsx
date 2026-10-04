@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -128,7 +128,8 @@ describe("EventFilters", () => {
     const onChange = vi.fn();
     render(<EventFilters filters={{ ticketType: "pago" }} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Todos" }));
+    const ticketGroup = screen.getByRole("group", { name: "Tipo de entrada" });
+    fireEvent.click(within(ticketGroup).getByRole("button", { name: "Todos" }));
 
     expect(onChange).toHaveBeenCalledWith({ ticketType: undefined });
   });

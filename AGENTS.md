@@ -146,13 +146,15 @@ root/
 │   │   │   │   ├── MediaUpload.tsx    # Subir/cambiar/eliminar una imagen — prop type:"flyer-desktop"|"flyer-mobile"|"cover" — Etapa 8b, generalizado en Etapa 8e, flyer dual en Etapa 12b
 │   │   │   │   ├── ImageLightbox.tsx  # Modal para ampliar el flyer — Etapa 8b
 │   │   │   │   ├── EventsMap.tsx      # Mapa del home con pins por evento (Leaflet, N markers) — Etapa 8c
-│   │   │   │   └── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d; +aspect categoria-wide/grid — Etapa 13b
+│   │   │   │   ├── BannerSlot.tsx     # Renderiza un AdSlot: estado vacío o rotación de AdItem — Etapa 8d; +aspect categoria-wide/grid — Etapa 13b
+│   │   │   │   └── ContactLinks.tsx   # Lista condicional de medios de contacto (detalle de evento + ficha de lugar)
 │   │   │   ├── features/           # Módulos por feature (ver convención abajo)
 │   │   │   │   ├── events/         # + EventPlanChooser.tsx ("Elegir visibilidad" en el resumen del alta) — Etapa 9b;
 │   │   │   │   │                  #   + useCategoryCatalog.ts/useAdminCategories.ts (catálogo dinámico) — Etapa 12a;
 │   │   │   │   │                  #   + FlyerUpload.tsx (dos zonas desktop/mobile, wrapper de MediaUpload) — Etapa 12b;
 │   │   │   │   │                  #   + useCategoryCounts.ts (conteo de eventos por categoría/ciudad) — Etapa 13a;
-│   │   │   │   │                  #   EventList.tsx acepta prop opcional `emptyState` — Etapa 13a
+│   │   │   │   │                  #   EventList.tsx acepta prop opcional `emptyState` — Etapa 13a;
+│   │   │   │   │                  #   + lib/sortEvents.ts (orden único de la agenda: fecha → plan → hora)
 │   │   │   │   ├── auth/
 │   │   │   │   ├── users/          # + MyBannersSection.tsx ("Mis banners" en Mi cuenta) — Etapa 8d;
 │   │   │   │   │                  #   hooks useAdminUsers/useUpdateUserRole/useUpdateUserActive — Etapa 9b

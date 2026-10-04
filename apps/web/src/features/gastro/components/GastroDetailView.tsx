@@ -20,8 +20,10 @@ import {
   Store,
 } from "lucide-react";
 
+import { ContactLinks } from "@/components/ContactLinks";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { EventCard } from "@/features/events/components/EventCard";
+import { sortEventsForAgenda } from "@/features/events/lib/sortEvents";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
 import { currentWeekdayInArgentina, formatTodayHours } from "@/features/gastro/lib/openingHours";
 import { useLocationEvents } from "@/features/gastro/hooks/useLocationEvents";
@@ -69,7 +71,7 @@ function shareGastroPlace(place: GastroPlace) {
 
 export function GastroDetailView({ place }: GastroDetailViewProps) {
   const { data: locationEvents } = useLocationEvents(place.event_count > 0 ? place.id : undefined);
-  const upcomingEvents = (locationEvents ?? []).slice(0, 3);
+  const upcomingEvents = sortEventsForAgenda(locationEvents ?? []).slice(0, 3);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hoursExpanded, setHoursExpanded] = useState(false);
@@ -281,70 +283,50 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
           <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Contacto</p>
           {/* Etapa 10b-1: si ya se muestra el CTA "Reservar" (arriba, plan pro
               con WhatsApp) no se repite el link genérico de WhatsApp acá. */}
-          {whatsappHref && !reservarUrl && (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <MessageCircle className="h-4 w-4 text-[#25D366]" aria-hidden />
-              WhatsApp
-            </a>
-          )}
-          {phoneHref && (
-            <a
-              href={phoneHref}
-              data-testid="gastro-phone-link"
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <Phone className="h-4 w-4 text-foreground" aria-hidden />
-              {place.gastro_phone}
-            </a>
-          )}
-          {instagramHref && (
-            <a
-              href={instagramHref}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <InstagramIcon className="h-4 w-4 text-[#E91E8C]" aria-hidden />
-              Instagram
-            </a>
-          )}
-          {facebookHref && (
-            <a
-              href={facebookHref}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="gastro-facebook-link"
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <FacebookIcon className="h-4 w-4 text-[#4B93F5]" aria-hidden />
-              Facebook
-            </a>
-          )}
-          {webHref && (
-            <a
-              href={webHref}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <Globe className="h-4 w-4 text-[#378ADD]" aria-hidden />
-              Sitio web
-            </a>
-          )}
-          {emailHref && (
-            <a
-              href={emailHref}
-              className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm font-semibold text-foreground"
-            >
-              <Mail className="h-4 w-4 text-[#7F77DD]" aria-hidden />
-              Email
-            </a>
-          )}
+          <ContactLinks
+            items={[
+              {
+                key: "whatsapp",
+                href: reservarUrl ? null : whatsappHref,
+                label: "WhatsApp",
+                icon: MessageCircle,
+                iconClassName: "text-[#25D366]",
+              },
+              {
+                key: "phone",
+                href: phoneHref,
+                label: place.gastro_phone ?? "",
+                icon: Phone,
+                iconClassName: "text-foreground",
+                external: false,
+                testId: "gastro-phone-link",
+              },
+              {
+                key: "instagram",
+                href: instagramHref,
+                label: "Instagram",
+                icon: InstagramIcon,
+                iconClassName: "text-[#E91E8C]",
+              },
+              {
+                key: "facebook",
+                href: facebookHref,
+                label: "Facebook",
+                icon: FacebookIcon,
+                iconClassName: "text-[#4B93F5]",
+                testId: "gastro-facebook-link",
+              },
+              { key: "web", href: webHref, label: "Sitio web", icon: Globe, iconClassName: "text-[#378ADD]" },
+              {
+                key: "email",
+                href: emailHref,
+                label: "Email",
+                icon: Mail,
+                iconClassName: "text-[#7F77DD]",
+                external: false,
+              },
+            ]}
+          />
         </div>
       )}
 

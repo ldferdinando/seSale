@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
@@ -139,5 +139,23 @@ describe("HomePage", () => {
     renderWithActiveCity(<HomePage />);
 
     expect(await screen.findByText("ESTÁS EN EL LUGAR CORRECTO, ENTERÁTE!")).toBeInTheDocument();
+  });
+});
+
+describe("HomePage — sin resultados", () => {
+  it('shows "Aún no se registran eventos" when the filters leave no events', async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([])));
+
+    renderWithActiveCity(<HomePage />);
+    fireEvent.click(await screen.findByRole("button", { name: /De noche/ }));
+
+    expect(await screen.findByText("Aún no se registran eventos")).toBeInTheDocument();
+  });
+
+  it("renders the 'Todos' date chip selected by default", async () => {
+    renderWithActiveCity(<HomePage />);
+
+    const group = await screen.findByRole("group", { name: "¿Cuándo?" });
+    expect(within(group).getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
   });
 });

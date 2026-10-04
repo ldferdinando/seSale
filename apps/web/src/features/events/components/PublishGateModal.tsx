@@ -1,6 +1,6 @@
 "use client";
 
-import { LogIn, Sparkles } from "lucide-react";
+import { CircleCheck, LogIn, Sparkles } from "lucide-react";
 
 interface PublishGateModalProps {
   onLogin: () => void;
@@ -29,15 +29,29 @@ export function PublishGateModal({ onLogin, onContinueBrowsing }: PublishGateMod
         className="flex max-h-[85vh] w-full max-w-sm flex-col gap-4 overflow-y-auto rounded-t-2xl bg-card p-5 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-2">
+        {/* Copy exacto de #ipop-bg en seSALE.html — no parafrasear. */}
+        <div className="flex flex-col gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-pinkBg text-primary">
             <Sparkles className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className="text-base font-bold text-foreground">Publicar un evento es gratis</h2>
           <p className="text-sm text-ink-3">
-            Navegar por seSALE es gratis y publicar tu evento también — solo necesitás una cuenta para
-            que podamos avisarte cuando lo aprobemos.
+            Esta sección es solo para quienes quieran registrar un evento o espacio.
           </p>
+          <p className="text-sm text-ink-3">
+            <b className="text-foreground">
+              RECORDÁ QUE NAVEGAR ESTA AGENDA ES COMPLETAMENTE LIBRE Y GRATUITA, SIEMPRE.
+            </b>
+          </p>
+          <div
+            data-testid="publish-gate-free-box"
+            className="flex items-start gap-2.5 rounded-xl border border-brand-green/40 bg-brand-green/10 p-3 text-sm text-ink-2"
+          >
+            <CircleCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-green" aria-hidden />
+            <span>
+              Publicar también es <b className="text-foreground">GRATIS</b>. Tendrás opciones pagas opcionales para
+              destacar tu evento o espacio si así lo prefieres.
+            </span>
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <button

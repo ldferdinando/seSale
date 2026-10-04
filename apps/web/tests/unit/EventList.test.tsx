@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { EventList } from "@/features/events/components/EventList";
+import { makeEvent } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
@@ -35,7 +36,7 @@ describe("EventList", () => {
     renderWithClient(<EventList filters={{}} />);
 
     await waitFor(() =>
-      expect(screen.getByText("No hay eventos para mostrar con estos filtros.")).toBeInTheDocument(),
+      expect(screen.getByText("Aún no se registran eventos")).toBeInTheDocument(),
     );
   });
 
@@ -60,5 +61,36 @@ describe("EventList", () => {
 
     expect(screen.getByTestId("event-list-loading")).toBeInTheDocument();
     expect(requested).toBe(false);
+  });
+});
+
+describe("EventList — orden de la agenda", () => {
+  it("orders by date, then plan (Plus → Destacado → Gratis) within the same day, then start time", async () => {
+    server.use(
+      http.get(`${API_URL}/api/events`, () =>
+        HttpResponse.json([
+          makeEvent({ id: "e1", title: "Gratis temprano", date: "2099-05-01", time: "12:00:00", plan: "gratis" }),
+          makeEvent({ id: "e2", title: "Dest tarde", date: "2099-05-01", time: "23:00:00", plan: "dest" }),
+          makeEvent({ id: "e3", title: "Plus tarde", date: "2099-05-01", time: "23:30:00", plan: "pro" }),
+          makeEvent({ id: "e4", title: "Dest temprano", date: "2099-05-01", time: "20:00:00", plan: "dest" }),
+          makeEvent({ id: "e5", title: "Plus día siguiente", date: "2099-05-02", time: "10:00:00", plan: "pro" }),
+          makeEvent({ id: "e0", title: "Gratis día anterior", date: "2099-04-30", time: "22:00:00", plan: "gratis" }),
+        ]),
+      ),
+    );
+
+    renderWithClient(<EventList filters={{}} />);
+
+    await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(6));
+    const titles = screen.getAllByTestId("event-card").map((card) => card.textContent ?? "");
+    const order = [
+      "Gratis día anterior",
+      "Plus tarde",
+      "Dest temprano",
+      "Dest tarde",
+      "Gratis temprano",
+      "Plus día siguiente",
+    ];
+    order.forEach((title, index) => expect(titles[index]).toContain(title));
   });
 });

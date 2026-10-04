@@ -161,7 +161,14 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         <EventList
           filters={effectiveFilters}
           enabled={!isDetecting}
-          emptyState={<CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />}
+          // Con filtros aplicados se usa la leyenda por defecto de EventList
+          // ("Aún no se registran eventos", igual que Home); sin filtros se
+          // mantiene la card con CTA a otras categorías.
+          emptyState={
+            hasActiveFilters ? undefined : (
+              <CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />
+            )
+          }
         />
       )}
     </div>

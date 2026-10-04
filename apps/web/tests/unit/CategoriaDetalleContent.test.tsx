@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
@@ -239,6 +239,22 @@ describe("CategoriaDetalleContent (/categorias/[key])", () => {
     fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
 
     await waitFor(() => expect(screen.queryByTestId("ad-grid-pool")).not.toBeInTheDocument());
-    expect(await screen.findByText(/No hay eventos/)).toBeInTheDocument();
+    expect(await screen.findByText("Aún no se registran eventos")).toBeInTheDocument();
+  });
+});
+
+describe("CategoriaDetalleContent — chip 'Todos' y sin resultados", () => {
+  it("renders the 'Todos' date chip selected by default and shows the empty legend once a filter is applied", async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([])));
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    const group = screen.getByRole("group", { name: "¿Cuándo?" });
+    const todos = within(group).getByRole("button", { name: "Todos" });
+    expect(todos).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(within(group).getByRole("button", { name: /Mañana/ }));
+    expect(todos).toHaveAttribute("aria-pressed", "false");
+    expect(await screen.findByText("Aún no se registran eventos")).toBeInTheDocument();
   });
 });

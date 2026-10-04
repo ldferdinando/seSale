@@ -3,12 +3,12 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowRight,
   Coins,
   Eye,
   Heart,
   Info,
   ListOrdered,
+  LockOpen,
   MapPin,
   MessageCircle,
   Pencil,
@@ -22,7 +22,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 
 /**
@@ -143,8 +142,9 @@ export function QueEsSesaleContent() {
             <strong className="text-white">seSale es la agenda cultural de tu ciudad.</strong> Es{" "}
             <strong className="text-white">colaborativa</strong>, ¡así que corré la voz! Queremos que todos los
             eventos estén acá. Y es <strong className="text-white">GRATIS</strong>. Todo lo que pasa, en un solo
-            lugar — música en vivo, teatro, ferias, fiestas y más. Y también dónde comer o tomar algo antes o
-            después.
+            lugar — música en vivo, teatro, ferias, fiestas, eventos culturales en distintos espacios, propuestas
+            infantiles, festivales y eventos deportivos, como competencias y torneos. Y también dónde comer o tomar
+            algo antes o después.
           </p>
 
           <div className="mt-2 flex w-full justify-center gap-6 border-t border-[#1e1e1e] pt-4">
@@ -167,16 +167,6 @@ export function QueEsSesaleContent() {
       </div>
 
       <div className="container mx-auto flex max-w-2xl flex-col gap-8 px-4 py-8">
-        <div className="flex flex-col gap-4 text-sm leading-relaxed text-ink-2">
-          <p>seSALE es la agenda cultural del Alto Valle de la Patagonia.</p>
-          <p>
-            Encontrá todos los eventos culturales de tu ciudad: música en vivo, teatro, ferias, fiestas, standup,
-            milongas y mucho más.
-          </p>
-          <p>Si organizás eventos, podés publicarlos gratis y llegar a toda la comunidad del Alto Valle.</p>
-          <p>Estamos en General Roca, Cipolletti y próximamente en más ciudades de la región.</p>
-        </div>
-
         {/* "Por qué seSALE" — calcado de .dif-list en seSALE_v2.html */}
         <div className="flex flex-col gap-3">
           <SectionLabel icon={Star}>Por qué seSALE</SectionLabel>
@@ -193,9 +183,14 @@ export function QueEsSesaleContent() {
               description="Cualquier persona puede publicar su evento sin pagar nada. Los planes pagos son para quienes quieren más visibilidad."
             />
             <DifItem
+              icon={LockOpen}
+              title="Navegás sin registrarte"
+              description="Para ver eventos y lugares no hace falta crear una cuenta ni dejar tus datos. Solo se registra quien quiere publicar."
+            />
+            <DifItem
               icon={Store}
               title="Eventos + lugares en un solo lugar"
-              description="Encontrás el show y también la parrilla donde cenar antes. Todo para planificar tu salida completa."
+              description="Todo para planificar tu salida completa."
             />
           </div>
         </div>
@@ -224,6 +219,20 @@ export function QueEsSesaleContent() {
               description="Tu cartelera siempre actualizada y visible."
               tagLabel="Cartelera"
               tagClassName="bg-brand-amber/15 text-brand-amber"
+            />
+            <AudienceCard
+              emoji="⚽"
+              title="Deportes"
+              description="Difundí competencias, torneos y encuentros deportivos."
+              tagLabel="Competencias"
+              tagClassName="bg-brand-teal/15 text-brand-teal"
+            />
+            <AudienceCard
+              emoji="🎪"
+              title="Espacios culturales y fiestas populares"
+              description="Sumá tus muestras, festivales y fiestas de tu comunidad."
+              tagLabel="Cultura"
+              tagClassName="bg-sky-500/15 text-sky-500"
             />
             <AudienceCard
               emoji="🔍"
@@ -277,9 +286,9 @@ export function QueEsSesaleContent() {
           <SectionLabel icon={Rocket}>Cómo funciona — Para organizadores</SectionLabel>
           <p className="-mt-2 text-xs leading-relaxed text-ink-3">
             Publicar es <strong className="text-ink-1">siempre gratis</strong>: podés subir todos los eventos o
-            lugares reales que tengas, sin límite de cantidad (solo pedimos no repetir el mismo aviso). Si además
-            querés más visibilidad, existen planes pagos <strong className="text-ink-1">opcionales</strong> para
-            destacarte — nunca hace falta pagar para publicar.
+            lugares reales que tengas, sin límite de cantidad y en diferentes categorías siempre que sean adecuadas,
+            esto se verifica. Si además querés más visibilidad, existen planes pagos{" "}
+            <strong className="text-ink-1">opcionales</strong> para destacarte.
           </p>
           <Step
             icon={UserPlus}
@@ -316,16 +325,10 @@ export function QueEsSesaleContent() {
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
           <span>
             seSALE <strong className="text-ink-2">no es</strong> para delivery, clases, servicios ni venta de
-            productos. Solo eventos culturales y lugares donde salir.
+            productos. Solo eventos (culturales, infantiles, festivales y deportivos) y lugares donde salir.
           </span>
         </div>
 
-        <Button asChild className="w-fit gap-1.5">
-          <Link href="/">
-            Ver eventos
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
-        </Button>
       </div>
     </main>
   );
