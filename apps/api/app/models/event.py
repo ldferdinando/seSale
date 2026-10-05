@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timezone
 from enum import Enum
 from uuid import UUID, uuid4
 
+from sqlalchemy import Index
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.plan import PlanType
@@ -21,11 +22,25 @@ class TicketType(str, Enum):
 
 class Event(SQLModel, table=True):
     __tablename__ = "events"
+    # Índices trigram de la búsqueda pública (migración 0032). Declarados acá
+    # para que `alembic check`/autogenerate no los detecte como drift; en
+    # SQLite (tests) los kwargs postgresql_* se ignoran y quedan como btree.
+    __table_args__ = (
+        Index(
+            "ix_events_title_trgm", "title", postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}
+        ),
+        Index(
+            "ix_events_description_trgm",
+            "description",
+            postgresql_using="gin",
+            postgresql_ops={"description": "gin_trgm_ops"},
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     city_id: UUID = Field(foreign_key="cities.id", index=True)
     organizer_id: UUID = Field(foreign_key="users.id")
-    location_id: UUID = Field(foreign_key="locations.id")
+    location_id: UUID = Field(foreign_key="locations.id", index=True)  # migración 0033
 
     # Datos principales
     title: str = Field(max_length=255)

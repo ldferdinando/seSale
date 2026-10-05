@@ -479,6 +479,12 @@ Estas reglas son **no negociables** y aplican desde el primer commit.
 - HTTPS siempre en producción (Vercel y Railway lo proveen automáticamente)
 - CORS configurado explícitamente — solo los orígenes permitidos
 - Rate limiting activo en todos los endpoints públicos (`slowapi`)
+  - Storage en memoria por proceso: con `WEB_CONCURRENCY` = N workers el
+    límite real por IP es N × el configurado (limitación conocida, ver
+    `core/limiter.py`)
+  - La IP del cliente sale de `X-Forwarded-For` porque uvicorn corre con
+    `--proxy-headers --forwarded-allow-ips='*'` (`apps/api/Procfile`): no
+    sacar esos flags o todos los usuarios comparten la IP del proxy
 - Inputs validados con Pydantic en el backend y Zod en el frontend
 
 ### Base de datos

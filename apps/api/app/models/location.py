@@ -1,12 +1,18 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, JSON
+from sqlalchemy import JSON, Column, Index
 from sqlmodel import Field, Relationship, SQLModel
 
 
 class Location(SQLModel, table=True):
     __tablename__ = "locations"
+    # Índices trigram de la búsqueda pública (migración 0032). Declarados acá
+    # para que `alembic check`/autogenerate no los detecte como drift; en
+    # SQLite (tests) los kwargs postgresql_* se ignoran y quedan como btree.
+    __table_args__ = (
+        Index("ix_locations_name_trgm", "name", postgresql_using="gin", postgresql_ops={"name": "gin_trgm_ops"}),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

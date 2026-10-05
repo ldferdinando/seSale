@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import case, delete, func, or_
+from sqlalchemy import case, delete, func, or_, union
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -210,27 +210,25 @@ def list_public_events(
     if search:
         # Etapa 12b — búsqueda ampliada: título, descripción, nombre del
         # lugar (locations.name) y categorías (event_categories.category),
-        # todo case-insensitive (ilike). Se resuelve con subqueries EXISTS
-        # (mismo patrón que los filtros `categories`/`moment` de arriba) en
-        # vez de JOIN + DISTINCT: el JOIN a event_categories multiplicaría
-        # filas por evento multi-categoría, y un SELECT DISTINCT rompería el
-        # ORDER BY por `_ORDER_RANK` en Postgres (la expresión CASE tendría
-        # que estar en el SELECT). EXISTS evita el duplicado de raíz.
+        # todo case-insensitive (ilike). Se resuelve con `Event.id IN (UNION
+        # ...)` en vez de JOIN + DISTINCT: el JOIN a event_categories
+        # multiplicaría filas por evento multi-categoría, y un SELECT DISTINCT
+        # rompería el ORDER BY por `_ORDER_RANK` en Postgres.
+        # Ni un OR de `ilike` con subqueries EXISTS (versión anterior): Postgres
+        # no puede combinar índices a través de un OR con subplans, así que
+        # hacía seq scan de `events` aunque existan los índices trigram
+        # (migración 0032). Con el UNION cada rama usa su propio índice y la
+        # query externa solo resuelve los ids encontrados por PK.
         like = f"%{_escape_like(search)}%"
-        loc_subq = select(Location.id).where(
-            Location.id == Event.location_id, Location.name.ilike(like, escape="\\")
+        matching_ids = union(
+            select(Event.id).where(Event.title.ilike(like, escape="\\")),
+            select(Event.id).where(Event.description.ilike(like, escape="\\")),
+            select(Event.id).where(
+                Event.location_id.in_(select(Location.id).where(Location.name.ilike(like, escape="\\")))
+            ),
+            select(EventCategory.event_id).where(EventCategory.category.ilike(like, escape="\\")),
         )
-        search_cat_subq = select(EventCategory.event_id).where(
-            EventCategory.event_id == Event.id, EventCategory.category.ilike(like, escape="\\")
-        )
-        stmt = stmt.where(
-            or_(
-                Event.title.ilike(like, escape="\\"),
-                Event.description.ilike(like, escape="\\"),
-                loc_subq.exists(),
-                search_cat_subq.exists(),
-            )
-        )
+        stmt = stmt.where(Event.id.in_(matching_ids))
     if ticket_type == "gratis":
         stmt = stmt.where(Event.ticket_type == TicketType.gratis)
     elif ticket_type == "pago":
