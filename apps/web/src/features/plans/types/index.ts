@@ -25,3 +25,31 @@ export interface Plan {
 export interface CheckoutResponse {
   init_point: string;
 }
+
+/** Admin — fila del historial de precios de un plan (`plan_prices`). Las
+ * fechas son días calendario (`YYYY-MM-DD`); `valid_until` null = vigente
+ * sin fecha de cierre. */
+export interface AdminPlanPrice {
+  id: string;
+  amount: number;
+  currency: string;
+  valid_from: string;
+  valid_until: string | null;
+  promo_label: string | null;
+  notes: string | null;
+}
+
+/** GET /api/admin/plans — planes pagos de precio fijo (dest/pro). */
+export interface AdminPlanPricing {
+  id: string;
+  name: string;
+  plan_type: PlanType;
+  is_active: boolean;
+  current_price: AdminPlanPrice | null;
+  history: AdminPlanPrice[];
+}
+
+export interface PlanPriceCreateInput {
+  amount: number;
+  promo_label: string | null;
+}

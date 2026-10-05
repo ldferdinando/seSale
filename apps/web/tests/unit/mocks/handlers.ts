@@ -533,6 +533,37 @@ export const handlers = [
       makePlan({ id: "banner-plan", name: "Banner web", plan_type: "banner", pricing_type: "custom", price: null }),
     ]);
   }),
+  http.get(`${API_URL}/api/admin/plans`, () => {
+    return HttpResponse.json([
+      {
+        id: "dest-plan",
+        name: "Destacado",
+        plan_type: "dest",
+        is_active: true,
+        current_price: {
+          id: "pd2",
+          amount: 3500,
+          currency: "ARS",
+          valid_from: "2026-10-01",
+          valid_until: null,
+          promo_label: "Promo lanzamiento",
+          notes: null,
+        },
+        history: [
+          { id: "pd2", amount: 3500, currency: "ARS", valid_from: "2026-10-01", valid_until: null, promo_label: "Promo lanzamiento", notes: null },
+          { id: "pd1", amount: 0, currency: "ARS", valid_from: "2026-09-01", valid_until: "2026-09-30", promo_label: null, notes: null },
+        ],
+      },
+      { id: "pro-plan", name: "Destacado Plus", plan_type: "pro", is_active: true, current_price: null, history: [] },
+    ]);
+  }),
+  http.post(`${API_URL}/api/admin/plans/:id/prices`, async ({ request }) => {
+    const body = (await request.json()) as { amount: number; promo_label: string | null };
+    return HttpResponse.json(
+      { id: "new-price", amount: body.amount, currency: "ARS", valid_from: "2026-10-05", valid_until: null, promo_label: body.promo_label, notes: null },
+      { status: 201 },
+    );
+  }),
   http.get(`${API_URL}/api/site-settings`, () => {
     return HttpResponse.json({ payment_alias: "sesale.pagos" });
   }),

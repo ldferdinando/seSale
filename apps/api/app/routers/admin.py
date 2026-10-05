@@ -39,6 +39,7 @@ from app.schemas.location import (
     LocationGastroVerifyUpdate,
     LocationVerifyUpdate,
 )
+from app.schemas.plan import PlanPriceAdminRead, PlanPriceCreate, PlanPricingAdminRead
 from app.schemas.report import AdminReportRead, ReportStatusUpdate
 from app.schemas.site_settings import SiteSettingsAdminRead, SiteSettingsUpdate
 from app.schemas.subscription import (
@@ -95,7 +96,9 @@ from app.services.location_service import (
 from app.services.payment_service import (
     activate_subscription_manually,
     get_latest_subscriptions_by_event,
+    list_priceable_plans_admin,
     review_subscription,
+    set_plan_price,
 )
 from app.services.report_service import get_report_target, list_admin_reports, update_report_status
 from app.services.site_settings_service import get_site_settings, update_site_settings
@@ -836,3 +839,44 @@ async def patch_admin_site_settings(
     session: Session = Depends(get_session),
 ) -> SiteSettingsAdminRead:
     return SiteSettingsAdminRead.model_validate(update_site_settings(session, payload))
+
+
+# ── Precios de planes (Destacado / Destacado Plus) ─────────────────────────
+
+
+@router.get("/plans", response_model=list[PlanPricingAdminRead])
+async def get_admin_plans(session: Session = Depends(get_session)) -> list[PlanPricingAdminRead]:
+    return [
+        PlanPricingAdminRead(
+            id=plan.id,
+            name=plan.name,
+            plan_type=plan.plan_type,
+            is_active=plan.is_active,
+            current_price=PlanPriceAdminRead.model_validate(current) if current else None,
+            history=[PlanPriceAdminRead.model_validate(price) for price in history],
+        )
+        for plan, current, history in list_priceable_plans_admin(session)
+    ]
+
+
+@router.post("/plans/{plan_id}/prices", response_model=PlanPriceAdminRead, status_code=status.HTTP_201_CREATED)
+async def post_admin_plan_price(
+    plan_id: UUID,
+    payload: PlanPriceCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> PlanPriceAdminRead:
+    try:
+        price = set_plan_price(
+            session,
+            plan_id=plan_id,
+            amount=payload.amount,
+            admin_id=current_user.id,
+            promo_label=payload.promo_label,
+            notes=payload.notes,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return PlanPriceAdminRead.model_validate(price)

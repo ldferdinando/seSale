@@ -8,7 +8,7 @@ contra la API de MercadoPago (`sdk.payment().get(...)`) antes de activar nada.
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 import mercadopago
@@ -49,6 +49,98 @@ def get_current_plan_price(
 def list_active_plans(session: Session) -> list[tuple[Plan, PlanPrice | None]]:
     plans = session.exec(select(Plan).where(Plan.is_active == True)).all()  # noqa: E712
     return [(plan, get_current_plan_price(session, plan.id)) for plan in plans]
+
+
+# ── Precios de planes (admin) ───────────────────────────────────────────────
+#
+# `plan_prices` es un historial: una fila nunca se edita in-place (las
+# Subscription apuntan a `plan_price_id` y tienen que seguir reflejando el
+# precio con el que se contrataron). "Cambiar el precio" = cerrar la vigencia
+# de las filas que se solapan con [hoy, ∞) y crear una nueva con
+# valid_from=hoy, valid_until=None. "Hoy" se calcula igual que en
+# get_current_plan_price() (fecha UTC) para que GET /api/plans refleje el
+# cambio inmediatamente.
+
+PRICEABLE_PLAN_TYPES = (PlanType.dest, PlanType.pro)
+PLAN_PRICE_HISTORY_LIMIT = 5
+
+
+def _plan_price_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def list_plan_prices(session: Session, plan_id: UUID, *, limit: int = PLAN_PRICE_HISTORY_LIMIT) -> list[PlanPrice]:
+    """Historial de precios de un plan, del más nuevo al más viejo."""
+    stmt = (
+        select(PlanPrice)
+        .where(PlanPrice.plan_id == plan_id)
+        .order_by(PlanPrice.valid_from.desc(), PlanPrice.valid_until.is_(None).desc())
+        .limit(limit)
+    )
+    return list(session.exec(stmt).all())
+
+
+def list_priceable_plans_admin(session: Session) -> list[tuple[Plan, PlanPrice | None, list[PlanPrice]]]:
+    """Planes pagos de precio fijo (dest/pro) con su precio vigente e historial reciente."""
+    plans = session.exec(
+        select(Plan)
+        .where(Plan.plan_type.in_(PRICEABLE_PLAN_TYPES))  # type: ignore[attr-defined]
+        .where(Plan.pricing_type == PricingType.fixed)
+        .order_by(Plan.plan_type)
+    ).all()
+    return [(plan, get_current_plan_price(session, plan.id), list_plan_prices(session, plan.id)) for plan in plans]
+
+
+def set_plan_price(
+    session: Session,
+    *,
+    plan_id: UUID,
+    amount: int,
+    admin_id: UUID,
+    promo_label: str | None = None,
+    notes: str | None = None,
+) -> PlanPrice:
+    """Crea un precio nuevo vigente desde hoy y cierra la vigencia de los anteriores.
+
+    Toda fila del plan que siga aplicando hoy o más adelante (valid_until NULL
+    o >= hoy) se cierra con valid_until=ayer. Si esa fila arrancaba hoy o en
+    el futuro, queda con un rango vacío (valid_until < valid_from): se
+    conserva como historial pero nunca más aplica. Así nunca hay dos precios
+    vigentes solapados para el mismo plan.
+    """
+    if amount <= 0:
+        raise ValueError("El monto tiene que ser mayor a cero")
+    plan = session.get(Plan, plan_id)
+    if plan is None:
+        raise LookupError("Plan no encontrado")
+    if plan.plan_type not in PRICEABLE_PLAN_TYPES or plan.pricing_type != PricingType.fixed:
+        raise ValueError("Este plan no tiene precio fijo editable")
+
+    today = _plan_price_today()
+    yesterday = today - timedelta(days=1)
+    overlapping = session.exec(
+        select(PlanPrice)
+        .where(PlanPrice.plan_id == plan_id)
+        .where((PlanPrice.valid_until.is_(None)) | (PlanPrice.valid_until >= today))
+    ).all()
+    for previous in overlapping:
+        previous.valid_until = yesterday
+        session.add(previous)
+
+    new_price = PlanPrice(
+        plan_id=plan_id,
+        amount=amount,
+        currency="ARS",
+        valid_from=today,
+        valid_until=None,
+        promo_label=promo_label,
+        notes=notes,
+        created_by=admin_id,
+    )
+    session.add(new_price)
+    session.commit()
+    session.refresh(new_price)
+    return new_price
 
 
 def _get_event_for_plan_purchase(session: Session, *, event_id: UUID, user: User) -> Event:
