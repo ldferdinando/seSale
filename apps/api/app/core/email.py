@@ -21,7 +21,7 @@ def _format_argentina_datetime(value: datetime) -> str:
     return f"{local.day} de {_MESES[local.month - 1]} de {local.year}, {local.strftime('%H:%M')}hs"
 
 
-async def send_report_email(
+def send_report_email(
     event_title: str,
     event_id: UUID,
     report_text: str,
@@ -60,7 +60,7 @@ async def send_report_email(
         logger.exception("Error al enviar el email de reporte para el evento %s", event_id)
 
 
-async def send_location_report_email(
+def send_location_report_email(
     location_name: str,
     location_id: UUID,
     report_text: str,
@@ -97,7 +97,7 @@ async def send_location_report_email(
         logger.exception("Error al enviar el email de reporte para el lugar %s", location_id)
 
 
-async def send_transfer_notification_to_admin(
+def send_transfer_notification_to_admin(
     user_public_name: str,
     plan_name: str,
     amount: int,
@@ -143,7 +143,7 @@ async def send_transfer_notification_to_admin(
         logger.exception("Error al enviar el aviso de transferencia para la suscripción %s", subscription_id)
 
 
-async def send_subscription_approved_email(
+def send_subscription_approved_email(
     user_email: str,
     user_public_name: str,
     plan_name: str,
@@ -176,7 +176,7 @@ async def send_subscription_approved_email(
         logger.exception("Error al enviar el email de aprobación a %s", user_email)
 
 
-async def send_password_reset_email(
+def send_password_reset_email(
     user_email: str,
     user_name: str,
     reset_url: str,
@@ -214,7 +214,7 @@ async def send_password_reset_email(
         logger.exception("Error al enviar el email de recuperación de contraseña a %s", user_email)
 
 
-async def send_subscription_rejected_email(
+def send_subscription_rejected_email(
     user_email: str,
     user_public_name: str,
     plan_name: str,

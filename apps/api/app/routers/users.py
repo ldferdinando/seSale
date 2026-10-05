@@ -21,12 +21,12 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserRead)
-async def get_me(current_user: User = Depends(get_current_user)) -> User:
+def get_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
 @router.get("/me/banners", response_model=list[AdItemWithSlotRead])
-async def get_my_banners(
+def get_my_banners(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[AdItemWithSlotRead]:
@@ -36,7 +36,7 @@ async def get_my_banners(
 
 
 @router.put("/me", response_model=UserRead)
-async def update_me(
+def update_me(
     payload: UserUpdate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -45,7 +45,7 @@ async def update_me(
 
 
 @router.get("", response_model=list[UserRead], dependencies=[Depends(require_admin)])
-async def list_all_users(
+def list_all_users(
     session: Session = Depends(get_session),
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
@@ -54,7 +54,7 @@ async def list_all_users(
 
 
 @router.get("/{user_id}", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def get_user_by_id(user_id: UUID, session: Session = Depends(get_session)) -> User:
+def get_user_by_id(user_id: UUID, session: Session = Depends(get_session)) -> User:
     try:
         return get_user(session, user_id)
     except LookupError as exc:
@@ -62,7 +62,7 @@ async def get_user_by_id(user_id: UUID, session: Session = Depends(get_session))
 
 
 @router.patch("/{user_id}/verify", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def verify_user_by_id(
+def verify_user_by_id(
     user_id: UUID,
     payload: UserVerifiedUpdate = UserVerifiedUpdate(),
     session: Session = Depends(get_session),
@@ -78,7 +78,7 @@ async def verify_user_by_id(
 
 
 @router.patch("/{user_id}/role", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def update_user_role_by_id(
+def update_user_role_by_id(
     user_id: UUID, payload: UserRoleUpdate, session: Session = Depends(get_session)
 ) -> User:
     """Etapa 9b — cambiar el rol de un usuario desde el panel admin."""
@@ -89,7 +89,7 @@ async def update_user_role_by_id(
 
 
 @router.patch("/{user_id}", response_model=UserRead, dependencies=[Depends(require_admin)])
-async def update_user_by_id(
+def update_user_by_id(
     user_id: UUID, payload: AdminUserUpdate, session: Session = Depends(get_session)
 ) -> User:
     """Etapa 9b — activar/desactivar un usuario desde el panel admin.

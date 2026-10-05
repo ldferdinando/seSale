@@ -43,7 +43,7 @@ def _to_subscription_read(subscription: Subscription) -> SubscriptionRead:
 
 @router.post("/checkout", response_model=CheckoutResponse)
 @limiter.limit("20/minute")
-async def post_checkout(
+def post_checkout(
     request: Request,
     payload: CheckoutRequest,
     session: Session = Depends(get_session),
@@ -65,7 +65,7 @@ async def post_checkout(
 
 @router.post("/transfer", response_model=SubscriptionRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
-async def post_transfer(
+def post_transfer(
     request: Request,
     payload: TransferSubscriptionRequest,
     session: Session = Depends(get_session),
@@ -80,7 +80,7 @@ async def post_transfer(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    await send_transfer_notification_to_admin(
+    send_transfer_notification_to_admin(
         user_public_name=current_user.public_name,
         plan_name=subscription.plan.name,
         amount=subscription.amount_paid,
@@ -94,7 +94,7 @@ async def post_transfer(
 
 @router.get("/me", response_model=list[SubscriptionRead])
 @limiter.limit("60/minute")
-async def get_my_subscriptions(
+def get_my_subscriptions(
     request: Request,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),

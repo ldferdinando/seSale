@@ -12,12 +12,12 @@ router = APIRouter(prefix="/api/cities", tags=["cities"])
 
 
 @router.get("", response_model=list[CityRead])
-async def list_cities(session: Session = Depends(get_session)) -> list[City]:
+def list_cities(session: Session = Depends(get_session)) -> list[City]:
     return list_active_cities(session)
 
 
 @router.patch("/{city_id}/toggle", response_model=CityRead, dependencies=[Depends(require_admin)])
-async def patch_city_toggle(city_id: UUID, session: Session = Depends(get_session)) -> City:
+def patch_city_toggle(city_id: UUID, session: Session = Depends(get_session)) -> City:
     try:
         return toggle_city_active(session, city_id)
     except LookupError as exc:

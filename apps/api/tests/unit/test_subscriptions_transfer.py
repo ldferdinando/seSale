@@ -117,7 +117,7 @@ async def test_transfer_with_dest_plan_returns_201(
 ):
     sent = []
 
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         sent.append(kwargs)
 
     monkeypatch.setattr("app.routers.subscriptions.send_transfer_notification_to_admin", fake_send)
@@ -162,5 +162,5 @@ async def test_transfer_with_plan_without_price_returns_404(
     assert response.status_code == 404
 
 
-async def _noop_send(**kwargs) -> None:
+def _noop_send(**kwargs) -> None:
     return None

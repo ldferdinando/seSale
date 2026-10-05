@@ -71,7 +71,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/hour", key_func=get_client_ip)
-async def register(request: Request, payload: UserRegister, session: Session = Depends(get_session)) -> User:
+def register(request: Request, payload: UserRegister, session: Session = Depends(get_session)) -> User:
     try:
         return register_user(
             session,
@@ -91,7 +91,7 @@ async def register(request: Request, payload: UserRegister, session: Session = D
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute", key_func=get_client_ip)
-async def login(
+def login(
     request: Request, payload: UserLogin, response: Response, session: Session = Depends(get_session)
 ) -> Token:
     try:
@@ -106,7 +106,7 @@ async def login(
 
 @router.post("/google", response_model=Token)
 @limiter.limit("10/minute", key_func=get_client_ip)
-async def google_login(
+def google_login(
     request: Request, payload: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
 ) -> Token:
     try:
@@ -120,7 +120,7 @@ async def google_login(
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh(
+def refresh(
     response: Response,
     session: Session = Depends(get_session),
     refresh_token: str | None = Cookie(default=None, alias=REFRESH_COOKIE_NAME),
@@ -138,7 +138,7 @@ async def refresh(
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 @limiter.limit("3/hour", key_func=get_client_ip)
-async def forgot_password(
+def forgot_password(
     request: Request, payload: ForgotPasswordRequest, session: Session = Depends(get_session)
 ) -> ForgotPasswordResponse:
     result = request_password_reset(session, email=payload.email)
@@ -146,7 +146,7 @@ async def forgot_password(
     resend_configured = bool(settings.resend_api_key)
     if result.user is not None and result.raw_token is not None and resend_configured:
         reset_url = f"{settings.frontend_url}/reset-contrasena?token={result.raw_token}"
-        await send_password_reset_email(result.user.email, result.user.public_name, reset_url)
+        send_password_reset_email(result.user.email, result.user.public_name, reset_url)
 
     # Etapa 11a — BUG (password reset): el token de debug solo tiene sentido
     # cuando NO hay otra forma de que la persona lo reciba, es decir en
@@ -166,7 +166,7 @@ async def forgot_password(
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 @limiter.limit("10/hour", key_func=get_client_ip)
-async def reset_password_endpoint(
+def reset_password_endpoint(
     request: Request, payload: ResetPasswordRequest, session: Session = Depends(get_session)
 ) -> dict:
     try:
@@ -177,7 +177,7 @@ async def reset_password_endpoint(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(
+def logout(
     response: Response,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),

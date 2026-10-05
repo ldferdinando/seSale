@@ -156,7 +156,7 @@ async def test_activate_subscription_as_user_returns_403(
 async def _make_transfer_subscription(
     client: AsyncClient, plan_dest: Plan, event: Event, headers: dict[str, str], monkeypatch
 ) -> str:
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         return None
 
     monkeypatch.setattr("app.routers.subscriptions.send_transfer_notification_to_admin", fake_send)
@@ -184,7 +184,7 @@ async def test_review_approve_activates_and_updates_only_that_event(
 ):
     sent = []
 
-    async def fake_approved(**kwargs):
+    def fake_approved(**kwargs):
         sent.append(kwargs)
 
     monkeypatch.setattr("app.routers.admin.send_subscription_approved_email", fake_approved)
@@ -300,7 +300,7 @@ async def test_review_as_user_returns_403(
     assert response.status_code == 403
 
 
-async def _noop_email(**kwargs) -> None:
+def _noop_email(**kwargs) -> None:
     return None
 
 

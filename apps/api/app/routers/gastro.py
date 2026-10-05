@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/gastro", tags=["gastro"])
 
 @router.get("", response_model=list[LocationGastroRead])
 @limiter.limit("60/minute")
-async def get_gastro_places(
+def get_gastro_places(
     request: Request,
     background_tasks: BackgroundTasks,
     city_id: UUID = Query(...),
@@ -47,7 +47,7 @@ async def get_gastro_places(
 
 @router.get("/{location_id}", response_model=LocationGastroRead)
 @limiter.limit("60/minute")
-async def get_gastro_place_detail(
+def get_gastro_place_detail(
     request: Request,
     location_id: UUID,
     session: Session = Depends(get_session),
@@ -60,7 +60,7 @@ async def get_gastro_place_detail(
 
 @router.post("/{location_id}/report", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/hour", key_func=get_client_ip)
-async def post_gastro_place_report(
+def post_gastro_place_report(
     request: Request,
     location_id: UUID,
     payload: ReportCreate,
@@ -82,7 +82,7 @@ async def post_gastro_place_report(
     location = session.get(Location, location_id)
     location_url = f"{settings.frontend_url}/lugares/{location_id}"
     if location is not None:
-        await send_location_report_email(
+        send_location_report_email(
             location_name=location.name,
             location_id=location_id,
             report_text=payload.text,

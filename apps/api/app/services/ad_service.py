@@ -338,7 +338,7 @@ def delete_ad_item(session: Session, ad_item_id: UUID) -> None:
     session.commit()
 
 
-async def upload_ad_item_image(
+def upload_ad_item_image(
     session: Session,
     ad_item_id: UUID,
     *,
@@ -351,7 +351,7 @@ async def upload_ad_item_image(
     if item.img_url:
         delete_banner_if_owned(item.img_url, item.id)
 
-    item.img_url = await upload_banner(
+    item.img_url = upload_banner(
         file_content=file_content, filename=filename, content_type=content_type, ad_item_id=item.id
     )
     item.updated_at = datetime.now(timezone.utc)

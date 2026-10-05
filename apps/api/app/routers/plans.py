@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 @router.get("", response_model=list[PlanRead])
 @limiter.limit("60/minute")
-async def get_plans(request: Request, session: Session = Depends(get_session)) -> list[PlanRead]:
+def get_plans(request: Request, session: Session = Depends(get_session)) -> list[PlanRead]:
     mercadopago_available = bool(settings.mercadopago_access_token)
     return [
         PlanRead(

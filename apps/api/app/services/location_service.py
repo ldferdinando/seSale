@@ -557,7 +557,7 @@ def set_gastro_plan(session: Session, location_id: UUID, plan: str) -> LocationG
     return _to_gastro_admin_read(location, count)
 
 
-async def upload_gastro_cover(
+def upload_gastro_cover(
     session: Session,
     location_id: UUID,
     *,
@@ -572,7 +572,7 @@ async def upload_gastro_cover(
     if location.cover_img_url:
         delete_cover(location.cover_img_url, location.id)
 
-    cover_url = await upload_cover(file_content, filename, content_type, location.id)
+    cover_url = upload_cover(file_content, filename, content_type, location.id)
     location.cover_img_url = cover_url
     session.add(location)
     session.commit()

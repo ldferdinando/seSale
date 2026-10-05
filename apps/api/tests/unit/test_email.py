@@ -7,10 +7,10 @@ from app.core import email as email_module
 from app.core.config import settings
 
 
-async def test_send_report_email_skips_when_no_api_key(monkeypatch, caplog):
+def test_send_report_email_skips_when_no_api_key(monkeypatch, caplog):
     monkeypatch.setattr(settings, "resend_api_key", None)
 
-    await email_module.send_report_email(
+    email_module.send_report_email(
         event_title="Show en el bar",
         event_id=uuid4(),
         report_text="Texto del reporte",
@@ -20,7 +20,7 @@ async def test_send_report_email_skips_when_no_api_key(monkeypatch, caplog):
     # No debe lanzar excepción — el reporte ya se guardó igual.
 
 
-async def test_send_report_email_calls_resend_when_configured(monkeypatch):
+def test_send_report_email_calls_resend_when_configured(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
     monkeypatch.setattr(settings, "admin_email", "admin@sesale.com.ar")
 
@@ -32,7 +32,7 @@ async def test_send_report_email_calls_resend_when_configured(monkeypatch):
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_report_email(
+    email_module.send_report_email(
         event_title="Show en el bar",
         event_id=uuid4(),
         report_text="Texto del reporte",
@@ -45,7 +45,7 @@ async def test_send_report_email_calls_resend_when_configured(monkeypatch):
     assert "Texto del reporte" in sent["text"]
 
 
-async def test_send_report_email_logs_and_does_not_raise_on_failure(monkeypatch):
+def test_send_report_email_logs_and_does_not_raise_on_failure(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
 
     def fake_send(payload):
@@ -53,7 +53,7 @@ async def test_send_report_email_logs_and_does_not_raise_on_failure(monkeypatch)
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_report_email(
+    email_module.send_report_email(
         event_title="Show en el bar",
         event_id=uuid4(),
         report_text="Texto del reporte",
@@ -63,7 +63,7 @@ async def test_send_report_email_logs_and_does_not_raise_on_failure(monkeypatch)
     # No debe propagar la excepción.
 
 
-async def test_send_transfer_notification_to_admin_calls_resend(monkeypatch):
+def test_send_transfer_notification_to_admin_calls_resend(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
     monkeypatch.setattr(settings, "admin_email", "admin@sesale.com.ar")
 
@@ -75,7 +75,7 @@ async def test_send_transfer_notification_to_admin_calls_resend(monkeypatch):
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_transfer_notification_to_admin(
+    email_module.send_transfer_notification_to_admin(
         user_public_name="El Tinglado Bar",
         plan_name="Destacado",
         amount=3500,
@@ -89,7 +89,7 @@ async def test_send_transfer_notification_to_admin_calls_resend(monkeypatch):
     assert "Ya transferí" in sent["text"]
 
 
-async def test_send_subscription_approved_email_calls_resend(monkeypatch):
+def test_send_subscription_approved_email_calls_resend(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
 
     sent = {}
@@ -100,7 +100,7 @@ async def test_send_subscription_approved_email_calls_resend(monkeypatch):
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_subscription_approved_email(
+    email_module.send_subscription_approved_email(
         user_email="organizador@sesale.com.ar",
         user_public_name="El Tinglado Bar",
         plan_name="Destacado",
@@ -112,7 +112,7 @@ async def test_send_subscription_approved_email_calls_resend(monkeypatch):
     assert "septiembre" in sent["text"]
 
 
-async def test_send_subscription_rejected_email_includes_admin_notes(monkeypatch):
+def test_send_subscription_rejected_email_includes_admin_notes(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
 
     sent = {}
@@ -123,7 +123,7 @@ async def test_send_subscription_rejected_email_includes_admin_notes(monkeypatch
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_subscription_rejected_email(
+    email_module.send_subscription_rejected_email(
         user_email="organizador@sesale.com.ar",
         user_public_name="El Tinglado Bar",
         plan_name="Destacado",
@@ -134,10 +134,10 @@ async def test_send_subscription_rejected_email_includes_admin_notes(monkeypatch
     assert "No encontramos el pago" in sent["text"]
 
 
-async def test_transfer_notification_skips_when_no_api_key(monkeypatch):
+def test_transfer_notification_skips_when_no_api_key(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", None)
 
-    await email_module.send_transfer_notification_to_admin(
+    email_module.send_transfer_notification_to_admin(
         user_public_name="El Tinglado Bar",
         plan_name="Destacado",
         amount=3500,
@@ -151,10 +151,10 @@ async def test_transfer_notification_skips_when_no_api_key(monkeypatch):
 # Etapa 11a — recuperación de contraseña: send_password_reset_email.
 
 
-async def test_send_password_reset_email_skips_when_no_api_key(monkeypatch):
+def test_send_password_reset_email_skips_when_no_api_key(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", None)
 
-    await email_module.send_password_reset_email(
+    email_module.send_password_reset_email(
         user_email="organizador@sesale.com.ar",
         user_name="El Tinglado Bar",
         reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
@@ -162,7 +162,7 @@ async def test_send_password_reset_email_skips_when_no_api_key(monkeypatch):
     # No debe lanzar excepción.
 
 
-async def test_send_password_reset_email_calls_resend_when_configured(monkeypatch):
+def test_send_password_reset_email_calls_resend_when_configured(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
 
     sent = {}
@@ -173,7 +173,7 @@ async def test_send_password_reset_email_calls_resend_when_configured(monkeypatc
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_password_reset_email(
+    email_module.send_password_reset_email(
         user_email="organizador@sesale.com.ar",
         user_name="El Tinglado Bar",
         reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
@@ -185,7 +185,7 @@ async def test_send_password_reset_email_calls_resend_when_configured(monkeypatc
     assert "vence en 1 hora" in sent["text"]
 
 
-async def test_send_password_reset_email_logs_and_does_not_raise_on_failure(monkeypatch):
+def test_send_password_reset_email_logs_and_does_not_raise_on_failure(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
 
     def fake_send(payload):
@@ -193,7 +193,7 @@ async def test_send_password_reset_email_logs_and_does_not_raise_on_failure(monk
 
     monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
 
-    await email_module.send_password_reset_email(
+    email_module.send_password_reset_email(
         user_email="organizador@sesale.com.ar",
         user_name="El Tinglado Bar",
         reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",

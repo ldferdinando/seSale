@@ -367,7 +367,7 @@ async def test_forgot_password_sends_real_email_when_resend_configured(
 
     sent: dict = {}
 
-    async def fake_send_password_reset_email(user_email, user_name, reset_url):
+    def fake_send_password_reset_email(user_email, user_name, reset_url):
         sent["user_email"] = user_email
         sent["user_name"] = user_name
         sent["reset_url"] = reset_url
@@ -389,7 +389,7 @@ async def test_forgot_password_unknown_email_does_not_send_email(client: AsyncCl
 
     called = False
 
-    async def fake_send_password_reset_email(*args, **kwargs):
+    def fake_send_password_reset_email(*args, **kwargs):
         nonlocal called
         called = True
 

@@ -43,7 +43,7 @@ router = APIRouter(prefix="/api/events", tags=["events"])
 
 @router.get("", response_model=list[EventRead])
 @limiter.limit("60/minute")
-async def get_events(
+def get_events(
     request: Request,
     background_tasks: BackgroundTasks,
     city_id: UUID | None = Query(default=None),
@@ -77,7 +77,7 @@ async def get_events(
 
 @router.post("", response_model=EventRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
-async def post_event(
+def post_event(
     request: Request,
     payload: EventCreate,
     session: Session = Depends(get_session),
@@ -118,7 +118,7 @@ async def post_event(
 
 @router.get("/mine", response_model=EventsByStatus)
 @limiter.limit("60/minute")
-async def get_my_events(
+def get_my_events(
     request: Request,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -133,7 +133,7 @@ async def get_my_events(
 
 @router.get("/{event_id}", response_model=EventDetailRead)
 @limiter.limit("60/minute")
-async def get_event(
+def get_event(
     request: Request,
     event_id: UUID,
     session: Session = Depends(get_session),
@@ -182,7 +182,7 @@ async def get_event(
 
 @router.put("/{event_id}", response_model=EventRead)
 @limiter.limit("30/minute")
-async def put_event(
+def put_event(
     request: Request,
     event_id: UUID,
     payload: EventUpdate,
@@ -201,7 +201,7 @@ async def put_event(
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
-async def delete_event_endpoint(
+def delete_event_endpoint(
     request: Request,
     event_id: UUID,
     session: Session = Depends(get_session),
@@ -217,7 +217,7 @@ async def delete_event_endpoint(
 
 @router.post("/{event_id}/flyer", response_model=FlyerUploadResponse)
 @limiter.limit("20/minute")
-async def post_event_flyer(
+def post_event_flyer(
     request: Request,
     event_id: UUID,
     file: UploadFile = File(...),
@@ -227,9 +227,9 @@ async def post_event_flyer(
     """Flyer único del evento (proporción 4:5, 1080×1350, "como Instagram").
     JPG, PNG o WEBP, máx. 5MB. Organizador dueño (plan `pro`) o admin
     (cualquier plan)."""
-    content = await file.read()
+    content = file.file.read()
     try:
-        event = await upload_event_flyer(
+        event = upload_event_flyer(
             session,
             event_id,
             current_user,
@@ -251,7 +251,7 @@ async def post_event_flyer(
 
 @router.delete("/{event_id}/flyer", response_model=FlyerUploadResponse)
 @limiter.limit("20/minute")
-async def delete_event_flyer_endpoint(
+def delete_event_flyer_endpoint(
     request: Request,
     event_id: UUID,
     session: Session = Depends(get_session),
@@ -269,7 +269,7 @@ async def delete_event_flyer_endpoint(
 
 @router.patch("/{event_id}/status", response_model=EventRead, dependencies=[Depends(require_admin)])
 @limiter.limit("60/minute")
-async def patch_event_status(
+def patch_event_status(
     request: Request,
     event_id: UUID,
     payload: EventStatusUpdate,
@@ -283,7 +283,7 @@ async def patch_event_status(
 
 @router.patch("/{event_id}/featured", response_model=EventRead, dependencies=[Depends(require_admin)])
 @limiter.limit("60/minute")
-async def patch_event_featured(
+def patch_event_featured(
     request: Request,
     event_id: UUID,
     payload: EventFeaturedUpdate,
@@ -297,7 +297,7 @@ async def patch_event_featured(
 
 @router.patch("/{event_id}/plan", response_model=EventRead, dependencies=[Depends(require_admin)])
 @limiter.limit("60/minute")
-async def patch_event_plan(
+def patch_event_plan(
     request: Request,
     event_id: UUID,
     payload: EventPlanUpdate,

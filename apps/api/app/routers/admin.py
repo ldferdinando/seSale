@@ -148,7 +148,7 @@ def _to_organizer_subscription_read(subscription: Subscription | None) -> Organi
 
 @router.get("/events", response_model=list[AdminEventRead])
 @limiter.limit("60/minute")
-async def get_admin_events(
+def get_admin_events(
     request: Request,
     status_filter: EventStatus | None = Query(default=None, alias="status"),
     city_id: UUID | None = Query(default=None),
@@ -187,7 +187,7 @@ async def get_admin_events(
 
 
 @router.get("/users", response_model=list[UserAdminRead])
-async def get_admin_users(
+def get_admin_users(
     search: str | None = Query(default=None),
     role: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
@@ -202,7 +202,7 @@ async def get_admin_users(
 
 
 @router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_user(
+def post_admin_user(
     payload: AdminUserCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -228,7 +228,7 @@ async def post_admin_user(
 
 @router.get("/subscriptions", response_model=list[AdminSubscriptionRead])
 @limiter.limit("60/minute")
-async def get_admin_subscriptions(
+def get_admin_subscriptions(
     request: Request,
     status_filter: SubscriptionStatus | None = Query(default=None, alias="status"),
     plan_id: UUID | None = Query(default=None),
@@ -264,7 +264,7 @@ async def get_admin_subscriptions(
 
 
 @router.patch("/subscriptions/{subscription_id}/activate", response_model=AdminSubscriptionRead)
-async def patch_admin_subscription_activate(
+def patch_admin_subscription_activate(
     subscription_id: UUID,
     payload: SubscriptionActivateRequest,
     session: Session = Depends(get_session),
@@ -284,7 +284,7 @@ async def patch_admin_subscription_activate(
 
 
 @router.patch("/subscriptions/{subscription_id}/review", response_model=AdminSubscriptionRead)
-async def patch_admin_subscription_review(
+def patch_admin_subscription_review(
     subscription_id: UUID,
     payload: SubscriptionReviewRequest,
     session: Session = Depends(get_session),
@@ -304,14 +304,14 @@ async def patch_admin_subscription_review(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     if payload.action == "approve":
-        await send_subscription_approved_email(
+        send_subscription_approved_email(
             user_email=subscription.user.email,
             user_public_name=subscription.user.public_name,
             plan_name=subscription.plan.name,
             expires_at=subscription.expires_at,
         )
     else:
-        await send_subscription_rejected_email(
+        send_subscription_rejected_email(
             user_email=subscription.user.email,
             user_public_name=subscription.user.public_name,
             plan_name=subscription.plan.name,
@@ -322,14 +322,14 @@ async def patch_admin_subscription_review(
 
 
 @router.post("/subscriptions/expire")
-async def post_admin_subscriptions_expire(session: Session = Depends(get_session)) -> dict[str, int]:
+def post_admin_subscriptions_expire(session: Session = Depends(get_session)) -> dict[str, int]:
     expired = expire_overdue_subscriptions(session)
     return {"expired_count": len(expired)}
 
 
 @router.get("/reports", response_model=list[AdminReportRead])
 @limiter.limit("60/minute")
-async def get_admin_reports(
+def get_admin_reports(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
     event_id: UUID | None = Query(default=None),
@@ -347,7 +347,7 @@ async def get_admin_reports(
 
 
 @router.patch("/reports/{report_id}/status", response_model=AdminReportRead)
-async def patch_admin_report_status(
+def patch_admin_report_status(
     report_id: UUID,
     payload: ReportStatusUpdate,
     session: Session = Depends(get_session),
@@ -363,7 +363,7 @@ async def patch_admin_report_status(
 
 @router.get("/locations", response_model=list[LocationAdminRead])
 @limiter.limit("60/minute")
-async def get_admin_locations(
+def get_admin_locations(
     request: Request,
     city_id: UUID | None = Query(default=None),
     is_public: bool | None = Query(default=None),
@@ -387,7 +387,7 @@ async def get_admin_locations(
 
 
 @router.post("/locations", response_model=LocationAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_location(
+def post_admin_location(
     payload: LocationAdminCreate,
     session: Session = Depends(get_session),
 ) -> LocationAdminRead:
@@ -398,7 +398,7 @@ async def post_admin_location(
 
 
 @router.put("/locations/{location_id}", response_model=LocationAdminRead)
-async def put_admin_location(
+def put_admin_location(
     location_id: UUID,
     payload: LocationAdminUpdate,
     session: Session = Depends(get_session),
@@ -410,7 +410,7 @@ async def put_admin_location(
 
 
 @router.patch("/locations/{location_id}/verify", response_model=LocationAdminRead)
-async def patch_admin_location_verify(
+def patch_admin_location_verify(
     location_id: UUID,
     payload: LocationVerifyUpdate,
     session: Session = Depends(get_session),
@@ -422,7 +422,7 @@ async def patch_admin_location_verify(
 
 
 @router.delete("/locations/{location_id}")
-async def delete_admin_location_endpoint(
+def delete_admin_location_endpoint(
     location_id: UUID,
     session: Session = Depends(get_session),
 ) -> dict[str, str]:
@@ -436,7 +436,7 @@ async def delete_admin_location_endpoint(
 
 
 @router.get("/cities", response_model=list[CityAdminRead])
-async def get_admin_cities(session: Session = Depends(get_session)) -> list[CityAdminRead]:
+def get_admin_cities(session: Session = Depends(get_session)) -> list[CityAdminRead]:
     """Etapa 8a — todas las ciudades (activas e inactivas), con la cantidad
     de eventos activos como contexto antes de deshabilitar. Usado por el
     panel admin de Ciudades (GET /api/cities público solo devuelve activas)."""
@@ -447,7 +447,7 @@ async def get_admin_cities(session: Session = Depends(get_session)) -> list[City
 
 
 @router.patch("/cities/{city_id}/sort-order", response_model=CityAdminRead)
-async def patch_admin_city_sort_order(
+def patch_admin_city_sort_order(
     city_id: UUID,
     payload: CitySortOrderUpdate,
     session: Session = Depends(get_session),
@@ -465,7 +465,7 @@ async def patch_admin_city_sort_order(
 
 
 @router.get("/ad-slots", response_model=list[AdSlotAdminRead])
-async def get_admin_ad_slots(
+def get_admin_ad_slots(
     city_id: UUID = Query(...),
     section: AdSection | None = Query(default=None),
     category_key: str | None = Query(default=None),
@@ -478,7 +478,7 @@ async def get_admin_ad_slots(
 
 
 @router.patch("/ad-slots/{slot_id}", response_model=AdSlotAdminRead)
-async def patch_admin_ad_slot(
+def patch_admin_ad_slot(
     slot_id: UUID,
     payload: AdSlotUpdate,
     session: Session = Depends(get_session),
@@ -493,7 +493,7 @@ async def patch_admin_ad_slot(
 
 
 @router.get("/ad-items", response_model=list[AdItemAdminRead])
-async def get_admin_ad_items(
+def get_admin_ad_items(
     city_id: UUID | None = Query(default=None),
     section: AdSection | None = Query(default=None),
     status: str | None = Query(default=None),
@@ -514,7 +514,7 @@ async def get_admin_ad_items(
 
 
 @router.post("/ad-items", response_model=AdItemAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_ad_item(
+def post_admin_ad_item(
     payload: AdItemCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -526,7 +526,7 @@ async def post_admin_ad_item(
 
 
 @router.put("/ad-items/{ad_item_id}", response_model=AdItemAdminRead)
-async def put_admin_ad_item(
+def put_admin_ad_item(
     ad_item_id: UUID,
     payload: AdItemUpdate,
     session: Session = Depends(get_session),
@@ -538,7 +538,7 @@ async def put_admin_ad_item(
 
 
 @router.delete("/ad-items/{ad_item_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_admin_ad_item(
+def delete_admin_ad_item(
     ad_item_id: UUID,
     session: Session = Depends(get_session),
 ) -> None:
@@ -549,7 +549,7 @@ async def delete_admin_ad_item(
 
 
 @router.patch("/ad-items/{ad_item_id}/status", response_model=AdItemAdminRead)
-async def patch_admin_ad_item_status(
+def patch_admin_ad_item_status(
     ad_item_id: UUID,
     payload: AdItemStatusUpdate,
     session: Session = Depends(get_session),
@@ -563,14 +563,14 @@ async def patch_admin_ad_item_status(
 
 
 @router.post("/ad-items/{ad_item_id}/image", response_model=AdItemAdminRead)
-async def post_admin_ad_item_image(
+def post_admin_ad_item_image(
     ad_item_id: UUID,
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
 ) -> AdItemAdminRead:
-    content = await file.read()
+    content = file.file.read()
     try:
-        return await upload_ad_item_image(
+        return upload_ad_item_image(
             session,
             ad_item_id,
             file_content=content,
@@ -584,7 +584,7 @@ async def post_admin_ad_item_image(
 
 
 @router.patch("/ad-items/reorder", response_model=list[AdItemAdminRead])
-async def patch_admin_ad_items_reorder(
+def patch_admin_ad_items_reorder(
     payload: AdItemReorderRequest,
     session: Session = Depends(get_session),
 ) -> list[AdItemAdminRead]:
@@ -601,7 +601,7 @@ async def patch_admin_ad_items_reorder(
 
 @router.get("/gastro", response_model=list[LocationGastroAdminRead])
 @limiter.limit("60/minute")
-async def get_admin_gastro_places(
+def get_admin_gastro_places(
     request: Request,
     city_id: UUID | None = Query(default=None),
     gastro_type: str | None = Query(default=None),
@@ -625,7 +625,7 @@ async def get_admin_gastro_places(
 
 
 @router.post("/gastro", response_model=LocationGastroAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_gastro_place(
+def post_admin_gastro_place(
     payload: LocationGastroCreate,
     session: Session = Depends(get_session),
 ) -> LocationGastroAdminRead:
@@ -638,7 +638,7 @@ async def post_admin_gastro_place(
 
 
 @router.put("/gastro/{location_id}", response_model=LocationGastroAdminRead)
-async def put_admin_gastro_place(
+def put_admin_gastro_place(
     location_id: UUID,
     payload: LocationGastroUpdate,
     session: Session = Depends(get_session),
@@ -652,7 +652,7 @@ async def put_admin_gastro_place(
 
 
 @router.delete("/gastro/{location_id}")
-async def delete_admin_gastro_place(
+def delete_admin_gastro_place(
     location_id: UUID,
     session: Session = Depends(get_session),
 ) -> dict[str, str]:
@@ -666,7 +666,7 @@ async def delete_admin_gastro_place(
 
 
 @router.patch("/gastro/{location_id}/verify", response_model=LocationGastroAdminRead)
-async def patch_admin_gastro_verify(
+def patch_admin_gastro_verify(
     location_id: UUID,
     payload: LocationGastroVerifyUpdate,
     session: Session = Depends(get_session),
@@ -678,7 +678,7 @@ async def patch_admin_gastro_verify(
 
 
 @router.patch("/gastro/{location_id}/plan", response_model=LocationGastroAdminRead)
-async def patch_admin_gastro_plan(
+def patch_admin_gastro_plan(
     location_id: UUID,
     payload: LocationGastroPlanUpdate,
     session: Session = Depends(get_session),
@@ -690,14 +690,14 @@ async def patch_admin_gastro_plan(
 
 
 @router.post("/gastro/{location_id}/cover")
-async def post_admin_gastro_cover(
+def post_admin_gastro_cover(
     location_id: UUID,
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
 ) -> dict[str, str | None]:
-    content = await file.read()
+    content = file.file.read()
     try:
-        cover_img_url = await upload_gastro_cover(
+        cover_img_url = upload_gastro_cover(
             session,
             location_id,
             file_content=content,
@@ -712,7 +712,7 @@ async def post_admin_gastro_cover(
 
 
 @router.delete("/gastro/{location_id}/cover")
-async def delete_admin_gastro_cover(
+def delete_admin_gastro_cover(
     location_id: UUID,
     session: Session = Depends(get_session),
 ) -> dict[str, str | None]:
@@ -727,7 +727,7 @@ async def delete_admin_gastro_cover(
 
 
 @router.get("/categories", response_model=list[CategoryAdminRead])
-async def get_admin_categories(
+def get_admin_categories(
     is_active: bool | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> list[CategoryAdminRead]:
@@ -736,7 +736,7 @@ async def get_admin_categories(
 
 
 @router.post("/categories", response_model=CategoryAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_category(
+def post_admin_category(
     payload: CategoryCreate,
     session: Session = Depends(get_session),
 ) -> CategoryAdminRead:
@@ -748,7 +748,7 @@ async def post_admin_category(
 
 
 @router.put("/categories/{category_id}", response_model=CategoryAdminRead)
-async def put_admin_category(
+def put_admin_category(
     category_id: UUID,
     payload: CategoryUpdate,
     session: Session = Depends(get_session),
@@ -761,7 +761,7 @@ async def put_admin_category(
 
 
 @router.patch("/categories/{category_id}/toggle", response_model=CategoryAdminRead)
-async def patch_admin_category_toggle(
+def patch_admin_category_toggle(
     category_id: UUID,
     session: Session = Depends(get_session),
 ) -> CategoryAdminRead:
@@ -778,7 +778,7 @@ async def patch_admin_category_toggle(
 
 
 @router.get("/gastro-types", response_model=list[GastroTypeAdminRead])
-async def get_admin_gastro_types(
+def get_admin_gastro_types(
     is_active: bool | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> list[GastroTypeAdminRead]:
@@ -787,7 +787,7 @@ async def get_admin_gastro_types(
 
 
 @router.post("/gastro-types", response_model=GastroTypeAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_gastro_type(
+def post_admin_gastro_type(
     payload: GastroTypeCreate,
     session: Session = Depends(get_session),
 ) -> GastroTypeAdminRead:
@@ -799,7 +799,7 @@ async def post_admin_gastro_type(
 
 
 @router.put("/gastro-types/{gastro_type_id}", response_model=GastroTypeAdminRead)
-async def put_admin_gastro_type(
+def put_admin_gastro_type(
     gastro_type_id: UUID,
     payload: GastroTypeUpdate,
     session: Session = Depends(get_session),
@@ -812,7 +812,7 @@ async def put_admin_gastro_type(
 
 
 @router.patch("/gastro-types/{gastro_type_id}/toggle", response_model=GastroTypeAdminRead)
-async def patch_admin_gastro_type_toggle(
+def patch_admin_gastro_type_toggle(
     gastro_type_id: UUID,
     session: Session = Depends(get_session),
 ) -> GastroTypeAdminRead:
@@ -829,12 +829,12 @@ async def patch_admin_gastro_type_toggle(
 
 
 @router.get("/site-settings", response_model=SiteSettingsAdminRead)
-async def get_admin_site_settings(session: Session = Depends(get_session)) -> SiteSettingsAdminRead:
+def get_admin_site_settings(session: Session = Depends(get_session)) -> SiteSettingsAdminRead:
     return SiteSettingsAdminRead.model_validate(get_site_settings(session))
 
 
 @router.patch("/site-settings", response_model=SiteSettingsAdminRead)
-async def patch_admin_site_settings(
+def patch_admin_site_settings(
     payload: SiteSettingsUpdate,
     session: Session = Depends(get_session),
 ) -> SiteSettingsAdminRead:
@@ -845,7 +845,7 @@ async def patch_admin_site_settings(
 
 
 @router.get("/plans", response_model=list[PlanPricingAdminRead])
-async def get_admin_plans(session: Session = Depends(get_session)) -> list[PlanPricingAdminRead]:
+def get_admin_plans(session: Session = Depends(get_session)) -> list[PlanPricingAdminRead]:
     return [
         PlanPricingAdminRead(
             id=plan.id,
@@ -860,7 +860,7 @@ async def get_admin_plans(session: Session = Depends(get_session)) -> list[PlanP
 
 
 @router.post("/plans/{plan_id}/prices", response_model=PlanPriceAdminRead, status_code=status.HTTP_201_CREATED)
-async def post_admin_plan_price(
+def post_admin_plan_price(
     plan_id: UUID,
     payload: PlanPriceCreate,
     session: Session = Depends(get_session),

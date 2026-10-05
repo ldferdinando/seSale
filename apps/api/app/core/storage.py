@@ -50,7 +50,7 @@ def _supabase_configured() -> bool:
     return bool(settings.supabase_url and settings.supabase_service_key)
 
 
-async def upload_flyer(
+def upload_flyer(
     file_content: bytes,
     filename: str,
     content_type: str,
@@ -111,7 +111,7 @@ def validate_banner_file(content_type: str, file_size: int) -> None:
         raise InvalidFlyerFileError("El archivo está vacío.")
 
 
-async def upload_banner(
+def upload_banner(
     file_content: bytes,
     filename: str,
     content_type: str,
@@ -195,7 +195,7 @@ def _delete_banner_from_local_disk(ad_item_id: UUID) -> None:
         pass
 
 
-async def upload_cover(
+def upload_cover(
     file_content: bytes,
     filename: str,
     content_type: str,

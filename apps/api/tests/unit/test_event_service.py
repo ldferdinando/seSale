@@ -818,6 +818,44 @@ def test_search_multi_category_event_not_duplicated(session, city, organizer, lo
     assert len(result) == 1
 
 
+def test_search_shorter_than_min_length_is_ignored(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="Noche de Rock")
+    _make_event(session, city=city, organizer=organizer, location=location, title="Feria de Artesanos")
+
+    # "ro" (y "  ro  ", que con strip queda en 2) no filtra: devuelve el listado completo.
+    for search in ("ro", "  ro  "):
+        result = list_public_events(session, today=TODAY, search=search)
+        assert {e.title for e in result} == {"Noche de Rock", "Feria de Artesanos"}
+
+
+def test_search_strips_whitespace(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="Noche de Rock")
+    _make_event(session, city=city, organizer=organizer, location=location, title="Feria de Artesanos")
+
+    result = list_public_events(session, today=TODAY, search="  rock  ")
+
+    assert [e.title for e in result] == ["Noche de Rock"]
+
+
+def test_search_treats_like_wildcards_literally(session, city, organizer, location):
+    _make_event(session, city=city, organizer=organizer, location=location, title="Noche de Rock")
+    _make_event(session, city=city, organizer=organizer, location=location, title="Promo 100% gratis")
+
+    assert list_public_events(session, today=TODAY, search="%%%") == []
+    assert list_public_events(session, today=TODAY, search="___") == []
+    assert [e.title for e in list_public_events(session, today=TODAY, search="00%")] == ["Promo 100% gratis"]
+
+
+def test_search_results_are_limited(session, city, organizer, location, monkeypatch):
+    monkeypatch.setattr("app.services.event_service.SEARCH_RESULT_LIMIT", 2)
+    for i in range(4):
+        _make_event(session, city=city, organizer=organizer, location=location, title=f"Rock {i}")
+
+    assert len(list_public_events(session, today=TODAY, search="rock")) == 2
+    # Sin búsqueda el listado no se corta (todavía no hay paginación general).
+    assert len(list_public_events(session, today=TODAY)) == 4
+
+
 def test_filter_ticket_type_gratis(session, city, organizer, location):
     g = _make_event(session, city=city, organizer=organizer, location=location, title="gratis")
     p = _make_event(session, city=city, organizer=organizer, location=location, title="pago")

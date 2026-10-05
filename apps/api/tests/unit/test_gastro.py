@@ -445,7 +445,7 @@ async def test_report_gastro_place_success(
 ):
     sent_emails = []
 
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         sent_emails.append(kwargs)
 
     monkeypatch.setattr("app.routers.gastro.send_location_report_email", fake_send)
@@ -495,7 +495,7 @@ async def test_report_gastro_place_short_text_returns_422(
 async def test_report_gastro_place_rate_limited_after_three_per_hour(
     client: AsyncClient, session: Session, city: City, monkeypatch
 ):
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         return None
 
     monkeypatch.setattr("app.routers.gastro.send_location_report_email", fake_send)

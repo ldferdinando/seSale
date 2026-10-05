@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session
 
 from app.core.config import settings
@@ -20,6 +21,9 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 @router.post("/mercadopago")
 @limiter.limit("60/minute", key_func=get_client_ip)
+# Caso mixto (ver AGENTS.md §4): `async def` porque lee el body con
+# `await request.json()`, pero la reconfirmación contra MP (SDK síncrono) y
+# las escrituras en DB van por `run_in_threadpool` para no bloquear el loop.
 async def post_mercadopago_webhook(request: Request, session: Session = Depends(get_session)) -> dict[str, str]:
     x_signature = request.headers.get("x-signature")
     x_request_id = request.headers.get("x-request-id")
@@ -51,7 +55,7 @@ async def post_mercadopago_webhook(request: Request, session: Session = Depends(
         return {"status": "ignored"}
 
     try:
-        payment_data = fetch_payment_from_mp(notification_id)
+        payment_data = await run_in_threadpool(fetch_payment_from_mp, notification_id)
     except Exception:
         # No pudimos reconfirmar el pago contra la API de MP (red, token, etc.):
         # no procesamos nada, pero igual respondemos 200 — MP no debe reintentar
@@ -62,9 +66,9 @@ async def post_mercadopago_webhook(request: Request, session: Session = Depends(
     payment_status = payment_data.get("status")
 
     if payment_status == "approved":
-        handle_approved_payment(session, payment_data)
+        await run_in_threadpool(handle_approved_payment, session, payment_data)
     elif payment_status in ("rejected", "cancelled"):
-        handle_rejected_payment(session, payment_data)
+        await run_in_threadpool(handle_rejected_payment, session, payment_data)
     else:
         logger.info("Webhook MP con status no manejado: %s", payment_status)
 

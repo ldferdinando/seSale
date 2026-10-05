@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/events", tags=["reports"])
 
 @router.post("/{event_id}/report", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/hour", key_func=get_client_ip)
-async def post_event_report(
+def post_event_report(
     request: Request,
     event_id: UUID,
     payload: ReportCreate,
@@ -36,7 +36,7 @@ async def post_event_report(
     event = session.get(Event, event_id)
     event_url = f"{settings.frontend_url}/eventos/{event_id}"
     if event is not None:
-        await send_report_email(
+        send_report_email(
             event_title=event.title,
             event_id=event_id,
             report_text=payload.text,

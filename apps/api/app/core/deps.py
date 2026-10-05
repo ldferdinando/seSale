@@ -9,8 +9,24 @@ from app.core.config import settings
 from app.core.security import decode_token
 from app.models.user import User
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=connect_args)
+if settings.database_url.startswith("sqlite"):
+    engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
+else:
+    # Los endpoints con DB son `def` y corren en el threadpool de AnyIO (40
+    # threads por proceso), así que puede haber varias sesiones a la vez por
+    # worker. Conexiones máximas por worker = pool_size + max_overflow (20):
+    # multiplicado por WEB_CONCURRENCY (Procfile) tiene que quedar por debajo
+    # del max_connections de Postgres, dejando margen para Alembic/psql.
+    # statement_timeout (ms) corta cualquier query que se cuelgue en vez de
+    # retener la conexión del pool indefinidamente.
+    engine = create_engine(
+        settings.database_url,
+        pool_size=10,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+        connect_args={"options": "-c statement_timeout=5000"},
+    )
 
 
 def get_session() -> Generator[Session, None, None]:

@@ -32,7 +32,7 @@ async def test_report_event_success(
 ):
     sent_emails = []
 
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         sent_emails.append(kwargs)
 
     monkeypatch.setattr("app.routers.reports.send_report_email", fake_send)
@@ -94,7 +94,7 @@ async def test_report_event_missing_phone_returns_422(
 async def test_report_event_rate_limited_after_three_per_hour(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, monkeypatch
 ):
-    async def fake_send(**kwargs):
+    def fake_send(**kwargs):
         return None
 
     monkeypatch.setattr("app.routers.reports.send_report_email", fake_send)

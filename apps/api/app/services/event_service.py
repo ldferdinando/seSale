@@ -97,6 +97,22 @@ def _current_utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# Búsqueda pública (`?search=`): por debajo de 3 caracteres el filtro se
+# ignora — el índice trigram (migración 0032) no sirve con patrones más cortos
+# y "a" matchea casi todo. El frontend manda el texto en cada tecla, por eso
+# se ignora en vez de devolver 422. Con búsqueda activa el resultado se corta
+# en SEARCH_RESULT_LIMIT: el listado general todavía no pagina
+# (PERFORMANCE_AUDIT.md, hallazgo 11), pero la búsqueda no debe poder traer
+# la tabla entera.
+SEARCH_MIN_LENGTH = 3
+SEARCH_RESULT_LIMIT = 50
+
+
+def _escape_like(value: str) -> str:
+    """Escapa los comodines de LIKE para que el texto se busque literal."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 _ORDER_RANK = case(
     (Event.plan == PlanType.pro, 1),
     (Event.plan == PlanType.dest, 2),
@@ -188,6 +204,9 @@ def list_public_events(
         stmt = stmt.where(Event.date >= date_from)
     if date_to is not None:
         stmt = stmt.where(Event.date <= date_to)
+    search = search.strip() if search else None
+    if search and len(search) < SEARCH_MIN_LENGTH:
+        search = None
     if search:
         # Etapa 12b — búsqueda ampliada: título, descripción, nombre del
         # lugar (locations.name) y categorías (event_categories.category),
@@ -197,17 +216,17 @@ def list_public_events(
         # filas por evento multi-categoría, y un SELECT DISTINCT rompería el
         # ORDER BY por `_ORDER_RANK` en Postgres (la expresión CASE tendría
         # que estar en el SELECT). EXISTS evita el duplicado de raíz.
-        like = f"%{search}%"
+        like = f"%{_escape_like(search)}%"
         loc_subq = select(Location.id).where(
-            Location.id == Event.location_id, Location.name.ilike(like)
+            Location.id == Event.location_id, Location.name.ilike(like, escape="\\")
         )
         search_cat_subq = select(EventCategory.event_id).where(
-            EventCategory.event_id == Event.id, EventCategory.category.ilike(like)
+            EventCategory.event_id == Event.id, EventCategory.category.ilike(like, escape="\\")
         )
         stmt = stmt.where(
             or_(
-                Event.title.ilike(like),
-                Event.description.ilike(like),
+                Event.title.ilike(like, escape="\\"),
+                Event.description.ilike(like, escape="\\"),
                 loc_subq.exists(),
                 search_cat_subq.exists(),
             )
@@ -218,6 +237,8 @@ def list_public_events(
         stmt = stmt.where(Event.ticket_type.in_([TicketType.pago, TicketType.anticipo]))
 
     stmt = stmt.order_by(_ORDER_RANK, Event.date.asc(), Event.time.asc())
+    if search:
+        stmt = stmt.limit(SEARCH_RESULT_LIMIT)
 
     events = session.exec(stmt).all()
     # El ORDER BY ya lo resolvió la DB — el filtro fino de acá abajo no lo
@@ -620,7 +641,7 @@ def _check_flyer_permission_and_plan(event: Event, current_user: User) -> None:
         raise ValueError("El plan Destacado no incluye flyer. Actualizá a Destacado Plus para subir una imagen.")
 
 
-async def upload_event_flyer(
+def upload_event_flyer(
     session: Session,
     event_id: UUID,
     current_user: User,
@@ -642,7 +663,7 @@ async def upload_event_flyer(
     if event.flyer_url:
         delete_flyer(event.flyer_url, event.id)
 
-    event.flyer_url = await upload_flyer(
+    event.flyer_url = upload_flyer(
         file_content=file_content,
         filename=filename,
         content_type=content_type,

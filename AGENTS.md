@@ -342,7 +342,19 @@ features/events/
 - Los schemas de Pydantic siempre tienen validadores explícitos
 - La lógica de negocio va en `services/`, no en los routers
 - Los routers solo orquestan: reciben request → llaman service → devuelven response
-- Usar `async def` en todos los endpoints
+- `def` (no `async def`) en todo endpoint que haga I/O bloqueante: `Session`
+  de SQLModel (`session.exec`/`session.get`/`commit`), SDKs síncronos
+  (MercadoPago, Resend, Supabase), disco (`UploadFile` → `file.file.read()`).
+  FastAPI corre los `def` en el threadpool; un `async def` con DB síncrona
+  bloquea el event loop y serializa todas las requests del worker
+- `async def` solo si **todo** su I/O es awaitable (o no hay I/O)
+- Caso mixto (necesita un `await`, p. ej. `await request.json()`, y además
+  DB/SDK síncrono): `async def` + `await run_in_threadpool(func, *args)`
+  (`fastapi.concurrency`) para la parte síncrona — ver `routers/webhooks.py`
+- Los helpers con I/O bloqueante (`core/email.py`, `core/storage.py`) son `def`:
+  no declararlos `async def` si por dentro no hacen `await`
+- `tests/unit/test_endpoint_sync_convention.py` falla si aparece un endpoint
+  `async def` fuera de la lista permitida
 
 ### Manejo de errores
 - Backend: nunca exponer stack traces en respuestas de producción

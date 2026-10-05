@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 @router.get("", response_model=StatsRead)
 @limiter.limit("60/minute")
-async def get_stats(
+def get_stats(
     request: Request,
     session: Session = Depends(get_session),
 ) -> StatsRead:

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/locations", tags=["locations"])
 
 @router.get("", response_model=list[LocationRead])
 @limiter.limit("60/minute")
-async def get_locations(
+def get_locations(
     request: Request,
     city_id: UUID = Query(...),
     search: str | None = Query(default=None),
@@ -25,7 +25,7 @@ async def get_locations(
 
 @router.get("/{location_id}", response_model=LocationRead)
 @limiter.limit("60/minute")
-async def get_location_detail(
+def get_location_detail(
     request: Request,
     location_id: UUID,
     session: Session = Depends(get_session),

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 
 @router.get("", response_model=list[CategoryRead])
-async def get_categories(session: Session = Depends(get_session)) -> list[CategoryRead]:
+def get_categories(session: Session = Depends(get_session)) -> list[CategoryRead]:
     """Categorías activas, ordenadas por sort_order/name — usado por el
     selector de categorías del formulario de evento y los filtros del home."""
     categories = list_categories(session, only_active=True)
@@ -19,7 +19,7 @@ async def get_categories(session: Session = Depends(get_session)) -> list[Catego
 
 
 @router.get("/counts", response_model=dict[str, int])
-async def get_category_counts(
+def get_category_counts(
     city_id: UUID = Query(...),
     session: Session = Depends(get_session),
 ) -> dict[str, int]:

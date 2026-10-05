@@ -11,6 +11,6 @@ router = APIRouter(prefix="/api/site-settings", tags=["site-settings"])
 
 @router.get("", response_model=SiteSettingsRead)
 @limiter.limit("60/minute")
-async def get_public_site_settings(request: Request, session: Session = Depends(get_session)) -> SiteSettingsRead:
+def get_public_site_settings(request: Request, session: Session = Depends(get_session)) -> SiteSettingsRead:
     """Configuración pública del sitio (alias de pago por transferencia)."""
     return SiteSettingsRead.model_validate(get_site_settings(session))
