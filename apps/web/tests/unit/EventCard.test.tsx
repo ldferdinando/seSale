@@ -95,7 +95,11 @@ describe("EventCard", () => {
     expect(card.className).toContain("border-brand-pink");
     const img = container.querySelector("img");
     expect(img).toHaveAttribute("src", expect.stringContaining("flyer.jpg"));
-    expect(img?.className).toContain("absolute");
+    // P0-4 — next/image con `fill` posiciona la imagen absoluta vía style inline.
+    expect(img?.style.position).toBe("absolute");
+    // URL del backend (/uploads/...) → pasa por el optimizador de next/image.
+    expect(img?.getAttribute("src")).toContain("/_next/image?url=");
+    expect(img).toHaveAttribute("loading", "lazy");
   });
 
   it("plan='pro' without a flyer shows the placeholder (no <img>), still in the 4:5 card", () => {

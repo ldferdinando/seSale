@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, Crown, Image as ImageIcon, MapPin, Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 import { formatEventDateRange } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 
@@ -144,8 +145,18 @@ export function EventCard({ event }: EventCardProps) {
         >
           <CardContent className="relative h-full w-full p-0">
             {flyerUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={flyerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              // P0-4 — next/image (lazy por defecto: las cards Plus suelen
+              // quedar debajo del fold). El contenedor ya tiene aspect 4:5
+              // fijo, así que `fill` no genera layout shift. `sizes` sigue el
+              // ancho de la columna (container max-w-2xl = 672px).
+              <Image
+                src={flyerUrl}
+                alt=""
+                fill
+                sizes="(max-width: 672px) 100vw, 672px"
+                unoptimized={!isOptimizableMediaUrl(flyerUrl)}
+                className="object-cover"
+              />
             ) : (
               <div className="sesale-evi-plus-bg absolute inset-0 flex items-center justify-center">
                 <ImageIcon className="h-12 w-12 text-ink-5" aria-hidden />

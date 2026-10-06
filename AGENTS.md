@@ -90,6 +90,7 @@ ver [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 | resend | 2.x | Envío de emails — reporte de eventos (Etapa 6.5) |
 | supabase | 2.x | SDK de Supabase Storage — flyers de eventos (Etapa 8b) |
 | python-multipart | 0.0.x | Procesar uploads `multipart/form-data` (flyers, Etapa 8b) |
+| pillow | 12.x | Redimensionar/recomprimir a WebP flyers, banners y portadas al subir (`core/storage.py`, P0-4) |
 
 ### Herramientas de seguridad (dev, Etapa 9c)
 | Herramienta | Uso |

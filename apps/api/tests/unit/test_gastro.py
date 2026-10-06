@@ -1,6 +1,9 @@
+import io
 from datetime import date, datetime, time, timedelta, timezone
+from unittest.mock import patch
 
 from httpx import AsyncClient
+from PIL import Image
 from sqlmodel import Session, select
 
 from app.models import City, Event, EventStatus, Location, LocationGastroType, User
@@ -333,15 +336,19 @@ async def test_patch_admin_gastro_verify_toggles(
 
 
 async def test_post_admin_gastro_cover_valid_file_updates_url(
-    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str], tmp_path
 ):
     location = _make_gastro_location(session, city=city)
+    # JPEG real: desde P0-4 storage.py decodifica la imagen antes de guardarla.
+    buf = io.BytesIO()
+    Image.new("RGB", (16, 9), "blue").save(buf, format="JPEG")
 
-    response = await client.post(
-        f"/api/admin/gastro/{location.id}/cover",
-        files={"file": ("cover.jpg", b"\xff\xd8\xff" + b"0" * 100, "image/jpeg")},
-        headers=admin_token_headers,
-    )
+    with patch("app.core.storage._COVER_UPLOADS_DIR", tmp_path):
+        response = await client.post(
+            f"/api/admin/gastro/{location.id}/cover",
+            files={"file": ("cover.jpg", buf.getvalue(), "image/jpeg")},
+            headers=admin_token_headers,
+        )
 
     assert response.status_code == 200
     assert response.json()["cover_img_url"] is not None

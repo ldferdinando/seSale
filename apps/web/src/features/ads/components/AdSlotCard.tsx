@@ -1,6 +1,7 @@
 "use client";
 
 import { GripVertical, Plus } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import {
 } from "@/features/ads/hooks/useAdminAds";
 import { AdItemFormModal, saveErrorMessage } from "@/features/ads/components/AdItemFormModal";
 import type { AdItemAdmin, AdSlotAdmin } from "@/features/ads/types";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 const STATUS_LABEL: Record<AdItemAdmin["status"], string> = {
   active: "Activo",
@@ -51,6 +52,7 @@ export function AdItemRow({
   const deleteItem = useDeleteAdItem();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const imgSrc = resolveMediaUrl(item.img_url) ?? item.img_url;
 
   async function handleDelete() {
     setDeleteError(null);
@@ -72,11 +74,16 @@ export function AdItemRow({
       className="flex items-center gap-2 rounded-lg border border-border p-2"
     >
       {draggable && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-ink-5" aria-hidden />}
-      <img
-        src={resolveMediaUrl(item.img_url) ?? item.img_url}
-        alt=""
-        className="h-12 w-16 shrink-0 rounded-md object-cover"
-      />
+      <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md">
+        <Image
+          src={imgSrc}
+          alt=""
+          fill
+          sizes="64px"
+          unoptimized={!isOptimizableMediaUrl(imgSrc)}
+          className="object-cover"
+        />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-foreground">
           {item.advertiser_name || item.user_public_name}

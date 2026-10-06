@@ -1,9 +1,10 @@
 "use client";
 
 import { ImagePlus } from "lucide-react";
+import Image from "next/image";
 
 import { MediaUpload } from "@/components/MediaUpload";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 interface FlyerUploadProps {
   eventId: string;
@@ -24,19 +25,24 @@ const FLYER_NOTE = "1080×1350px (proporción 4:5, como una publicación de Inst
  */
 export function FlyerUpload({ eventId, flyerUrl, canUpload, onChange }: FlyerUploadProps) {
   if (!canUpload) {
+    const resolvedFlyerUrl = resolveMediaUrl(flyerUrl);
     return (
       <div className="flex flex-col gap-2" data-testid="flyer-upload-readonly">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-3">
           <ImagePlus className="h-3.5 w-3.5 text-primary" aria-hidden />
           Flyer del evento
         </p>
-        {flyerUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolveMediaUrl(flyerUrl) ?? undefined}
-            alt="Flyer del evento"
-            className="aspect-[1080/1350] w-full max-w-[280px] rounded-xl border border-border object-cover"
-          />
+        {resolvedFlyerUrl ? (
+          <div className="relative aspect-[1080/1350] w-full max-w-[280px] overflow-hidden rounded-xl border border-border">
+            <Image
+              src={resolvedFlyerUrl}
+              alt="Flyer del evento"
+              fill
+              sizes="280px"
+              unoptimized={!isOptimizableMediaUrl(resolvedFlyerUrl)}
+              className="object-cover"
+            />
+          </div>
         ) : (
           <p className="text-xs text-ink-5">Sin imagen cargada.</p>
         )}

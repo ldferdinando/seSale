@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useState } from "react";
 import {
   Bike,
@@ -31,7 +32,7 @@ import { GASTRO_TYPE_LABELS, WEEKDAYS, WEEKDAY_LABELS, type GastroPlace } from "
 import { GastroPlanBadge, OpenHoursChip } from "@/features/gastro/components/GastroPlaceCard";
 import { ReportPlaceModal } from "@/features/gastro/components/ReportPlaceModal";
 import { cn } from "@/lib/utils";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
 
@@ -115,11 +116,20 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             onClick={() => coverUrl && setLightboxOpen(true)}
             disabled={!coverUrl}
             data-testid="gastro-cover"
-            className="flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-3 disabled:cursor-default"
+            className="relative flex h-48 w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-3 disabled:cursor-default"
           >
             {coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverUrl} alt={place.name} className="h-full w-full object-cover" />
+              // P0-4 — portada arriba del fold en la ficha: `preload`. Alto
+              // fijo (h-48) → `fill` sin layout shift.
+              <Image
+                src={coverUrl}
+                alt={place.name}
+                fill
+                preload
+                sizes="(max-width: 672px) 100vw, 672px"
+                unoptimized={!isOptimizableMediaUrl(coverUrl)}
+                className="object-cover"
+              />
             ) : (
               <Icon className="h-12 w-12" style={{ color: style.color }} aria-hidden />
             )}

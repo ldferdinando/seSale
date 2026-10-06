@@ -1,13 +1,14 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
+import Image from "next/image";
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyBanners } from "@/features/ads/hooks/useMyBanners";
 import { AD_SECTION_LABELS, type MyAdItem } from "@/features/ads/types";
 import { sesaleWhatsappHref } from "@/features/plans/lib/whatsapp";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 const STATUS_LABEL: Record<MyAdItem["status"], string> = {
   active: "Activo",
@@ -22,13 +23,19 @@ const STATUS_VARIANT: Record<MyAdItem["status"], "default" | "muted" | "pro"> = 
 };
 
 function MyBannerRow({ item }: { item: MyAdItem }) {
+  const imgSrc = resolveMediaUrl(item.img_url) ?? item.img_url;
   return (
     <div data-testid="my-banner-row" className="flex items-center gap-3 rounded-lg border border-border p-3">
-      <img
-        src={resolveMediaUrl(item.img_url) ?? item.img_url}
-        alt=""
-        className="h-14 w-20 shrink-0 rounded-md object-cover"
-      />
+      <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md">
+        <Image
+          src={imgSrc}
+          alt=""
+          fill
+          sizes="80px"
+          unoptimized={!isOptimizableMediaUrl(imgSrc)}
+          className="object-cover"
+        />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">
           {AD_SECTION_LABELS[item.section]} · Carrusel {item.slot_position + 1}

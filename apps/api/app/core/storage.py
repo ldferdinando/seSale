@@ -6,11 +6,21 @@ bucket público `SUPABASE_STORAGE_BUCKET` (default "flyers") en el path
 `{event_id}/{filename}`. Sin Supabase configurado (desarrollo local sin
 credenciales), guarda en `apps/api/uploads/flyers/{event_id}/` y devuelve una
 ruta relativa servida por el propio backend (ver `app/main.py`).
+
+P0-4 (PERFORMANCE_AUDIT.md): antes de guardar, toda imagen estática pasa
+por `optimize_image()` — se decodifica con Pillow, se corrige la orientación
+EXIF, se achica a un ancho máximo por tipo y se recomprime a WebP. Lo que
+termina en el bucket es siempre la versión optimizada, nunca el original.
+Los GIF de banners (pueden ser animados) solo se validan y se guardan tal
+cual.
 """
 
-import mimetypes
+import io
+import warnings
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
+
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 
@@ -28,8 +38,73 @@ _BANNER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" 
 _COVER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "covers"
 
 
+# P0-4 — redimensionado al subir. Solo se achica (nunca se agranda) y se
+# mantiene la proporción original: el alto máximo es 2× el ancho, para
+# acotar imágenes larguísimas sin recortar las proporciones normales.
+FLYER_MAX_WIDTH = 1080  # flyer 4:5 → 1080×1350, "como Instagram"
+COVER_MAX_WIDTH = 1280  # portada gastro 16:9 → 1280×720
+BANNER_MAX_WIDTH = 1440  # banner wide (~3.9:1) a 2× DPR del container de 672px
+WEBP_QUALITY = 82
+# Tope de píxeles decodificados (≈ 50 MP): un archivo de 5MB puede
+# declarar dimensiones absurdas (decompression bomb).
+MAX_IMAGE_PIXELS = 50_000_000
+
+_STATIC_FORMATS = {"JPEG", "PNG", "WEBP"}
+
+_INVALID_IMAGE_MESSAGE = (
+    "No se pudo procesar la imagen. Verificá que el archivo no esté dañado y sea un JPG, PNG o WEBP válido."
+)
+
+
 class InvalidFlyerFileError(ValueError):
     """Formato o tamaño de archivo inválido — el router la mapea a 422."""
+
+
+def _open_image(file_content: bytes, allowed_formats: set[str]) -> Image.Image:
+    """Decodifica la imagen completa (no solo el header) o levanta
+    InvalidFlyerFileError. El formato real tiene que estar en
+    `allowed_formats`, más allá del content-type que declaró el cliente."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            img = Image.open(io.BytesIO(file_content))
+            if img.width * img.height > MAX_IMAGE_PIXELS:
+                raise InvalidFlyerFileError("La imagen tiene una resolución demasiado grande.")
+            if img.format not in allowed_formats:
+                raise InvalidFlyerFileError(_INVALID_IMAGE_MESSAGE)
+            img.load()
+    except InvalidFlyerFileError:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError,
+            Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise InvalidFlyerFileError(_INVALID_IMAGE_MESSAGE) from exc
+    return img
+
+
+def optimize_image(file_content: bytes, max_width: int) -> bytes:
+    """P0-4 — decodifica, corrige orientación EXIF, achica a `max_width` de
+    ancho como máximo (alto ≤ 2× ancho, manteniendo proporción) y recomprime
+    a WebP calidad `WEBP_QUALITY`. Descarta la metadata (EXIF/GPS del
+    celular). Si algo falla levanta InvalidFlyerFileError: nunca se guarda
+    el original sin procesar."""
+    img = _open_image(file_content, _STATIC_FORMATS)
+    try:
+        img = ImageOps.exif_transpose(img)
+        has_alpha = img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info)
+        img = img.convert("RGBA" if has_alpha else "RGB")
+        img.thumbnail((max_width, max_width * 2), Image.Resampling.LANCZOS)
+        out = io.BytesIO()
+        img.save(out, format="WEBP", quality=WEBP_QUALITY, method=4)
+    except (OSError, ValueError) as exc:
+        raise InvalidFlyerFileError(_INVALID_IMAGE_MESSAGE) from exc
+    return out.getvalue()
+
+
+def _versioned_object_name(entity_id: UUID, ext: str) -> str:
+    """Nombre único por subida (`{id}-{8 hex}{ext}`): next/image y el CDN
+    cachean por URL, así que si el reemplazo de un flyer conservara el
+    mismo nombre se seguiría viendo el anterior hasta que venza el cache."""
+    return f"{entity_id}-{uuid4().hex[:8]}{ext}"
 
 
 def validate_flyer_file(content_type: str, file_size: int) -> None:
@@ -41,11 +116,6 @@ def validate_flyer_file(content_type: str, file_size: int) -> None:
         raise InvalidFlyerFileError("El archivo está vacío.")
 
 
-def _extension_for(content_type: str, filename: str) -> str:
-    ext = mimetypes.guess_extension(content_type) or Path(filename).suffix or ".jpg"
-    return ".jpg" if ext == ".jpe" else ext
-
-
 def _supabase_configured() -> bool:
     return bool(settings.supabase_url and settings.supabase_service_key)
 
@@ -55,6 +125,7 @@ def upload_flyer(
     filename: str,
     content_type: str,
     event_id: UUID,
+    previous_url: str | None = None,
 ) -> str:
     """Sube el flyer a Supabase Storage. Path en el bucket:
     flyers/{event_id}/{filename}.
@@ -63,16 +134,19 @@ def upload_flyer(
     configurado: guarda en apps/api/uploads/flyers/{event_id}/ y devuelve la
     ruta relativa.
 
-    Si el evento ya tenía un flyer, el caller (`event_service.upload_event_flyer`)
-    es responsable de llamar a `delete_flyer` antes para no acumular archivos
-    huérfanos.
+    Si el evento ya tenía un flyer, el caller pasa su URL en `previous_url`
+    y se borra recién después de procesar con éxito la imagen nueva: si la
+    nueva es inválida, el flyer existente queda intacto.
     """
     validate_flyer_file(content_type, len(file_content))
-    object_name = f"{event_id}{_extension_for(content_type, filename)}"
+    optimized = optimize_image(file_content, FLYER_MAX_WIDTH)
+    object_name = _versioned_object_name(event_id, ".webp")
+    if previous_url:
+        delete_flyer(previous_url, event_id)
 
     if _supabase_configured():
-        return _upload_to_supabase(file_content, object_name, content_type, event_id)
-    return _upload_to_local_disk(file_content, object_name, event_id)
+        return _upload_to_supabase(optimized, object_name, "image/webp", event_id)
+    return _upload_to_local_disk(optimized, object_name, event_id)
 
 
 def _upload_to_supabase(file_content: bytes, object_name: str, content_type: str, event_id: UUID) -> str:
@@ -116,21 +190,32 @@ def upload_banner(
     filename: str,
     content_type: str,
     ad_item_id: UUID,
+    previous_url: str | None = None,
 ) -> str:
     """Sube la imagen de un banner (AdItem). Mismo patrón que `upload_flyer`:
     Supabase Storage en producción (bucket `SUPABASE_BANNER_BUCKET`, path
     `{ad_item_id}/{filename}`) o disco local en development
     (`apps/api/uploads/banners/{ad_item_id}/`).
 
-    Si el AdItem ya tenía una imagen, el caller (`ad_service.upload_ad_item_image`)
-    es responsable de llamar a `delete_banner_if_owned` antes.
+    Si el AdItem ya tenía una imagen, el caller pasa su URL en
+    `previous_url` y se borra (si es nuestra, ver `delete_banner_if_owned`)
+    recién después de procesar con éxito la imagen nueva.
     """
     validate_banner_file(content_type, len(file_content))
-    object_name = f"{ad_item_id}{_extension_for(content_type, filename)}"
+    if content_type == "image/gif":
+        # GIF (posiblemente animado): se valida que sea un GIF real pero se
+        # guarda tal cual — recomprimirlo perdería la animación.
+        _open_image(file_content, {"GIF"})
+        stored, stored_type, ext = file_content, "image/gif", ".gif"
+    else:
+        stored, stored_type, ext = optimize_image(file_content, BANNER_MAX_WIDTH), "image/webp", ".webp"
+    object_name = _versioned_object_name(ad_item_id, ext)
+    if previous_url:
+        delete_banner_if_owned(previous_url, ad_item_id)
 
     if _supabase_configured():
-        return _upload_banner_to_supabase(file_content, object_name, content_type, ad_item_id)
-    return _upload_banner_to_local_disk(file_content, object_name, ad_item_id)
+        return _upload_banner_to_supabase(stored, object_name, stored_type, ad_item_id)
+    return _upload_banner_to_local_disk(stored, object_name, ad_item_id)
 
 
 def _upload_banner_to_supabase(
@@ -200,6 +285,7 @@ def upload_cover(
     filename: str,
     content_type: str,
     location_id: UUID,
+    previous_url: str | None = None,
 ) -> str:
     """Sube la foto de portada de un lugar gastronómico (Location.cover_img_url).
     Mismo patrón que upload_flyer: Supabase Storage en producción (bucket
@@ -208,15 +294,18 @@ def upload_cover(
     formatos/tamaño que el flyer de eventos (JPG/PNG/WEBP, máx. 5MB) — no
     hay un límite distinto pedido para covers, a diferencia de los banners.
 
-    Si el lugar ya tenía cover, el caller (`location_service.upload_gastro_cover`)
-    es responsable de llamar a `delete_cover` antes.
+    Si el lugar ya tenía cover, el caller pasa su URL en `previous_url` y se
+    borra recién después de procesar con éxito la imagen nueva.
     """
     validate_flyer_file(content_type, len(file_content))
-    object_name = f"{location_id}{_extension_for(content_type, filename)}"
+    optimized = optimize_image(file_content, COVER_MAX_WIDTH)
+    object_name = _versioned_object_name(location_id, ".webp")
+    if previous_url:
+        delete_cover(previous_url, location_id)
 
     if _supabase_configured():
-        return _upload_cover_to_supabase(file_content, object_name, content_type, location_id)
-    return _upload_cover_to_local_disk(file_content, object_name, location_id)
+        return _upload_cover_to_supabase(optimized, object_name, "image/webp", location_id)
+    return _upload_cover_to_local_disk(optimized, object_name, location_id)
 
 
 def _upload_cover_to_supabase(

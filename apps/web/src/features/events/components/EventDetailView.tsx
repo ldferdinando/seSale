@@ -27,6 +27,7 @@ import {
   Ticket,
   ZoomIn,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { ContactLinks, type ContactLinkItem } from "@/components/ContactLinks";
@@ -44,7 +45,7 @@ import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 /** "Recordarme este evento" (botón + panel WhatsApp/Email) — pendiente de
  * decisión de producto (no funcional, sin definir el caso sin sesión). */
@@ -218,14 +219,20 @@ export function EventDetailView({ event }: EventDetailViewProps) {
     <div className="flex flex-col gap-5">
       {isProEvent && (
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-surface-0">
-          {hasFlyer ? (
+          {flyer ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={flyer ?? undefined}
+              {/* P0-4 — next/image con `preload`: el flyer es la imagen más
+                  grande arriba del fold en el detalle. Contenedor 4:5 fijo →
+                  `fill` sin layout shift. */}
+              <Image
+                src={flyer}
                 alt={event.title}
+                fill
+                preload
+                sizes="(max-width: 672px) 100vw, 672px"
+                unoptimized={!isOptimizableMediaUrl(flyer)}
                 onClick={() => setLightboxOpen(true)}
-                className="h-full w-full cursor-pointer object-contain"
+                className="cursor-pointer object-contain"
               />
               <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white">
                 <ZoomIn className="h-3.5 w-3.5" aria-hidden />

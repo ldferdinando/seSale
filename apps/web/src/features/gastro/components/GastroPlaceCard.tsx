@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Bike, Building2, Calendar, CalendarCheck, Clock, Crown, MapPin, MessageCircle, ShieldCheck, Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 
@@ -9,7 +10,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
 import { formatTodayHours, isOpenNow } from "@/features/gastro/lib/openingHours";
 import { GASTRO_TYPE_LABELS, type GastroPlace } from "@/features/gastro/types";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 const VISIBLE_TYPE_BADGES = 3;
 
@@ -251,10 +252,18 @@ export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
                       setLightboxOpen(true);
                     }}
                     data-testid="gastro-photo-button"
-                    className="h-[72px] w-[72px] flex-shrink-0 overflow-hidden rounded-xl"
+                    className="relative h-[72px] w-[72px] flex-shrink-0 overflow-hidden rounded-xl"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={coverUrl} alt="" className="h-full w-full object-cover" />
+                    {/* P0-4 — miniatura de 72px: next/image pide una versión
+                        chica en vez de la portada completa. */}
+                    <Image
+                      src={coverUrl}
+                      alt=""
+                      fill
+                      sizes="72px"
+                      unoptimized={!isOptimizableMediaUrl(coverUrl)}
+                      className="object-cover"
+                    />
                   </button>
                 ) : (
                   <div className="flex h-[72px] w-[72px] flex-shrink-0 items-center justify-center rounded-xl bg-surface-2">

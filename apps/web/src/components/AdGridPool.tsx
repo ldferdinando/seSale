@@ -1,10 +1,11 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import type { AdItemPublic } from "@/features/ads/types";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 /** Elige un par de índices distintos al azar dentro de [0, length). No repite
  * el mismo índice en ambas posiciones cuando length >= 2. */
@@ -33,18 +34,24 @@ function GridTile({ item }: { item: AdItemPublic | null }) {
     );
   }
 
+  const src = resolveMediaUrl(item.img_url) ?? item.img_url;
+  // P0-4 — mismo criterio que BannerSlot: `fill` dentro del tile con
+  // aspect-ratio fijo, media columna de ancho.
   const image = (
-    <img
-      src={resolveMediaUrl(item.img_url) ?? item.img_url}
+    <Image
+      src={src}
       alt={item.alt_text || "Publicidad"}
-      className="h-full w-full object-cover"
+      fill
+      sizes="(max-width: 672px) 50vw, 336px"
+      unoptimized={!isOptimizableMediaUrl(src)}
+      className="object-cover"
     />
   );
 
   return (
     <div className={TILE_CLASS} data-testid="ad-grid-tile">
       {item.link_url ? (
-        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="block h-full w-full">
+        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="relative block h-full w-full">
           {image}
         </a>
       ) : (

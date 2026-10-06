@@ -45,6 +45,8 @@ describe("BannerSlot", () => {
     );
 
     const img = screen.getByAltText("Publicidad") as HTMLImageElement;
+    // P0-4 — URL externa (no Supabase/backend) → next/image `unoptimized`,
+    // se pide tal cual.
     expect(img.src).toBe("https://x.com/a.jpg");
 
     act(() => { vi.advanceTimersByTime(10_000); });

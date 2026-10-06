@@ -3,9 +3,11 @@ GET /api/admin/ad-slots, GET/POST/PUT/DELETE /api/admin/ad-items,
 PATCH .../status, POST .../image, PATCH .../reorder.
 """
 
+import io
 from datetime import date, timedelta
 
 from httpx import AsyncClient
+from PIL import Image
 from sqlmodel import Session
 
 from app.models.ad_item import AdItem
@@ -13,10 +15,16 @@ from app.models.ad_slot import AdSlot
 from app.models.city import City
 from app.models.user import User
 
-TINY_PNG = bytes.fromhex(
-    "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753"
-    "de0000000c4944415478da6360000002000155a24d770000000049454e44ae426082"
-)
+
+def _tiny_png() -> bytes:
+    # PNG real generado con Pillow: desde P0-4 storage.py decodifica la
+    # imagen completa antes de guardarla, así que tiene que ser válida.
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 5), "red").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+TINY_PNG = _tiny_png()
 TINY_GIF = bytes.fromhex("47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b")
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import Image from "next/image";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { deleteEventFlyer, uploadEventFlyer } from "@/features/events/services/events-api";
 import { deleteGastroCover, uploadGastroCover } from "@/features/gastro/services/gastro-api";
 import { ApiError } from "@/lib/api-client";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp";
@@ -29,6 +30,8 @@ const MEDIA_CONFIG: Record<
     dropZoneLabel: string;
     imageAlt: string;
     aspectClassName: string;
+    /** `sizes` de next/image para la preview de la imagen ya subida. */
+    imageSizes: string;
     upload: (id: string, file: File) => Promise<{ url: string | null }>;
     remove: (id: string) => Promise<{ url: string | null }>;
   }
@@ -38,6 +41,7 @@ const MEDIA_CONFIG: Record<
     dropZoneLabel: "Subir flyer (JPG, PNG o WEBP, máx. 5MB)",
     imageAlt: "Flyer del evento",
     aspectClassName: "aspect-[1080/1350] w-full max-w-[280px]",
+    imageSizes: "280px",
     upload: async (id, file) => {
       const res = await uploadEventFlyer(id, file);
       return { url: res.flyer_url };
@@ -52,6 +56,7 @@ const MEDIA_CONFIG: Record<
     dropZoneLabel: "Subir portada (JPG, PNG o WEBP, máx. 5MB)",
     imageAlt: "Foto de portada del lugar",
     aspectClassName: "aspect-[16/9] w-full",
+    imageSizes: "(max-width: 672px) 100vw, 672px",
     upload: async (id, file) => {
       const res = await uploadGastroCover(id, file);
       return { url: res.cover_img_url };
@@ -165,6 +170,7 @@ export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDel
   }
 
   const showExisting = currentUrl && !previewUrl;
+  const existingUrl = resolveMediaUrl(currentUrl);
 
   return (
     <div className="flex flex-col gap-3">
@@ -184,12 +190,20 @@ export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDel
 
       {showExisting && (
         <div className="flex flex-col gap-3" data-testid="media-current-preview">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={resolveMediaUrl(currentUrl) ?? undefined}
-            alt={config.imageAlt}
-            className={`rounded-xl border border-border object-cover ${config.aspectClassName}`}
-          />
+          {existingUrl && (
+            <div
+              className={`relative overflow-hidden rounded-xl border border-border ${config.aspectClassName}`}
+            >
+              <Image
+                src={existingUrl}
+                alt={config.imageAlt}
+                fill
+                sizes={config.imageSizes}
+                unoptimized={!isOptimizableMediaUrl(existingUrl)}
+                className="object-cover"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
               Cambiar
@@ -227,6 +241,9 @@ export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDel
 
       {previewUrl && (
         <div className="flex flex-col gap-3" data-testid="media-new-preview">
+          {/* Preview local (blob: URL del archivo elegido, todavía no
+              subido): queda <img> — no hay nada que optimizar del lado de
+              next/image. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}

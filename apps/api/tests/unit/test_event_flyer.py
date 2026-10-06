@@ -8,21 +8,28 @@ sin cambios:
 - Cualquier otro: 403.
 """
 
+import io
 import uuid
 from datetime import date, time
 from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
+from PIL import Image
 from sqlmodel import Session
 
 from app.core.security import create_access_token, hash_password
 from app.models import City, Event, EventCategory, EventStatus, Location, PlanType, User
 
-TINY_PNG = bytes.fromhex(
-    "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753"
-    "de0000000c4944415478da6360000002000155a24d770000000049454e44ae426082"
-)
+def _tiny_png() -> bytes:
+    # PNG real generado con Pillow: desde P0-4 storage.py decodifica la
+    # imagen completa antes de guardarla, así que tiene que ser válida.
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 5), "red").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+TINY_PNG = _tiny_png()
 
 
 def _make_event(session: Session, *, city: City, organizer: User, location: Location, **kwargs) -> Event:

@@ -348,11 +348,14 @@ def upload_ad_item_image(
 ) -> AdItemAdminRead:
     item = get_ad_item_or_404(session, ad_item_id)
 
-    if item.img_url:
-        delete_banner_if_owned(item.img_url, item.id)
-
+    # upload_banner borra la imagen anterior recién después de procesar con
+    # éxito la nueva (P0-4).
     item.img_url = upload_banner(
-        file_content=file_content, filename=filename, content_type=content_type, ad_item_id=item.id
+        file_content=file_content,
+        filename=filename,
+        content_type=content_type,
+        ad_item_id=item.id,
+        previous_url=item.img_url,
     )
     item.updated_at = datetime.now(timezone.utc)
     session.add(item)

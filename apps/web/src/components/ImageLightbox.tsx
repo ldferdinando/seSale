@@ -1,7 +1,10 @@
 "use client";
 
 import { X } from "lucide-react";
+import Image from "next/image";
 import { useEffect } from "react";
+
+import { isOptimizableMediaUrl } from "@/lib/media";
 
 interface ImageLightboxProps {
   src: string;
@@ -43,13 +46,21 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
         <X className="h-5 w-5" aria-hidden />
       </button>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
+      {/* P0-4 — next/image en un contenedor 4:5 fijo (mismo tamaño que
+          tenía el <img>), a lo sumo 520px de ancho. */}
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="aspect-[4/5] w-full max-w-[420px] rounded-2xl bg-surface-0 object-contain md:max-w-[520px]"
-      />
+        className="relative aspect-[4/5] w-full max-w-[420px] overflow-hidden rounded-2xl bg-surface-0 md:max-w-[520px]"
+      >
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="(min-width: 768px) 520px, 420px"
+          unoptimized={!isOptimizableMediaUrl(src)}
+          className="object-contain"
+        />
+      </div>
     </div>
   );
 }

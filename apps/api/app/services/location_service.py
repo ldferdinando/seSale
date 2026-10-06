@@ -569,10 +569,11 @@ def upload_gastro_cover(
     if location is None or not location.is_gastro:
         raise LookupError("Lugar gastronómico no encontrado")
 
-    if location.cover_img_url:
-        delete_cover(location.cover_img_url, location.id)
-
-    cover_url = upload_cover(file_content, filename, content_type, location.id)
+    # upload_cover borra la portada anterior recién después de procesar con
+    # éxito la nueva (P0-4).
+    cover_url = upload_cover(
+        file_content, filename, content_type, location.id, previous_url=location.cover_img_url
+    )
     location.cover_img_url = cover_url
     session.add(location)
     session.commit()

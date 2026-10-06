@@ -1,15 +1,26 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import type { AdSlot } from "@/features/ads/types";
-import { resolveMediaUrl } from "@/lib/media";
+import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
 interface BannerSlotProps {
   slot: AdSlot;
   className?: string;
 }
+
+/** `sizes` de next/image según sección: los wide ocupan la columna entera
+ * (container max-w-2xl = 672px), los grid la mitad. */
+const SECTION_SIZES: Record<AdSlot["section"], string> = {
+  eventos: "(max-width: 672px) 100vw, 672px",
+  gastronomia: "(max-width: 672px) 100vw, 672px",
+  "categoria-wide": "(max-width: 672px) 100vw, 672px",
+  "eventos-grid": "(max-width: 672px) 50vw, 336px",
+  "categoria-grid": "(max-width: 672px) 50vw, 336px",
+};
 
 /** Tamaño según sección — sigue .ban-full (wide) y .ad-tile (grid) de seSALE.html. */
 const SECTION_ASPECT: Record<AdSlot["section"], string> = {
@@ -85,18 +96,25 @@ export function BannerSlot({ slot, className }: BannerSlotProps) {
   }
 
   const item = slot.items[index];
+  const src = resolveMediaUrl(item.img_url) ?? item.img_url;
+  // P0-4 — next/image con `fill`: el wrapper ya reserva el aspect-ratio de
+  // la sección. Banners con URL externa o GIF van `unoptimized` (ver
+  // isOptimizableMediaUrl).
   const image = (
-    <img
-      src={resolveMediaUrl(item.img_url) ?? item.img_url}
+    <Image
+      src={src}
       alt={item.alt_text || "Publicidad"}
-      className="h-full w-full object-cover"
+      fill
+      sizes={SECTION_SIZES[slot.section]}
+      unoptimized={!isOptimizableMediaUrl(src)}
+      className="object-cover"
     />
   );
 
   return (
     <div className={wrapperClassName} data-testid="banner-slot">
       {item.link_url ? (
-        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="block h-full w-full">
+        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="relative block h-full w-full">
           {image}
         </a>
       ) : (

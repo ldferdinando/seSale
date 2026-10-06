@@ -10,8 +10,39 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
 ];
 
+// P0-4 (PERFORMANCE_AUDIT.md) — orígenes de media que puede optimizar
+// next/image. Tiene que coincidir con isOptimizableMediaUrl() de
+// src/lib/media.ts: lo que no matchea (banners con URL externa, GIFs) se
+// renderiza con `unoptimized`.
+const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000");
+const isLocalApi = ["localhost", "127.0.0.1", "[::1]"].includes(apiUrl.hostname);
+
+function mediaRemotePatterns() {
+  const patterns = [
+    // Supabase Storage — buckets públicos de flyers, banners y covers.
+    { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+  ];
+  // Fallback local del backend (development sin Supabase): /uploads/...
+  patterns.push({
+    protocol: apiUrl.protocol.replace(":", ""),
+    hostname: apiUrl.hostname,
+    port: apiUrl.port,
+    pathname: "/uploads/**",
+  });
+  return patterns;
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: mediaRemotePatterns(),
+    // Next 16 bloquea por defecto optimizar imágenes que resuelven a una IP
+    // privada (SSRF). Solo se habilita si el backend es local (dev, o
+    // `next start` local contra localhost:8000), porque ahí vive el
+    // fallback de /uploads. En producción NEXT_PUBLIC_API_URL es Railway y
+    // las imágenes vienen de Supabase (IP pública): queda en false.
+    dangerouslyAllowLocalIP: isLocalApi,
+  },
   async headers() {
     return [
       {

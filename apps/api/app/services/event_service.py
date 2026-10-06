@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.moment import calculate_moments
-from app.core.storage import delete_flyer, upload_flyer, validate_flyer_file
+from app.core.storage import delete_flyer, upload_flyer
 from app.core.timezone import ARGENTINA_TZ, utc_time_to_argentina
 from app.models.category import EventCategory
 from app.models.city import City
@@ -655,17 +655,15 @@ def upload_event_flyer(
     _check_flyer_permission_and_plan(event, current_user)
 
     # Si ya tenía un flyer, se reemplaza en el storage — no se acumulan
-    # archivos huérfanos (validar el archivo nuevo primero: si es inválido,
-    # no se toca el flyer existente).
-    validate_flyer_file(content_type, len(file_content))
-    if event.flyer_url:
-        delete_flyer(event.flyer_url, event.id)
-
+    # archivos huérfanos. upload_flyer borra el anterior recién después de
+    # validar y procesar el nuevo (P0-4): si es inválido, no se toca el
+    # flyer existente.
     event.flyer_url = upload_flyer(
         file_content=file_content,
         filename=filename,
         content_type=content_type,
         event_id=event.id,
+        previous_url=event.flyer_url,
     )
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
