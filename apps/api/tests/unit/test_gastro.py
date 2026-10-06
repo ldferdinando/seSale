@@ -492,7 +492,7 @@ async def test_report_gastro_place_short_text_returns_422(
     assert response.status_code == 422
 
 
-async def test_report_gastro_place_rate_limited_after_three_per_hour(
+async def test_report_gastro_place_rate_limited_after_three_per_2_hours(
     client: AsyncClient, session: Session, city: City, monkeypatch
 ):
     def fake_send(**kwargs):

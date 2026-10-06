@@ -70,7 +70,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/hour", key_func=get_client_ip)
+@limiter.limit("5/hour", key_func=get_client_ip)
 def register(request: Request, payload: UserRegister, session: Session = Depends(get_session)) -> User:
     try:
         return register_user(
@@ -90,7 +90,7 @@ def register(request: Request, payload: UserRegister, session: Session = Depends
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("5/minute", key_func=get_client_ip)
+@limiter.limit("5/2minutes", key_func=get_client_ip)
 def login(
     request: Request, payload: UserLogin, response: Response, session: Session = Depends(get_session)
 ) -> Token:
@@ -105,7 +105,7 @@ def login(
 
 
 @router.post("/google", response_model=Token)
-@limiter.limit("10/minute", key_func=get_client_ip)
+@limiter.limit("5/minute", key_func=get_client_ip)
 def google_login(
     request: Request, payload: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
 ) -> Token:
@@ -137,7 +137,7 @@ def refresh(
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
-@limiter.limit("3/hour", key_func=get_client_ip)
+@limiter.limit("3/2hours", key_func=get_client_ip)
 def forgot_password(
     request: Request, payload: ForgotPasswordRequest, session: Session = Depends(get_session)
 ) -> ForgotPasswordResponse:
@@ -165,7 +165,7 @@ def forgot_password(
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
-@limiter.limit("10/hour", key_func=get_client_ip)
+@limiter.limit("5/hour", key_func=get_client_ip)
 def reset_password_endpoint(
     request: Request, payload: ResetPasswordRequest, session: Session = Depends(get_session)
 ) -> dict:

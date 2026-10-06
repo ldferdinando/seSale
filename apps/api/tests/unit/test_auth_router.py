@@ -170,8 +170,9 @@ async def test_logout_without_token_returns_401(client: AsyncClient):
     assert response.status_code == 401
 
 
-async def test_login_rate_limited_after_5_attempts_per_minute(client: AsyncClient, organizer: User):
-    # Etapa 9c — rate limiting contra fuerza bruta de contraseñas.
+async def test_login_rate_limited_after_5_attempts_per_2_minutes(client: AsyncClient, organizer: User):
+    # Etapa 9c — rate limiting contra fuerza bruta de contraseñas. Configurado
+    # "5/2minutes" por worker (≈5/minute real con 2 workers, ver core/limiter.py).
     payload = {"email": organizer.email, "password": "wrong-password"}
     for _ in range(5):
         response = await client.post("/api/auth/login", json=payload)
@@ -182,16 +183,16 @@ async def test_login_rate_limited_after_5_attempts_per_minute(client: AsyncClien
     assert response.status_code == 429
 
 
-async def test_register_rate_limited_after_10_attempts_per_hour(client: AsyncClient, city: City):
+async def test_register_rate_limited_after_5_attempts_per_hour(client: AsyncClient, city: City):
     # Etapa 9c — rate limiting contra registro masivo de cuentas.
-    for i in range(10):
+    for i in range(5):
         response = await client.post(
             "/api/auth/register", json=_register_payload(city_id=city.id, email=f"masivo{i}@sesale.com.ar")
         )
         assert response.status_code == 201
 
     response = await client.post(
-        "/api/auth/register", json=_register_payload(city_id=city.id, email="masivo10@sesale.com.ar")
+        "/api/auth/register", json=_register_payload(city_id=city.id, email="masivo5@sesale.com.ar")
     )
 
     assert response.status_code == 429
@@ -347,7 +348,7 @@ async def test_forgot_password_requesting_twice_invalidates_first_token(
     assert fresh.status_code == 200
 
 
-async def test_forgot_password_rate_limited_after_3_attempts_per_hour(
+async def test_forgot_password_rate_limited_after_3_attempts_per_2_hours(
     client: AsyncClient, organizer: User
 ):
     for _ in range(3):

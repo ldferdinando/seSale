@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
 @router.post("/mercadopago")
-@limiter.limit("60/minute", key_func=get_client_ip)
+@limiter.limit("30/minute", key_func=get_client_ip)
 # Caso mixto (ver AGENTS.md §4): `async def` porque lee el body con
 # `await request.json()`, pero la reconfirmación contra MP (SDK síncrono) y
 # las escrituras en DB van por `run_in_threadpool` para no bloquear el loop.

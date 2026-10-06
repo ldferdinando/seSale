@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/gastro", tags=["gastro"])
 
 
 @router.get("", response_model=list[LocationGastroRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_gastro_places(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -46,7 +46,7 @@ def get_gastro_places(
 
 
 @router.get("/{location_id}", response_model=LocationGastroRead)
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_gastro_place_detail(
     request: Request,
     location_id: UUID,
@@ -59,7 +59,7 @@ def get_gastro_place_detail(
 
 
 @router.post("/{location_id}/report", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("3/hour", key_func=get_client_ip)
+@limiter.limit("3/2hours", key_func=get_client_ip)
 def post_gastro_place_report(
     request: Request,
     location_id: UUID,

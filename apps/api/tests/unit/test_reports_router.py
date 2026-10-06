@@ -91,7 +91,7 @@ async def test_report_event_missing_phone_returns_422(
     assert response.status_code == 422
 
 
-async def test_report_event_rate_limited_after_three_per_hour(
+async def test_report_event_rate_limited_after_three_per_2_hours(
     client: AsyncClient, session: Session, city: City, organizer: User, location: Location, monkeypatch
 ):
     def fake_send(**kwargs):

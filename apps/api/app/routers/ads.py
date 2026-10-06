@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/ads", tags=["ads"])
 
 
 @router.get("", response_model=list[AdSlotRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_ads(
     request: Request,
     background_tasks: BackgroundTasks,

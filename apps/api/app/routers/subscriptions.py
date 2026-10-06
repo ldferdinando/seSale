@@ -42,7 +42,7 @@ def _to_subscription_read(subscription: Subscription) -> SubscriptionRead:
 
 
 @router.post("/checkout", response_model=CheckoutResponse)
-@limiter.limit("20/minute")
+@limiter.limit("10/minute")
 def post_checkout(
     request: Request,
     payload: CheckoutRequest,
@@ -64,7 +64,7 @@ def post_checkout(
 
 
 @router.post("/transfer", response_model=SubscriptionRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("20/minute")
+@limiter.limit("10/minute")
 def post_transfer(
     request: Request,
     payload: TransferSubscriptionRequest,
@@ -93,7 +93,7 @@ def post_transfer(
 
 
 @router.get("/me", response_model=list[SubscriptionRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_my_subscriptions(
     request: Request,
     session: Session = Depends(get_session),

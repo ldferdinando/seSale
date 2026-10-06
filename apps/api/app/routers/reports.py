@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/events", tags=["reports"])
 
 
 @router.post("/{event_id}/report", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("3/hour", key_func=get_client_ip)
+@limiter.limit("3/2hours", key_func=get_client_ip)
 def post_event_report(
     request: Request,
     event_id: UUID,

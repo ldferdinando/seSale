@@ -19,7 +19,7 @@ _ALREADY_DONE_DETAIL = "Setup already completed. This endpoint is permanently di
 
 
 @router.post("/admin", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/hour", key_func=get_client_ip)
+@limiter.limit("5/2hours", key_func=get_client_ip)
 def post_setup_admin(
     request: Request,
     payload: SetupAdminCreate,

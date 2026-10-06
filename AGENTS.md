@@ -481,7 +481,10 @@ Estas reglas son **no negociables** y aplican desde el primer commit.
 - Rate limiting activo en todos los endpoints públicos (`slowapi`)
   - Storage en memoria por proceso: con `WEB_CONCURRENCY` = N workers el
     límite real por IP es N × el configurado (limitación conocida, ver
-    `core/limiter.py`)
+    `core/limiter.py`). Los valores de `@limiter.limit` están configurados a
+    la mitad del límite real deseado para compensar los 2 workers del
+    `Procfile`: **si cambia `WEB_CONCURRENCY`, recalcular todos los límites**
+    (configurado = real deseado / N)
   - La IP del cliente sale de `X-Forwarded-For` porque uvicorn corre con
     `--proxy-headers --forwarded-allow-ips='*'` (`apps/api/Procfile`): no
     sacar esos flags o todos los usuarios comparten la IP del proxy

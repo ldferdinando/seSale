@@ -87,7 +87,7 @@ async def test_setup_admin_password_too_short_returns_422(client: AsyncClient, s
     assert response.status_code == 422
 
 
-async def test_setup_admin_rate_limited_after_5_attempts_per_hour(client: AsyncClient, session: Session):
+async def test_setup_admin_rate_limited_after_5_attempts_per_2_hours(client: AsyncClient, session: Session):
     # El primer intento crea el admin (201); los siguientes 4 ya devuelven
     # 410 (admin_exists) — el rate limit cuenta todos los intentos igual.
     first = await client.post("/api/setup/admin", json=_payload())

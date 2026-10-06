@@ -220,11 +220,11 @@ async def test_webhook_with_empty_secret_rejects_hmac_computed_with_empty_key(cl
     assert response.status_code == 400
 
 
-async def test_webhook_rate_limited_after_60_requests_per_minute(monkeypatch, client: AsyncClient):
+async def test_webhook_rate_limited_after_30_requests_per_minute(monkeypatch, client: AsyncClient):
     # Etapa 9c — rate limiting en el webhook de MercadoPago.
     monkeypatch.setattr(settings, "mercadopago_webhook_secret", WEBHOOK_SECRET)
 
-    for _ in range(60):
+    for _ in range(30):
         response = await client.post("/api/webhooks/mercadopago?type=payment&id=1")
         assert response.status_code == 400  # sin firma, pero no rate-limited todavía
 

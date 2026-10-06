@@ -147,7 +147,7 @@ def _to_organizer_subscription_read(subscription: Subscription | None) -> Organi
 
 
 @router.get("/events", response_model=list[AdminEventRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_admin_events(
     request: Request,
     status_filter: EventStatus | None = Query(default=None, alias="status"),
@@ -227,7 +227,7 @@ def post_admin_user(
 
 
 @router.get("/subscriptions", response_model=list[AdminSubscriptionRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_admin_subscriptions(
     request: Request,
     status_filter: SubscriptionStatus | None = Query(default=None, alias="status"),
@@ -328,7 +328,7 @@ def post_admin_subscriptions_expire(session: Session = Depends(get_session)) -> 
 
 
 @router.get("/reports", response_model=list[AdminReportRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_admin_reports(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
@@ -362,7 +362,7 @@ def patch_admin_report_status(
 
 
 @router.get("/locations", response_model=list[LocationAdminRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_admin_locations(
     request: Request,
     city_id: UUID | None = Query(default=None),
@@ -600,7 +600,7 @@ def patch_admin_ad_items_reorder(
 
 
 @router.get("/gastro", response_model=list[LocationGastroAdminRead])
-@limiter.limit("60/minute")
+@limiter.limit("30/minute")
 def get_admin_gastro_places(
     request: Request,
     city_id: UUID | None = Query(default=None),
