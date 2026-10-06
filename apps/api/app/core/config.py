@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./sesale.db"
+    # Pool de conexiones a Postgres por worker (ver el comentario en
+    # core/deps.py). Defaults pensados para Supabase Free (t4g.nano,
+    # max_connections=60): subirlos con DB_POOL_SIZE/DB_MAX_OVERFLOW si se
+    # sube de compute, sin tocar código.
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
     environment: str = "development"
     allowed_origins: str = "http://localhost:3000"
 

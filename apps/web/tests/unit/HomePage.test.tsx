@@ -13,10 +13,9 @@ import { renderWithActiveCity } from "./test-utils";
 const API_URL = "http://localhost:8000";
 
 describe("HomePage", () => {
-  it("does not fetch events until the active city is detected, then filters by city_id", async () => {
+  it("fetches events with the default city right away, without waiting for the GPS (PERFORMANCE_AUDIT P0-1)", async () => {
     // Nota: TodayBanner también consulta /api/events (sin city_id, filtro de
-    // "hoy" propio) — se filtran acá los requests que trae EventList (los
-    // únicos gateados por `enabled`/isDetecting).
+    // "hoy" propio) — se filtran acá los requests que trae EventList.
     const requestedUrls: string[] = [];
     server.use(
       http.get(`${API_URL}/api/events`, ({ request }) => {
@@ -24,18 +23,53 @@ describe("HomePage", () => {
         return HttpResponse.json([]);
       }),
     );
+    // GPS que nunca responde (el usuario ignora el prompt del navegador).
+    const getCurrentPosition = vi.fn();
+    Object.defineProperty(window.navigator, "geolocation", { value: { getCurrentPosition }, configurable: true });
 
-    renderWithActiveCity(<HomePage />);
+    try {
+      renderWithActiveCity(<HomePage />);
 
-    // Mientras se detecta la ciudad, el skeleton de EventList está visible.
-    expect(screen.getByTestId("event-list-loading")).toBeInTheDocument();
-    expect(requestedUrls.some((url) => url.includes("city_id"))).toBe(false);
+      await waitFor(() =>
+        expect(requestedUrls.some((url) => url.includes("city_id=22222222-2222-2222-2222-222222222222"))).toBe(true),
+      );
+      expect(getCurrentPosition).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(window.navigator, "geolocation");
+      window.localStorage.clear();
+    }
+  });
 
-    await waitFor(() =>
-      expect(requestedUrls.some((url) => url.includes("city_id"))).toBe(true),
+  it("refetches events for the GPS city when it resolves after the default one", async () => {
+    const requestedUrls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        requestedUrls.push(request.url);
+        return HttpResponse.json([]);
+      }),
     );
-    const eventListRequest = requestedUrls.find((url) => url.includes("city_id"));
-    expect(eventListRequest).toContain("city_id=22222222-2222-2222-2222-222222222222");
+    let reportPosition: PositionCallback | undefined;
+    const getCurrentPosition = vi.fn((ok: PositionCallback) => {
+      reportPosition = ok;
+    });
+    Object.defineProperty(window.navigator, "geolocation", { value: { getCurrentPosition }, configurable: true });
+
+    try {
+      renderWithActiveCity(<HomePage />);
+
+      await waitFor(() => expect(requestedUrls.some((url) => url.includes("city_id=2222"))).toBe(true));
+      await waitFor(() => expect(getCurrentPosition).toHaveBeenCalled());
+
+      // GPS en Cipolletti.
+      reportPosition?.({ coords: { latitude: -38.94, longitude: -68.01 } } as GeolocationPosition);
+
+      await waitFor(() =>
+        expect(requestedUrls.some((url) => url.includes("city_id=cccccccc-cccc-4ccc-cccc-cccccccccccc"))).toBe(true),
+      );
+    } finally {
+      Reflect.deleteProperty(window.navigator, "geolocation");
+      window.localStorage.clear();
+    }
   });
 
   it("shows the active city's name in the hero title, not hardcoded (Etapa 9b, bug real reportado)", async () => {

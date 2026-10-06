@@ -46,7 +46,7 @@ function CategoriaVacia({ categoryName, cityName }: { categoryName: string; city
  * ningún filtro elegido (igual que verCat(): "Elegí un filtro para ver los
  * eventos" — antes de elegir, se muestra la publicidad de la categoría). */
 export function CategoriaDetalleContent({ category }: CategoriaDetalleContentProps) {
-  const { activeCity, isDetecting } = useActiveCity();
+  const { activeCity } = useActiveCity();
   const [filters, setFilters] = useState<EventFiltersState>({});
   const cityId = activeCity?.id ?? null;
 
@@ -160,7 +160,7 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
       ) : (
         <EventList
           filters={effectiveFilters}
-          enabled={!isDetecting}
+          enabled={activeCity !== null}
           // Con filtros aplicados se usa la leyenda por defecto de EventList
           // ("Aún no se registran eventos", igual que Home); sin filtros se
           // mantiene la card con CTA a otras categorías.

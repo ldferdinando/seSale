@@ -26,7 +26,7 @@ function renderWithFixedCity(children: React.ReactElement) {
   return render(
     <QueryClientProvider client={queryClient}>
       <ActiveCityContext.Provider
-        value={{ activeCity: FIXED_CITY, isDetecting: false, setActiveCity: () => {}, resetToDetected: () => {} }}
+        value={{ activeCity: FIXED_CITY, isLocating: false, setActiveCity: () => {}, resetToDetected: () => {} }}
       >
         {children}
       </ActiveCityContext.Provider>

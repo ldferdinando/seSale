@@ -14,15 +14,21 @@ if settings.database_url.startswith("sqlite"):
 else:
     # Los endpoints con DB son `def` y corren en el threadpool de AnyIO (40
     # threads por proceso), así que puede haber varias sesiones a la vez por
-    # worker. Conexiones máximas por worker = pool_size + max_overflow (20):
+    # worker. Conexiones máximas por worker = pool_size + max_overflow:
     # multiplicado por WEB_CONCURRENCY (Procfile) tiene que quedar por debajo
     # del max_connections de Postgres, dejando margen para Alembic/psql.
+    # La DB está en Supabase Free (compute t4g.nano): max_connections=60
+    # confirmado, con ~15 ya usadas por el propio Supabase con tráfico mínimo.
+    # Por eso 5 + 5 = 10 por worker × 2 workers = 20 en total (las
+    # BackgroundTasks comparten este mismo pool), y no los 10 + 10 de la guía
+    # genérica. Configurable con DB_POOL_SIZE/DB_MAX_OVERFLOW si se sube de
+    # compute: recalcular contra el max_connections nuevo.
     # statement_timeout (ms) corta cualquier query que se cuelgue en vez de
     # retener la conexión del pool indefinidamente.
     engine = create_engine(
         settings.database_url,
-        pool_size=10,
-        max_overflow=10,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
         pool_pre_ping=True,
         pool_recycle=1800,
         connect_args={"options": "-c statement_timeout=5000"},

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { fetchAdSlots } from "@/features/ads/services/ads-api";
 import type { AdSection, AdSlot } from "@/features/ads/types";
@@ -35,6 +35,8 @@ export function useBannerSlots({
     queryFn: () => fetchAdSlots(cityId as string, section, category_key),
     enabled: enabled !== false && !!cityId,
     staleTime: 5 * 60 * 1000,
+    // Cambio de ciudad: se mantienen los banners anteriores hasta tener los nuevos (sin flash de skeleton).
+    placeholderData: keepPreviousData,
   });
 
   return {

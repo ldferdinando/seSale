@@ -27,7 +27,7 @@ const GRUPOS: { value: GastroTypeGrupo; label: string; icon: typeof UtensilsCros
  * y otros": suma el selector de grupo Gastronomía | Espacios (setGrupoLug en
  * seSALE.html). */
 export default function LugaresPage() {
-  const { activeCity, isDetecting } = useActiveCity();
+  const { activeCity } = useActiveCity();
   const { slots, isLoading: isLoadingBannersQuery } = useBannerSlots({
     cityId: activeCity?.id ?? null,
     section: "gastronomia",
@@ -35,17 +35,17 @@ export default function LugaresPage() {
   // Bug reportado (Parte 3): el placeholder "Espacio publicitario
   // disponible" se veía un instante y desaparecía. Causa: `useBannerSlots`
   // solo se `enabled` con `cityId`, así que mientras la ciudad activa
-  // todavía se está detectando (`isDetecting`, ver ActiveCityContext) la
+  // todavía no resolvió (`activeCity` null, ver ActiveCityContext) la
   // query queda deshabilitada e `isLoading` da `false` — con `slots` en su
   // valor por defecto `[]`, el bloque de banners no renderizaba ni skeleton
   // ni placeholder (nada), y recién al terminar la detección pasaba a
   // mostrar el skeleton y después sí el placeholder — ese primer instante
   // en blanco, seguido de contenido que aparece, es lo que se percibía
   // como el placeholder "apareciendo y desapareciendo" en cargas rápidas.
-  // Fix: mientras se detecta la ciudad también se considera "cargando", así
+  // Fix: mientras no hay ciudad activa también se considera "cargando", así
   // el skeleton se muestra desde el primer render y el placeholder queda
   // fijo apenas hay datos, sin ningún estado intermedio en blanco.
-  const isLoadingBanners = isDetecting || isLoadingBannersQuery;
+  const isLoadingBanners = !activeCity || isLoadingBannersQuery;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -62,7 +62,7 @@ export default function LugaresPage() {
     gastroType,
     search: debouncedSearch,
   });
-  const isLoadingPlaces = isDetecting || isLoadingPlacesQuery;
+  const isLoadingPlaces = !activeCity || isLoadingPlacesQuery;
 
   // Con "Todos" (gastroType null) el fetch trae lugares de ambos grupos —
   // se filtran acá por el grupo activo (mismo criterio que TIPO_GRUPO/

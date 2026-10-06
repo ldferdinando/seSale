@@ -4,8 +4,10 @@ import type { City } from "@/features/auth/types";
 import {
   CITY_STORAGE_KEY,
   clearSavedCity,
-  detectUserCity,
+  detectCityByLocation,
   findNearestCity,
+  findSavedCity,
+  getDefaultCity,
   getSavedCityId,
   haversineDistance,
   saveSelectedCity,
@@ -95,36 +97,60 @@ describe("saveSelectedCity / getSavedCityId / clearSavedCity", () => {
   });
 });
 
-describe("detectUserCity", () => {
+describe("getDefaultCity", () => {
+  it("devuelve General Roca si está activa", () => {
+    expect(getDefaultCity([CIPOLLETTI, GENERAL_ROCA]).id).toBe("general-roca");
+  });
+
+  it("sin General Roca activa devuelve la primera ciudad activa (orden de sort_order)", () => {
+    const rocaInactive = makeCity({ is_active: false });
+    expect(getDefaultCity([NEUQUEN_INACTIVE, rocaInactive, CIPOLLETTI]).id).toBe("cipolletti");
+  });
+});
+
+describe("findSavedCity", () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  it("devuelve la ciudad guardada", () => {
+    saveSelectedCity("cipolletti");
+    expect(findSavedCity([GENERAL_ROCA, CIPOLLETTI])?.id).toBe("cipolletti");
+  });
+
+  it("devuelve null si no hay nada guardado o la ciudad ya no existe", () => {
+    expect(findSavedCity([GENERAL_ROCA])).toBeNull();
+    saveSelectedCity("ciudad-borrada");
+    expect(findSavedCity([GENERAL_ROCA])).toBeNull();
+  });
+});
+
+describe("detectCityByLocation", () => {
+  beforeEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("sin GPS disponible devuelve la ciudad default (General Roca)", async () => {
+  it("sin GPS disponible devuelve null", async () => {
     vi.stubGlobal("navigator", { geolocation: undefined });
 
-    const city = await detectUserCity([GENERAL_ROCA, CIPOLLETTI]);
-
-    expect(city.id).toBe("general-roca");
+    expect(await detectCityByLocation([GENERAL_ROCA, CIPOLLETTI])).toBeNull();
   });
 
-  it("con ciudad guardada en localStorage la devuelve sin pedir GPS", async () => {
-    saveSelectedCity("cipolletti");
-    const getCurrentPosition = vi.fn();
+  it("con permiso rechazado devuelve null", async () => {
+    const getCurrentPosition = vi.fn((_ok: PositionCallback, error: PositionErrorCallback) =>
+      error({ code: 1 } as GeolocationPositionError),
+    );
     vi.stubGlobal("navigator", { geolocation: { getCurrentPosition } });
 
-    const city = await detectUserCity([GENERAL_ROCA, CIPOLLETTI]);
-
-    expect(city.id).toBe("cipolletti");
-    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(await detectCityByLocation([GENERAL_ROCA, CIPOLLETTI])).toBeNull();
   });
 
-  it("persiste la ciudad detectada en localStorage", async () => {
-    vi.stubGlobal("navigator", { geolocation: undefined });
+  it("con coordenadas devuelve la ciudad más cercana", async () => {
+    const getCurrentPosition = vi.fn((ok: PositionCallback) =>
+      ok({ coords: { latitude: -38.94, longitude: -68.01 } } as GeolocationPosition),
+    );
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition } });
 
-    await detectUserCity([GENERAL_ROCA, CIPOLLETTI]);
-
-    expect(getSavedCityId()).toBe("general-roca");
+    expect((await detectCityByLocation([GENERAL_ROCA, CIPOLLETTI]))?.id).toBe("cipolletti");
   });
 });

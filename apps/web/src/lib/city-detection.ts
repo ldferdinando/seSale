@@ -5,6 +5,8 @@ import type { City } from "@/features/auth/types";
 export const CITY_STORAGE_KEY = "sesale_selected_city_id";
 export const MAX_DISTANCE_KM = 200;
 export const GEOLOCATION_TIMEOUT_MS = 5000;
+/** Ciudad por defecto de la app (mismo criterio que el metadata de /categorias/[key]). */
+export const DEFAULT_CITY_NAME = "General Roca";
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -99,31 +101,31 @@ export function clearSavedCity(): void {
 }
 
 /**
- * Detecta la ciudad del usuario, en orden:
- * 1. Ciudad guardada en localStorage → se devuelve sin pedir GPS.
- * 2. GPS disponible y ciudad activa a menos de `MAX_DISTANCE_KM` → esa ciudad.
- * 3. Si no, `defaultCityName` (o la primera ciudad activa si no existe).
+ * Ciudad por defecto mientras no haya una guardada ni detectada por GPS:
+ * `defaultCityName` si está activa, si no la primera ciudad activa
+ * (`GET /api/cities` ya viene ordenado por `sort_order`).
  *
- * La ciudad resuelta siempre se persiste en localStorage, para no volver a
- * pedir GPS en la próxima visita.
- *
- * Precondición: `cities` no está vacío (el caller espera a que
- * `GET /api/cities` resuelva antes de llamar a esta función).
+ * Precondición: `cities` no está vacío.
  */
-export async function detectUserCity(cities: City[], defaultCityName: string = "General Roca"): Promise<City> {
+export function getDefaultCity(cities: City[], defaultCityName: string = DEFAULT_CITY_NAME): City {
   const activeCities = cities.filter((city) => city.is_active);
-  const fallbackCity = activeCities.find((city) => city.name === defaultCityName) ?? activeCities[0] ?? cities[0];
+  return activeCities.find((city) => city.name === defaultCityName) ?? activeCities[0] ?? cities[0];
+}
 
+/** Ciudad guardada en localStorage, si sigue existiendo en `cities`. */
+export function findSavedCity(cities: City[]): City | null {
   const savedId = getSavedCityId();
-  if (savedId) {
-    const saved = cities.find((city) => city.id === savedId);
-    if (saved) return saved;
-  }
+  if (!savedId) return null;
+  return cities.find((city) => city.id === savedId) ?? null;
+}
 
+/**
+ * Ciudad activa más cercana a la ubicación del usuario por GPS. `null` si no
+ * hay GPS, se rechaza el permiso, vence el timeout o ninguna ciudad está a
+ * menos de `MAX_DISTANCE_KM`. No bloquea la UI: el caller ya muestra la
+ * ciudad por defecto mientras esto resuelve (ver ActiveCityProvider).
+ */
+export async function detectCityByLocation(cities: City[]): Promise<City | null> {
   const coords = await requestUserLocation();
-  const detected = coords ? findNearestCity(coords.latitude, coords.longitude, cities) : null;
-
-  const result = detected ?? fallbackCity;
-  saveSelectedCity(result.id);
-  return result;
+  return coords ? findNearestCity(coords.latitude, coords.longitude, cities) : null;
 }

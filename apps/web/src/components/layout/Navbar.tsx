@@ -15,11 +15,11 @@ import { useActiveCity } from "@/hooks/useActiveCity";
 import { cn } from "@/lib/utils";
 
 function CitySelector() {
-  const { activeCity, isDetecting, setActiveCity, resetToDetected } = useActiveCity();
+  const { activeCity, isLocating, setActiveCity, resetToDetected } = useActiveCity();
   const { data: cities } = useCities();
   const [open, setOpen] = useState(false);
 
-  if (isDetecting || !activeCity) {
+  if (!activeCity) {
     return (
       <div
         data-testid="city-selector-skeleton"
@@ -80,9 +80,10 @@ function CitySelector() {
           <button
             type="button"
             onClick={handleDetect}
-            className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-semibold text-primary hover:bg-surface-5"
+            disabled={isLocating}
+            className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-semibold text-primary hover:bg-surface-5 disabled:opacity-60"
           >
-            📍 Detectar mi ubicación
+            {isLocating ? "📍 Detectando ubicación…" : "📍 Detectar mi ubicación"}
           </button>
         </div>
       )}

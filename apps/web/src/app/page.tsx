@@ -22,8 +22,8 @@ const EventsMap = dynamic(() => import("@/components/EventsMap").then((m) => m.E
   loading: () => <MapSkeleton />,
 });
 
-/** Mismo alto/estilo que .mapa-cont del diseño mientras se detecta la
- * ciudad o se cargan los eventos del mapa. */
+/** Mismo alto/estilo que .mapa-cont del diseño mientras cargan las
+ * ciudades o los eventos del mapa. */
 function MapSkeleton() {
   return (
     <div
@@ -36,13 +36,13 @@ function MapSkeleton() {
 export default function HomePage() {
   const [filters, setFilters] = useState<EventFiltersState>({});
   const [view, setView] = useState<EventView>("lista");
-  const { activeCity, isDetecting } = useActiveCity();
+  const { activeCity } = useActiveCity();
   const router = useRouter();
   const listRef = useRef<HTMLDivElement>(null);
 
   const effectiveFilters: EventFiltersState = activeCity ? { ...filters, cityId: activeCity.id } : filters;
 
-  const mapEvents = useEvents(effectiveFilters, { enabled: !isDetecting && view === "mapa" });
+  const mapEvents = useEvents(effectiveFilters, { enabled: activeCity !== null && view === "mapa" });
 
   return (
     <main className="flex flex-col">
@@ -109,7 +109,7 @@ export default function HomePage() {
         {view === "lista" ? (
           <>
             <div className="px-4 pt-3.5">
-              <EventList filters={effectiveFilters} enabled={!isDetecting} />
+              <EventList filters={effectiveFilters} enabled={activeCity !== null} />
             </div>
             {/* Etapa 11b — Parte 4: separación visual entre el listado y los
                 banners de abajo (mismo patrón border-t + pt-4 que StatsBar). */}
@@ -119,7 +119,7 @@ export default function HomePage() {
 
             <ShareBanner />
           </>
-        ) : isDetecting || mapEvents.isLoading || !activeCity ? (
+        ) : mapEvents.isLoading || !activeCity ? (
           <MapSkeleton />
         ) : (
           <div
