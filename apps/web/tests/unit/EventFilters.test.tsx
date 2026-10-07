@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EventFilters } from "@/features/events/components/EventFilters";
+import { EventFilters, SEARCH_DEBOUNCE_MS } from "@/features/events/components/EventFilters";
 import type { EventFiltersState } from "@/features/events/types";
 
 describe("EventFilters", () => {
@@ -31,13 +31,61 @@ describe("EventFilters", () => {
     expect(onChange).toHaveBeenCalledWith({ moment: "nocturno" });
   });
 
-  it("calls onChange with the search term when typing in the search box", () => {
+  it("calls onChange with the search term only after the debounce", () => {
     const onChange = vi.fn();
     render(<EventFilters filters={{}} onChange={onChange} />);
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "jazz" } });
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
 
     expect(onChange).toHaveBeenCalledWith({ search: "jazz" });
+  });
+
+  it("emits a single onChange when typing several keys quickly", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+    const input = screen.getByLabelText("Buscar");
+
+    for (const value of ["r", "ro", "roc", "rock"]) {
+      fireEvent.change(input, { target: { value } });
+      act(() => vi.advanceTimersByTime(100));
+    }
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({ search: "rock" });
+  });
+
+  it("does not emit a search with fewer than 3 characters", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{}} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "ja" } });
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS * 2));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("clears an active search when the text drops below 3 characters", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{ search: "jazz" }} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "ja" } });
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+
+    expect(onChange).toHaveBeenCalledWith({ search: undefined });
+  });
+
+  it("trims the search term and skips emitting when it did not change", () => {
+    const onChange = vi.fn();
+    render(<EventFilters filters={{ search: "jazz" }} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "jazz " } });
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("calls onChange with tomorrow's date when clicking 'Mañana'", () => {

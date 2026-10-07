@@ -106,6 +106,29 @@ describe("HomePage", () => {
     }
   });
 
+  it("debounces the search box: typing quickly fires a single search request", async () => {
+    const searchRequests: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        const search = new URL(request.url).searchParams.get("search");
+        if (search !== null) searchRequests.push(search);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderWithActiveCity(<HomePage />);
+    const input = await screen.findByLabelText("Buscar");
+
+    for (const value of ["j", "ja", "jaz", "jazz"]) {
+      fireEvent.change(input, { target: { value } });
+    }
+
+    await waitFor(() => expect(searchRequests).toEqual(["jazz"]));
+    // Margen extra para confirmar que no llega ningún request rezagado.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(searchRequests).toEqual(["jazz"]);
+  });
+
   it("places the view tabs below the filters (search + day/night)", async () => {
     renderWithActiveCity(<HomePage />);
 

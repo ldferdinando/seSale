@@ -99,8 +99,9 @@ def _current_utc_now() -> datetime:
 
 # Búsqueda pública (`?search=`): por debajo de 3 caracteres el filtro se
 # ignora — el índice trigram (migración 0032) no sirve con patrones más cortos
-# y "a" matchea casi todo. El frontend manda el texto en cada tecla, por eso
-# se ignora en vez de devolver 422. Con búsqueda activa el resultado se corta
+# y "a" matchea casi todo. El frontend (EventFilters.tsx) ya no manda menos de
+# 3 caracteres y aplica debounce, pero otros clientes podrían, por eso se
+# ignora en vez de devolver 422. Con búsqueda activa el resultado se corta
 # en SEARCH_RESULT_LIMIT: el listado general todavía no pagina
 # (PERFORMANCE_AUDIT.md, hallazgo 11), pero la búsqueda no debe poder traer
 # la tabla entera.

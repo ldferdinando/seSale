@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Search, Sun, Ticket, X } from "lucide-react";
 
@@ -28,6 +28,12 @@ function countActiveFilters(filters: EventFiltersState): number {
   ).length;
 }
 
+/** Debounce del buscador: mismo valor que LocationPicker / lugares. */
+export const SEARCH_DEBOUNCE_MS = 300;
+/** Coherente con SEARCH_MIN_LENGTH del backend (event_service.py): por debajo
+ * el filtro se ignora allá, así que no tiene sentido pegarle a la red. */
+export const SEARCH_MIN_LENGTH = 3;
+
 export const TICKET_TYPE_OPTIONS: { value: TicketTypeFilter | undefined; label: string }[] = [
   { value: undefined, label: "Todos" },
   { value: "gratis", label: "Gratis" },
@@ -35,6 +41,24 @@ export const TICKET_TYPE_OPTIONS: { value: TicketTypeFilter | undefined; label: 
 ];
 
 export function EventFilters({ filters, onChange, categorySlot }: EventFiltersProps) {
+  // El input escribe en estado local; recién después del debounce (y con
+  // SEARCH_MIN_LENGTH caracteres) se propaga a `filters.search`, que es lo
+  // que dispara el request en useEvents. Antes iba un GET por tecla.
+  const [searchInput, setSearchInput] = useState(filters.search ?? "");
+  const latestRef = useRef({ filters, onChange });
+  latestRef.current = { filters, onChange };
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      const nextSearch = trimmed.length >= SEARCH_MIN_LENGTH ? trimmed : undefined;
+      const { filters: currentFilters, onChange: emit } = latestRef.current;
+      if (nextSearch === currentFilters.search) return;
+      emit({ ...currentFilters, search: nextSearch });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
   function clearAllFilters() {
     onChange({
       ...filters,
@@ -55,8 +79,8 @@ export function EventFilters({ filters, onChange, categorySlot }: EventFiltersPr
           aria-label="Buscar"
           placeholder="Buscar evento, lugar, artista..."
           className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-5"
-          value={filters.search ?? ""}
-          onChange={(e) => onChange({ ...filters, search: e.target.value || undefined })}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
       </div>
 
