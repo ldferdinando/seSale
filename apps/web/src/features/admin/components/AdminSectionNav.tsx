@@ -21,8 +21,11 @@ interface AdminSectionNavProps {
 /**
  * Navegación entre secciones del panel admin — Etapa admin-responsive-1.
  *
- * - Desktop (>= md): tabs horizontales sin cambios (mismo componente Tabs
- *   de siempre, mismo comportamiento).
+ * - Desktop (>= md): tabs horizontales (mismo componente Tabs de siempre).
+ *   Son 12 secciones y no entran en una fila del contenedor admin
+ *   (max-w-2xl), así que envuelven en varias líneas (flex-wrap) en vez de
+ *   desbordar. Se eligió wrap y no scroll horizontal para que todas las
+ *   secciones queden visibles sin tener que descubrirlas scrolleando.
  * - Mobile (< md): las tabs horizontales forzaban scroll lateral, así que
  *   se reemplazan por un botón de menú (hamburguesa) que abre un drawer
  *   (Sheet) con la lista de secciones. Elegir una sección navega y cierra
@@ -40,7 +43,7 @@ export function AdminSectionNav({ sections, value, onChange }: AdminSectionNavPr
   return (
     <>
       <div className="hidden md:block">
-        <Tabs tabs={sections} value={value} onChange={onChange} />
+        <Tabs tabs={sections} value={value} onChange={onChange} className="flex-wrap gap-y-1" />
       </div>
 
       <div className="flex items-center justify-between border-b border-border pb-3 md:hidden">

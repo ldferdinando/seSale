@@ -49,4 +49,15 @@ describe("AdminSectionNav — Etapa admin-responsive-1", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("en desktop las tabs envuelven en varias líneas en vez de desbordar", () => {
+    render(<AdminSectionNav sections={SECTIONS} value="eventos" onChange={vi.fn()} />);
+
+    // jsdom no calcula layout: se verifica la clase que habilita el wrap y
+    // que cada tab no parta su label en dos líneas.
+    expect(screen.getByRole("tablist")).toHaveClass("flex-wrap");
+    for (const tab of screen.getAllByRole("tab")) {
+      expect(tab).toHaveClass("whitespace-nowrap");
+    }
+  });
 });
