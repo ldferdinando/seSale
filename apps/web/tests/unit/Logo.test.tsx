@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Logo } from "@/components/Logo";
 import { THEME_STORAGE_KEY, ThemeProvider } from "@/features/theme/context/ThemeContext";
@@ -17,6 +17,11 @@ import { THEME_STORAGE_KEY, ThemeProvider } from "@/features/theme/context/Theme
  * Etapa "Logo: variante para modo oscuro" — `<Logo>` usa `useTheme()`
  * (default de `ThemeProvider` es "dark"), así que todos los renders acá
  * necesitan el provider, igual que `renderWithActiveCity` en Navbar.test.tsx.
+ *
+ * Fix "el logo deja de ser el elemento LCP" — el logo base pasó a ser un
+ * `<img>` HTML (antes `<image>` dentro de un <svg>) y la animación vive en
+ * un overlay SVG que se monta recién después de que el `<img>` cargó y se
+ * pintó (dos requestAnimationFrame).
  */
 function renderLogo(ui: React.ReactElement) {
   return render(<ThemeProvider>{ui}</ThemeProvider>);
@@ -25,6 +30,8 @@ function renderLogo(ui: React.ReactElement) {
 describe("Logo", () => {
   afterEach(() => {
     window.localStorage.clear();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("renders the seSale wordmark, accessible by its label", () => {
@@ -32,7 +39,7 @@ describe("Logo", () => {
 
     const logo = screen.getByRole("img", { name: "seSale" });
     expect(logo).toBeInTheDocument();
-    expect(logo.tagName.toLowerCase()).toBe("svg");
+    expect(logo.tagName.toLowerCase()).toBe("img");
   });
 
   it("uses the larger intrinsic size when size='lg'", () => {
@@ -60,14 +67,14 @@ describe("Logo", () => {
     const { container } = renderLogo(<Logo tone="light" />);
 
     const image = container.querySelector('[data-testid="logo-image"]');
-    expect(image?.getAttribute("href")).toBe("/logo-sesale-light.png");
+    expect(image?.getAttribute("src")).toBe("/logo-sesale-light.png");
   });
 
   it("uses the fixed dark-'se' asset when tone='dark'", () => {
     const { container } = renderLogo(<Logo tone="dark" />);
 
     const image = container.querySelector('[data-testid="logo-image"]');
-    expect(image?.getAttribute("href")).toBe("/logo-sesale.png");
+    expect(image?.getAttribute("src")).toBe("/logo-sesale.png");
   });
 
   // Etapa "Logo: variante para modo oscuro" — sin `tone`, el asset sigue
@@ -76,7 +83,7 @@ describe("Logo", () => {
     const { container } = renderLogo(<Logo />);
 
     const image = container.querySelector('[data-testid="logo-image"]');
-    expect(image?.getAttribute("href")).toBe("/logo-sesale-dark.png");
+    expect(image?.getAttribute("src")).toBe("/logo-sesale-dark.png");
   });
 
   it("uses the light-theme asset when the stored theme is 'light'", () => {
@@ -85,6 +92,65 @@ describe("Logo", () => {
     const { container } = renderLogo(<Logo />);
 
     const image = container.querySelector('[data-testid="logo-image"]');
-    expect(image?.getAttribute("href")).toBe("/logo-sesale.png");
+    expect(image?.getAttribute("src")).toBe("/logo-sesale.png");
+  });
+
+  it("renders the full logo with high fetch priority on the first render", () => {
+    const { container } = renderLogo(<Logo />);
+
+    const image = container.querySelector('[data-testid="logo-image"]');
+    expect(image?.getAttribute("fetchpriority")).toBe("high");
+    // Nada que recorte/oculte el logo en el primer render: la animación
+    // todavía no está montada.
+    expect(container.querySelector('[data-testid="logo-animation"]')).toBeNull();
+    expect(container.querySelector("clipPath")).toBeNull();
+  });
+
+  it("mounts the animation overlay only after the logo has loaded and painted", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      frames.push(cb);
+      return frames.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => undefined);
+
+    const { container } = renderLogo(<Logo />);
+    const image = container.querySelector('[data-testid="logo-image"]') as HTMLImageElement;
+
+    expect(frames).toHaveLength(0);
+    fireEvent.load(image);
+    expect(container.querySelector('[data-testid="logo-animation"]')).toBeNull();
+
+    act(() => frames.shift()?.(0));
+    expect(container.querySelector('[data-testid="logo-animation"]')).toBeNull();
+
+    act(() => frames.shift()?.(16));
+    const overlay = container.querySelector('[data-testid="logo-animation"]');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.getAttribute("aria-hidden")).toBe("true");
+    expect(overlay?.querySelector(".sesale-logo-reveal-sweep")).not.toBeNull();
+    expect(overlay?.querySelector(".sesale-logo-shine-translate")).not.toBeNull();
+  });
+
+  it("never mounts the animation overlay with prefers-reduced-motion: reduce", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+
+    const { container } = renderLogo(<Logo />);
+    fireEvent.load(container.querySelector('[data-testid="logo-image"]') as HTMLImageElement);
+
+    expect(screen.getByRole("img", { name: "seSale" })).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="logo-animation"]')).toBeNull();
   });
 });

@@ -173,9 +173,15 @@
    versión anterior de esta etapa (texto real en Inter + `clip-path`/
    `background-clip:text` sobre "se"/"SALE"), que la usuaria vio y
    descartó: el texto no lograba el mismo peso visual que el dibujo
-   original, que no es una fuente sino una imagen diseñada a mano. */
-.sesale-logo-reveal-rect {
-  animation: sesale-logo-reveal 2360ms cubic-bezier(0.33, 0.66, 0.28, 1) 1 both;
+   original, que no es una fuente sino una imagen diseñada a mano.
+
+   Fix "el logo deja de ser el elemento LCP": el reveal ya no recorta el
+   logo desde ancho 0 (eso dejaba vacío el primer pintado). El logo se pinta
+   completo de entrada y el "reveal" pasa a ser una primera pasada de luz de
+   izquierda a derecha, con la duración/curva del reveal original, sobre un
+   overlay que Logo.tsx monta recién después de que el logo se pintó. */
+.sesale-logo-reveal-sweep {
+  animation: sesale-logo-reveal-sweep 2360ms cubic-bezier(0.33, 0.66, 0.28, 1) 1 both;
 }
 .sesale-logo-shine-translate {
   transform: translateX(0);
@@ -185,12 +191,12 @@
   opacity: 0;
   animation: sesale-logo-shine-in 0s linear 2560ms 1 forwards;
 }
-@keyframes sesale-logo-reveal {
+@keyframes sesale-logo-reveal-sweep {
   from {
-    width: 0;
+    transform: translateX(0);
   }
   to {
-    width: 1100px;
+    transform: translateX(1550px);
   }
 }
 @keyframes sesale-logo-shine-sweep {
@@ -210,9 +216,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sesale-logo-reveal-rect {
+  .sesale-logo-reveal-sweep {
     animation: none;
-    width: 1100px;
   }
   .sesale-logo-shine-translate {
     animation: none;
