@@ -58,7 +58,7 @@ describe("AdminUsersPanel", () => {
   });
 
   it("Etapa 9d — includes is_verified when the toggle is checked", async () => {
-    let calledWith: Record<string, unknown> | null = null;
+    let calledWith = null as Record<string, unknown> | null;
     server.use(
       http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
         calledWith = (await request.json()) as Record<string, unknown>;
@@ -81,7 +81,7 @@ describe("AdminUsersPanel", () => {
   });
 
   it("Etapa 9d — is_verified is false by default", async () => {
-    let calledWith: Record<string, unknown> | null = null;
+    let calledWith = null as Record<string, unknown> | null;
     server.use(
       http.post(`${API_URL}/api/admin/users`, async ({ request }) => {
         calledWith = (await request.json()) as Record<string, unknown>;
@@ -175,7 +175,7 @@ describe("AdminUsersPanel", () => {
   });
 
   it("toggling is_active calls the correct endpoint", async () => {
-    let calledWith: Record<string, unknown> | null = null;
+    let calledWith = null as Record<string, unknown> | null;
     server.use(
       http.get(`${API_URL}/api/admin/users`, () => {
         return HttpResponse.json([makeAdminUser({ id: "u1", public_name: "El Tinglado Bar", is_active: true })]);
@@ -195,7 +195,7 @@ describe("AdminUsersPanel", () => {
   });
 
   it("Etapa 11a — BUG 4: editing full name from the detail modal saves via PATCH /api/users/{id}", async () => {
-    let calledWith: Record<string, unknown> | null = null;
+    let calledWith = null as Record<string, unknown> | null;
     server.use(
       http.get(`${API_URL}/api/admin/users`, () => {
         return HttpResponse.json([
@@ -223,7 +223,7 @@ describe("AdminUsersPanel", () => {
   });
 
   it("Etapa 9d — toggling verified calls PATCH /verify with the correct body", async () => {
-    let calledWith: Record<string, unknown> | null = null;
+    let calledWith = null as Record<string, unknown> | null;
     server.use(
       http.get(`${API_URL}/api/admin/users`, () => {
         return HttpResponse.json([
