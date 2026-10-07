@@ -248,16 +248,23 @@ def list_public_events(
 
 
 def get_public_stats(session: Session) -> dict[str, int]:
-    """Estadísticas agregadas sobre eventos approved + activos (sin filtro de fecha)."""
-    stmt = select(Event).where(
+    """Estadísticas agregadas sobre eventos approved + activos (sin filtro de fecha).
+
+    Los tres conteos comparten el mismo filtro, así que se resuelven en una
+    sola query agregada en la DB — no se traen filas a Python."""
+    stmt = select(
+        func.count(Event.id),
+        func.count(func.distinct(Event.organizer_id)),
+        func.count(func.distinct(Event.city_id)),
+    ).where(
         Event.status == EventStatus.approved,
         Event.is_active == True,  # noqa: E712
     )
-    events = session.exec(stmt).all()
+    total_events, total_organizers, total_cities = session.exec(stmt).one()
     return {
-        "total_events": len(events),
-        "total_organizers": len({event.organizer_id for event in events}),
-        "total_cities": len({event.city_id for event in events}),
+        "total_events": total_events,
+        "total_organizers": total_organizers,
+        "total_cities": total_cities,
     }
 
 

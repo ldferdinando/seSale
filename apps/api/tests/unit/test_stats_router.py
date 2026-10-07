@@ -1,10 +1,11 @@
 from datetime import date, time
 
 from httpx import AsyncClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.security import hash_password
 from app.models import City, Event, EventCategory, EventStatus, Location, PlanType, User
+from app.services.event_service import get_public_stats
 
 
 def _make_event(session: Session, *, city: City, organizer: User, location: Location, **kwargs) -> Event:
@@ -70,3 +71,43 @@ async def test_get_stats_empty_db_returns_zeros(client: AsyncClient):
 
     assert response.status_code == 200
     assert response.json() == {"total_events": 0, "total_organizers": 0, "total_cities": 0}
+
+
+def _legacy_stats(session: Session) -> dict[str, int]:
+    """Cálculo previo (filas en memoria + conteo en Python), como referencia de paridad."""
+    events = session.exec(
+        select(Event).where(Event.status == EventStatus.approved, Event.is_active == True)  # noqa: E712
+    ).all()
+    return {
+        "total_events": len(events),
+        "total_organizers": len({event.organizer_id for event in events}),
+        "total_cities": len({event.city_id for event in events}),
+    }
+
+
+async def test_get_stats_counts_distinct_organizers_and_cities(
+    client: AsyncClient, session: Session, city: City, organizer: User, location: Location
+):
+    city_b = City(name="Cipolletti", province="Río Negro", is_active=True)
+    session.add(city_b)
+    session.commit()
+    session.refresh(city_b)
+    location_b = Location(name="Centro Cultural", address="Alsina 750", city_id=city_b.id)
+    session.add(location_b)
+    session.commit()
+    session.refresh(location_b)
+
+    # Mismo organizador con varios eventos en dos ciudades: cuenta 1 organizador, 2 ciudades.
+    for i in range(3):
+        _make_event(session, city=city, organizer=organizer, location=location, title=f"roca-{i}")
+    _make_event(session, city=city_b, organizer=organizer, location=location_b, title="cipo-1")
+    # Excluidos: rechazado en otra ciudad, inactivo.
+    _make_event(session, city=city_b, organizer=organizer, location=location_b, status=EventStatus.rejected)
+    _make_event(session, city=city, organizer=organizer, location=location, is_active=False)
+
+    response = await client.get("/api/stats")
+
+    assert response.status_code == 200
+    expected = {"total_events": 4, "total_organizers": 1, "total_cities": 2}
+    assert response.json() == expected
+    assert get_public_stats(session) == _legacy_stats(session) == expected
