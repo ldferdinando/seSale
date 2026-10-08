@@ -72,6 +72,23 @@ describe("EventCard", () => {
     expect(card.className).toContain("bg-transparent");
   });
 
+  // .evi border-bottom en seSALE.html: separador entre filas Gratis, sin
+  // borde en la última (:last-child).
+  it("plan='gratis' draws the row separator on the link, except on the last item", () => {
+    renderCard(<EventCard event={makeEvent({ plan: "gratis" })} />);
+
+    const link = screen.getByTestId("event-card-link");
+    expect(link.className).toContain("border-b");
+    expect(link.className).toContain("border-eviSep");
+    expect(link.className).toContain("last:border-b-0");
+  });
+
+  it.each(["dest", "pro"] as const)("plan='%s' does not get the gratis row separator", (plan) => {
+    renderCard(<EventCard event={makeEvent({ plan })} />);
+
+    expect(screen.getByTestId("event-card-link").className).not.toContain("border-eviSep");
+  });
+
   it("plan='dest' has the gradient background and the 1.5px accent border", () => {
     const event = makeEvent({ plan: "dest" });
 

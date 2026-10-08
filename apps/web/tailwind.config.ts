@@ -89,6 +89,8 @@ const config: Config = {
         // desktop (Etapa TIPO B, punto 12) — `var(--surround)`, con valor
         // distinto por tema.
         surround: "var(--surround)",
+        // Separador entre eventos Gratis (.evi border-bottom) — globals.css.
+        eviSep: "var(--evi-sep)",
       },
       borderRadius: {
         lg: "var(--radius)",

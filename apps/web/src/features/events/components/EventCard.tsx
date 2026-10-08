@@ -214,7 +214,16 @@ export function EventCard({ event }: EventCardProps) {
   }
 
   return (
-    <Link href={`/eventos/${event.id}`} data-testid="event-card-link">
+    <Link
+      href={`/eventos/${event.id}`}
+      data-testid="event-card-link"
+      // Gratis: separador entre filas (.evi border-bottom / :last-child sin
+      // borde en seSALE.html). Va en el <Link> y no en la Card porque el
+      // Link es el hijo directo de la lista (así `last:` aplica) y la Card
+      // tiene rounded-xl (curvaría las puntas del borde). Dest/Plus no lo
+      // llevan: ya tienen su borde completo.
+      className={cn(event.plan === "gratis" && "block border-b border-eviSep last:border-b-0")}
+    >
       <Card
         data-testid="event-card"
         className={cn(

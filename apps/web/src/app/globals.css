@@ -57,6 +57,11 @@
        oscuros acá, redefinidos abajo en body[data-theme="light"]. */
     --evi-plus-grad-1: #2a0d1f;
     --evi-plus-grad-2: #150910;
+
+    /* Separador entre filas de eventos Gratis (.evi border-bottom en
+       seSALE.html: #3d3d3d en oscuro, --s6 en claro — no coincide con
+       ningún escalón de --s0..--s6 oscuro, por eso tiene token propio). */
+    --evi-sep: #3d3d3d;
   }
 
   /* Modo claro — toggle desde el botón sol/luna del Navbar (ThemeProvider,
@@ -96,6 +101,8 @@
 
     --evi-plus-grad-1: #fdeaf1;
     --evi-plus-grad-2: #fff6f9;
+
+    --evi-sep: var(--s6);
   }
 
   body {
