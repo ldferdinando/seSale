@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { EventForm } from "@/features/events/components/EventForm";
 import { FlyerUpload } from "@/features/events/components/FlyerUpload";
 import { useEvent } from "@/features/events/hooks/useEvent";
@@ -21,7 +21,11 @@ interface EditarEventoClientProps {
 export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
+  // useAuthStatus (no useCurrentUser directo): en una recarga completa el
+  // usuario arranca sin resolver mientras AuthProvider restaura la sesión —
+  // decidir antes mandaba a /login a alguien con sesión válida.
+  const { status: authStatus, user: currentUser } = useAuthStatus();
+  const isLoadingUser = authStatus === "loading";
   const { data: event, isLoading: isLoadingEvent, isError } = useEvent(eventId);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -36,15 +40,15 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
 
   useEffect(() => {
     if (isLoadingUser) return;
-    if (!currentUser) {
-      router.push("/login");
+    if (authStatus === "unauthenticated") {
+      router.replace(`/login?redirect=${encodeURIComponent(`/eventos/${eventId}/editar`)}`);
       return;
     }
     if (isLoadingEvent || isError) return;
     if (event && !canEdit) {
       router.push(`/eventos/${eventId}?sinPermiso=1`);
     }
-  }, [isLoadingUser, currentUser, isLoadingEvent, isError, event, canEdit, eventId, router]);
+  }, [isLoadingUser, authStatus, isLoadingEvent, isError, event, canEdit, eventId, router]);
 
   function handleSuccess() {
     if (isOwner && !isAdmin) {

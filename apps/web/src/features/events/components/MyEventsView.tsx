@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { EventCard } from "@/features/events/components/EventCard";
 import { useMyEvents } from "@/features/events/hooks/useMyEvents";
 import type { EventStatus } from "@/features/events/types";
@@ -17,7 +17,10 @@ const STATUS_TABS: { value: EventStatus; label: string }[] = [
 ];
 
 export function MyEventsView() {
-  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
+  // useAuthStatus: en recarga completa no mostrar "Iniciá sesión" mientras
+  // AuthProvider todavía restaura la sesión.
+  const { status: authStatus, user: currentUser } = useAuthStatus();
+  const isLoadingUser = authStatus === "loading";
   const [status, setStatus] = useState<EventStatus>("pending");
   const { data, isLoading, isError } = useMyEvents(Boolean(currentUser));
 

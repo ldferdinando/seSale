@@ -3,14 +3,17 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { MyEventsView } from "@/features/events/components/MyEventsView";
 import { MySubscriptionsSection } from "@/features/subscriptions/components/MySubscriptionsSection";
 import { AccountProfile, AccountProfileSkeleton } from "@/features/users/components/AccountProfile";
 import { MyBannersSection } from "@/features/users/components/MyBannersSection";
 
 export default function MiCuentaPage() {
-  const { data: currentUser, isLoading } = useCurrentUser();
+  // useAuthStatus: en recarga completa no mostrar "Iniciá sesión" mientras
+  // AuthProvider todavía restaura la sesión.
+  const { status: authStatus, user: currentUser } = useAuthStatus();
+  const isLoading = authStatus === "loading";
 
   return (
     <main className="container mx-auto flex max-w-2xl flex-col gap-6 py-6">

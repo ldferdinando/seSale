@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { PlanBadge } from "@/features/events/components/EventCard";
 import { useEvents } from "@/features/events/hooks/useEvents";
 import { useUpdateEventFeatured } from "@/features/events/hooks/useUpdateEventFeatured";
@@ -84,7 +84,8 @@ function AdminEventRow({ event }: { event: Event }) {
 }
 
 export function AdminFeaturedPanel() {
-  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
+  const { status: authStatus, user: currentUser } = useAuthStatus();
+  const isLoadingUser = authStatus === "loading";
   const { data: events, isLoading: isLoadingEvents, isError } = useEvents({});
 
   if (isLoadingUser) {
