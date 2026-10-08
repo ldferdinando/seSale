@@ -9,6 +9,7 @@ import { requestUserLocation } from "@/lib/city-detection";
 import { ARGENTINA_TZ, toEventDateTimeISO } from "@/lib/date-helpers";
 import type { City } from "@/features/auth/types";
 import type { Event, EventPlan } from "@/features/events/types";
+import { eventPlaceLabel } from "@/features/events/lib/eventLocation";
 
 /** Etapa 8c — mapa del home con un pin por evento visible en el listado
  * actual (mismos filtros que GET /api/events). Componente nuevo: a
@@ -58,7 +59,7 @@ function buildPopupHtml(event: Event): string {
     <div class="sesale-map-popup">
       <p class="sesale-map-popup-title">${escapeHtml(event.title)}</p>
       <p class="sesale-map-popup-meta">${escapeHtml(dateTime)}</p>
-      <p class="sesale-map-popup-meta">${escapeHtml(event.location.name)}</p>
+      <p class="sesale-map-popup-meta">${escapeHtml(eventPlaceLabel(event))}</p>
       <button type="button" class="sesale-map-popup-link" data-event-id="${event.id}">Ver evento</button>
     </div>
   `;
@@ -131,6 +132,9 @@ export function EventsMap({ events, activeCity, onEventClick }: EventsMapProps) 
     markersRef.current = [];
 
     for (const event of events) {
+      // Eventos con dirección libre (location_text) no tienen Location ni
+      // coordenadas: no se dibujan en el mapa.
+      if (!event.location) continue;
       const { latitude, longitude } = event.location;
       if (latitude == null || longitude == null) continue;
 

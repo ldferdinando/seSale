@@ -146,6 +146,26 @@ describe("EventForm", () => {
     });
   });
 
+  it("con dirección libre manda solo location_text (sin location_id ni location_data)", async () => {
+    const user = userEvent.setup();
+    const onContinue = renderWithClient();
+
+    await fillRequiredFieldsExceptCategory(user);
+    await toggleCategory(user, "Música en vivo");
+    // Cambia de "Indicar en el mapa" (ya completado) a dirección libre: lo
+    // del mapa no se manda.
+    await user.click(screen.getByRole("button", { name: /No encontrás el lugar/ }));
+    await user.type(screen.getByLabelText(/Dirección/), "  Mitre 1234, frente a la plaza  ");
+
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    const [payload] = onContinue.mock.calls[0];
+    expect(payload.location_text).toBe("Mitre 1234, frente a la plaza");
+    expect(payload).not.toHaveProperty("location_id");
+    expect(payload).not.toHaveProperty("location_data");
+  });
+
   it("no tiene selector de plan — la visibilidad se elige en el resumen (Etapa 9b)", async () => {
     renderWithClient();
 

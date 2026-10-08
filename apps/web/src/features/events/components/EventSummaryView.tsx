@@ -57,7 +57,9 @@ export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryV
   const { data: pickedLocation } = useLocation(payload.location_id);
   const { categories } = useCategoryCatalog();
   const locationName = payload.location_id ? (pickedLocation?.name ?? "...") : (payload.location_data?.name || payload.location_data?.address || "");
-  const locationAddress = payload.location_id ? (pickedLocation?.address ?? "...") : (payload.location_data?.address ?? "");
+  const locationAddress = payload.location_id
+    ? (pickedLocation?.address ?? "...")
+    : (payload.location_text ?? payload.location_data?.address ?? "");
 
   const categoryLabels = payload.categories
     .map((value) => categories.find((c) => c.key === value)?.name ?? value)
@@ -87,7 +89,8 @@ export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryV
           </div>
 
           <div className="flex flex-col gap-2">
-            <SummaryRow icon={Building2} label="Lugar" value={locationName} />
+            {/* Dirección libre (location_text): no hay "Lugar", solo la dirección. */}
+            {!payload.location_text && <SummaryRow icon={Building2} label="Lugar" value={locationName} />}
             <SummaryRow icon={MapPin} label="Dirección" value={locationAddress} />
           </div>
 

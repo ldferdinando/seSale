@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Building2, MapPin } from "lucide-react";
+import { Building2, MapPin, PenLine } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,14 @@ const LOCATION_TABS = [
   { value: "map", label: "Indicar en el mapa" },
 ];
 
-export type EventLocationMode = "preset" | "map";
+// "text": dirección como texto libre, sin crear ni vincular un Location.
+// No es una tercera pestaña (las tres no entran en una línea en mobile):
+// es un fallback que se ofrece con un link debajo de las pestañas — ver
+// a_revisar.md. En ese modo ninguna pestaña queda marcada y tocar
+// cualquiera de las dos vuelve al flujo de lugares.
+export type EventLocationMode = "preset" | "map" | "text";
+
+const LOCATION_TEXT_HINT = "Escribí la dirección lo más clara posible (calle y altura, o una referencia conocida).";
 
 export interface EventLocationMapFields {
   name?: string;
@@ -41,8 +48,11 @@ interface EventLocationFieldProps {
   mapLatitude: number | undefined;
   mapLongitude: number | undefined;
   onMapChange: (fields: EventLocationMapFields) => void;
+  locationText: string;
+  onLocationTextChange: (text: string) => void;
   locationIdError?: string;
   addressError?: string;
+  locationTextError?: string;
 }
 
 export function EventLocationField({
@@ -59,8 +69,11 @@ export function EventLocationField({
   mapLatitude,
   mapLongitude,
   onMapChange,
+  locationText,
+  onLocationTextChange,
   locationIdError,
   addressError,
+  locationTextError,
 }: EventLocationFieldProps) {
   const [pickedLocation, setPickedLocation] = useState<Location | null>(null);
   // Prefill de edición: si ya hay un locationId (evento existente) pero
@@ -84,6 +97,38 @@ export function EventLocationField({
   return (
     <div className="flex flex-col gap-3">
       <Tabs tabs={LOCATION_TABS} value={mode} onChange={(value) => onModeChange(value as EventLocationMode)} />
+
+      {mode !== "text" && (
+        <button
+          type="button"
+          onClick={() => onModeChange("text")}
+          className="flex items-center gap-1.5 self-start text-xs font-semibold text-primary hover:underline"
+        >
+          <PenLine className="h-3 w-3" aria-hidden />
+          ¿No encontrás el lugar? Escribí la dirección
+        </button>
+      )}
+
+      {mode === "text" && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="location_text" className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-3">
+            <MapPin className="h-3 w-3 text-primary" aria-hidden />
+            Dirección <em className="not-italic text-primary"> *</em>
+          </Label>
+          <Input
+            id="location_text"
+            value={locationText}
+            maxLength={500}
+            onChange={(e) => onLocationTextChange(e.target.value)}
+            placeholder="Ej: Mitre 1234, o frente a la plaza San Martín"
+            aria-describedby="location_text_hint"
+          />
+          <p id="location_text_hint" className="text-xs text-ink-4">
+            {LOCATION_TEXT_HINT}
+          </p>
+          {locationTextError && <p className="text-xs text-destructive">{locationTextError}</p>}
+        </div>
+      )}
 
       {mode === "preset" && (
         <div className="flex flex-col gap-3">

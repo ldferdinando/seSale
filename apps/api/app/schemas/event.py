@@ -40,6 +40,29 @@ def _validate_event_span(date_start: date, time_start: time, date_end: date, tim
         raise ValueError("La fecha y hora de fin debe ser posterior al inicio.")
 
 
+LOCATION_TEXT_MAX_LENGTH = 500
+
+
+def _normalize_location_text(value: str | None) -> str | None:
+    """Dirección libre (migración 0034): se recorta y un string vacío o
+    solo espacios cuenta como "no vino" (None)."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _validate_location_choice(
+    location_id: UUID | None, location_data: LocationCreate | None, location_text: str | None
+) -> None:
+    """location_text es mutuamente excluyente con location_id/location_data
+    (el evento tiene un Location vinculado o una dirección libre, nunca las
+    dos cosas). La combinación location_id + location_data mantiene el
+    comportamiento de la Etapa 7b (se prioriza location_id)."""
+    if location_text is not None and (location_id is not None or location_data is not None):
+        raise ValueError("Elegí un lugar o escribí la dirección, no las dos cosas.")
+
+
 class LocationRead(BaseModel):
     id: UUID
     name: str
@@ -61,7 +84,8 @@ class EventRead(BaseModel):
     id: UUID
     city_id: UUID
     organizer_id: UUID
-    location_id: UUID
+    location_id: UUID | None  # None si el evento usa location_text (migración 0034)
+    location_text: str | None = None
     title: str
     description: str | None
     date: date
@@ -83,7 +107,7 @@ class EventRead(BaseModel):
     contact_web: str | None
     contact_email: str | None
     flyer_url: str | None  # Etapa "Diseño v3" — flyer único 4:5, antes dual (Etapa 12b)
-    location: LocationRead
+    location: LocationRead | None  # None si el evento usa location_text
     # Etapa 10b-2: se expone para que el organizador dueño del evento (o un
     # admin) puedan saber si su propio evento está dado de baja — antes solo
     # estaba en AdminEventRead. Sin lógica nueva, el campo ya existe en el
@@ -195,8 +219,11 @@ class EventCreate(BaseModel):
     # coordenadas del mapa. Si vienen los dos, se usa location_id y se
     # ignora location_data. Si no viene ninguno, 422 (se valida en el
     # servicio, no acá, porque requiere lógica de "al menos uno").
+    # Migración 0034 — tercer camino: location_text, dirección libre sin
+    # Location. Excluyente con los otros dos (422 si viene junto a alguno).
     location_id: UUID | None = None
     location_data: LocationCreate | None = None
+    location_text: str | None = Field(default=None, max_length=LOCATION_TEXT_MAX_LENGTH)
 
     ticket_type: TicketType = TicketType.gratis
     price_at_door: int | None = Field(default=None, ge=0)
@@ -228,6 +255,18 @@ class EventCreate(BaseModel):
     def validate_categories(cls, value: list[str]) -> list[str]:
         return _validate_categories(value)
 
+    @field_validator("location_text")
+    @classmethod
+    def normalize_location_text(cls, value: str | None) -> str | None:
+        return _normalize_location_text(value)
+
+    @model_validator(mode="after")
+    def validate_location_choice(self) -> "EventCreate":
+        _validate_location_choice(self.location_id, self.location_data, self.location_text)
+        if self.location_id is None and self.location_data is None and self.location_text is None:
+            raise ValueError("Indicá dónde es el evento: elegí un lugar, marcalo en el mapa o escribí la dirección.")
+        return self
+
     @field_validator("date")
     @classmethod
     def validate_date_not_past(cls, value: date) -> date:
@@ -255,10 +294,12 @@ class EventUpdate(BaseModel):
     # Etapa 7a: cambiar la ciudad del evento. None = no se toca.
     city_id: UUID | None = None
 
-    # Etapa 7b — ver EventCreate. None en ambos = no se toca la ubicación
-    # actual del evento.
+    # Etapa 7b — ver EventCreate. None en los tres = no se toca la ubicación
+    # actual del evento. Mandar location_text reemplaza el Location
+    # vinculado (location_id queda None) y viceversa.
     location_id: UUID | None = None
     location_data: LocationCreate | None = None
+    location_text: str | None = Field(default=None, max_length=LOCATION_TEXT_MAX_LENGTH)
 
     ticket_type: TicketType | None = None
     price_at_door: int | None = Field(default=None, ge=0)
@@ -284,6 +325,16 @@ class EventUpdate(BaseModel):
         if value is None:
             return value
         return _validate_categories(value)
+
+    @field_validator("location_text")
+    @classmethod
+    def normalize_location_text(cls, value: str | None) -> str | None:
+        return _normalize_location_text(value)
+
+    @model_validator(mode="after")
+    def validate_location_choice(self) -> "EventUpdate":
+        _validate_location_choice(self.location_id, self.location_data, self.location_text)
+        return self
 
     @field_validator("date")
     @classmethod

@@ -310,7 +310,9 @@ class Event(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     city_id: UUID = Field(foreign_key="cities.id", index=True)
     organizer_id: UUID = Field(foreign_key="users.id")
-    location_id: UUID = Field(foreign_key="locations.id")
+    location_id: UUID | None = Field(foreign_key="locations.id")  # nullable desde 0034
+    location_text: str | None = Field(max_length=500)              # dirección libre, sin Location (0034)
+    # CHECK ck_events_location_id_xor_location_text: exactamente uno de los dos
 
     # Datos principales
     title: str = Field(max_length=255)
@@ -1375,6 +1377,13 @@ POST   /api/events                     Crear evento (user autenticado → pendin
                                        ninguno, 422. location_data.city_id debe
                                        coincidir con la ciudad efectiva del
                                        evento — 422 si no coincide ✓ Etapa 8a
+                                       location_text: dirección como texto      ✓ migración 0034
+                                       libre (máx. 500), sin crear ni vincular
+                                       un Location — fallback "¿No encontrás
+                                       el lugar?" del formulario. Excluyente
+                                       con location_id/location_data (422 si
+                                       viene junto a alguno). Sin coordenadas:
+                                       el evento no aparece en el mapa
                                        contact_whatsapp: si no viene en el
                                        payload (o viene vacío), se completa
                                        automáticamente con el public_whatsapp
@@ -1404,6 +1413,10 @@ PUT    /api/events/{id}                Editar evento propio (user) o cualquiera 
                                        location_data.city_id se valida contra
                                        la ciudad efectiva del evento, igual que
                                        en POST ✓ Etapa 8a
+                                       location_text (0034): reemplaza el
+                                       Location vinculado (location_id=None);
+                                       mandar location_id/location_data limpia
+                                       location_text. 422 si viene con alguno
                                        contact_whatsapp: si el payload no lo
                                        manda (o lo manda null), NO se pisa el
                                        valor existente del evento — es un dato

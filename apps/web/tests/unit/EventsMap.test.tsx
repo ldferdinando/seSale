@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventsMap } from "@/components/EventsMap";
 import { requestUserLocation } from "@/lib/city-detection";
 import type { City } from "@/features/auth/types";
-import { makeEvent } from "./mocks/handlers";
+import { MOCK_EVENT_LOCATION, makeEvent } from "./mocks/handlers";
 
 vi.mock("@/lib/city-detection", async () => {
   const actual = await vi.importActual<typeof import("@/lib/city-detection")>("@/lib/city-detection");
@@ -26,7 +26,7 @@ function eventWithCoords(overrides: Partial<ReturnType<typeof makeEvent>> = {}) 
   const event = makeEvent(overrides);
   return {
     ...event,
-    location: { ...event.location, latitude: -39.03, longitude: -67.58 },
+    location: { ...MOCK_EVENT_LOCATION, latitude: -39.03, longitude: -67.58 },
   };
 }
 
@@ -56,7 +56,7 @@ describe("EventsMap", () => {
   });
 
   it("ignores events without coordinates, without throwing", () => {
-    const withoutCoords = makeEvent({ id: "e1", location: { ...makeEvent().location, latitude: null, longitude: null } });
+    const withoutCoords = makeEvent({ id: "e1", location: { ...MOCK_EVENT_LOCATION, latitude: null, longitude: null } });
     const withCoords = eventWithCoords({ id: "e2" });
 
     const { container } = render(

@@ -18,8 +18,10 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     city_id: payload.city_id ?? "",
     // Etapa 7b: si el payload tenía location_id, la Tab A la vuelve a
     // resolver sola (EventLocationField la trae por id); si tenía
-    // location_data, se restauran los campos de la Tab B tal cual.
-    location_mode: payload.location_id ? "preset" : "map",
+    // location_data, se restauran los campos de la Tab B tal cual; si
+    // tenía location_text, se vuelve al modo de dirección libre.
+    location_mode: payload.location_id ? "preset" : payload.location_text ? "text" : "map",
+    location_text: payload.location_text ?? "",
     location_id: payload.location_id ?? "",
     location_name: payload.location_data?.name ?? "",
     location_address: payload.location_data?.address ?? "",

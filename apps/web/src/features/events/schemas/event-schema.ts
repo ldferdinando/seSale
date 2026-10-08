@@ -33,12 +33,15 @@ export const eventFormSchema = z
       .max(MAX_EVENT_CATEGORIES, "Máximo 3 categorías"),
     city_id: z.string().optional().or(z.literal("")),
     // Etapa 7b — Tab "Elegir lugar" (preset) o "Indicar en el mapa" (map).
-    location_mode: z.enum(["preset", "map"]).default("preset"),
+    // "text": dirección como texto libre, sin Location (fallback cuando el
+    // lugar no está cargado y no se puede marcar en el mapa).
+    location_mode: z.enum(["preset", "map", "text"]).default("preset"),
     location_id: z.string().optional().or(z.literal("")),
     location_name: z.string().max(255).optional().or(z.literal("")),
     location_address: z.string().max(500).optional().or(z.literal("")),
     location_latitude: z.number().optional(),
     location_longitude: z.number().optional(),
+    location_text: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),
     price_at_door: z.string().optional().or(z.literal("")),
     price_advance: z.string().optional().or(z.literal("")),
@@ -68,6 +71,10 @@ export const eventFormSchema = z
       path: ["location_address"],
     },
   )
+  .refine((data) => data.location_mode !== "text" || Boolean(data.location_text?.trim()), {
+    message: "Escribí la dirección del evento",
+    path: ["location_text"],
+  })
   // Etapa 10b — reemplaza la regla de la Etapa 10a (mínimo 15' si no
   // cruza medianoche, "cruza medianoche" inferido de time_end < time).
   // Ahora date_end es explícito: date_end >= date_start siempre, y si es

@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timezone
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Index
+from sqlalchemy import CheckConstraint, Index
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.plan import PlanType
@@ -35,12 +35,26 @@ class Event(SQLModel, table=True):
             postgresql_using="gin",
             postgresql_ops={"description": "gin_trgm_ops"},
         ),
+        # Migración 0034: un evento tiene exactamente una referencia de
+        # ubicación — un Location vinculado (location_id) o una dirección
+        # libre (location_text), nunca las dos ni ninguna.
+        CheckConstraint(
+            "(location_id IS NULL) <> (location_text IS NULL)",
+            name="ck_events_location_id_xor_location_text",
+        ),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     city_id: UUID = Field(foreign_key="cities.id", index=True)
     organizer_id: UUID = Field(foreign_key="users.id")
-    location_id: UUID = Field(foreign_key="locations.id", index=True)  # migración 0033
+    # Migración 0034: nullable — un evento puede no tener un Location
+    # vinculado y usar `location_text` (dirección libre, sin coordenadas).
+    location_id: UUID | None = Field(default=None, foreign_key="locations.id", index=True)  # índice: 0033
+    # Dirección como texto libre para cuando el lugar no está cargado y no
+    # se puede marcar en el mapa. Mutuamente excluyente con location_id
+    # (ver CheckConstraint arriba). No tiene coordenadas: el evento no
+    # aparece en el mapa ni tiene ficha de lugar.
+    location_text: str | None = Field(default=None, max_length=500)
 
     # Datos principales
     title: str = Field(max_length=255)
@@ -96,7 +110,7 @@ class Event(SQLModel, table=True):
 
     city: "City" = Relationship(back_populates="events")
     organizer: "User" = Relationship(back_populates="organized_events")
-    location: "Location" = Relationship(back_populates="events")
+    location: "Location" = Relationship(back_populates="events")  # None si usa location_text
     category_links: list["EventCategory"] = Relationship(
         back_populates="event", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

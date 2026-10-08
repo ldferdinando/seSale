@@ -85,9 +85,11 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     // Etapa 7b: precarga en modo "preset" con la ubicación actual del
     // evento — EventLocationField la trae por id (funciona con lugares
     // públicos o privados). Si el organizador no toca la Tab de lugar,
-    // no se crea ningún Location nuevo al guardar.
-    location_mode: "preset",
-    location_id: event.location.id,
+    // no se crea ningún Location nuevo al guardar. Si el evento usa
+    // dirección libre (location_text), precarga ese modo con el texto.
+    location_mode: event.location_text ? "text" : "preset",
+    location_id: event.location_id ?? "",
+    location_text: event.location_text ?? "",
     ticket_type: event.ticket_type,
     price_at_door: event.price_at_door != null ? String(event.price_at_door) : "",
     price_advance: event.price_advance != null ? String(event.price_advance) : "",

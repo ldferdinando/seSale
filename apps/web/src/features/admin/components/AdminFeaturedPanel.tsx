@@ -13,6 +13,7 @@ import { useUpdateEventFeatured } from "@/features/events/hooks/useUpdateEventFe
 import { useUpdateEventPlan } from "@/features/events/hooks/useUpdateEventPlan";
 import { PLAN_OPTIONS } from "@/features/events/types";
 import type { Event, EventPlan } from "@/features/events/types";
+import { eventPlaceLabel } from "@/features/events/lib/eventLocation";
 
 function AdminEventRow({ event }: { event: Event }) {
   const { mutate: mutateFeatured, isPending: isTogglingFeatured } = useUpdateEventFeatured();
@@ -39,7 +40,7 @@ function AdminEventRow({ event }: { event: Event }) {
           <p className="truncate text-sm font-bold text-foreground">{event.title}</p>
           <PlanBadge plan={event.plan} />
         </div>
-        <p className="mt-1 text-xs text-ink-4">{event.location.name}</p>
+        <p className="mt-1 text-xs text-ink-4">{eventPlaceLabel(event)}</p>
         <p className="mt-1 text-xs text-ink-5">
           Destacado hasta:{" "}
           {event.featured_until ? format(parseISO(event.featured_until), "d MMM yyyy", { locale: es }) : "indefinido"}

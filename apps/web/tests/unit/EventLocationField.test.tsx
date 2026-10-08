@@ -12,6 +12,7 @@ function renderField(overrides: Partial<React.ComponentProps<typeof EventLocatio
   const onModeChange = vi.fn();
   const onLocationIdChange = vi.fn();
   const onMapChange = vi.fn();
+  const onLocationTextChange = vi.fn();
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <EventLocationField
@@ -25,11 +26,13 @@ function renderField(overrides: Partial<React.ComponentProps<typeof EventLocatio
         mapLatitude={undefined}
         mapLongitude={undefined}
         onMapChange={onMapChange}
+        locationText=""
+        onLocationTextChange={onLocationTextChange}
         {...overrides}
       />
     </QueryClientProvider>,
   );
-  return { ...utils, onModeChange, onLocationIdChange, onMapChange };
+  return { ...utils, onModeChange, onLocationIdChange, onMapChange, onLocationTextChange };
 }
 
 describe("EventLocationField", () => {

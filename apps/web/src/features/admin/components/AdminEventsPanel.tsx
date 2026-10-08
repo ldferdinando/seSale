@@ -30,6 +30,7 @@ import {
   type EventPlan,
   type EventStatus,
 } from "@/features/events/types";
+import { eventPlaceLabel } from "@/features/events/lib/eventLocation";
 
 function StatusBadge({ status }: { status: EventStatus }) {
   if (status === "approved") {
@@ -188,7 +189,7 @@ const EVENT_COLUMNS: AdminTableColumn<AdminEvent>[] = [
     essential: true,
     render: (event) => (
       <span className="text-xs text-ink-4">
-        {event.organizer_public_name} · {event.location.name} · {event.categories.join(", ")}
+        {event.organizer_public_name} · {eventPlaceLabel(event)} · {event.categories.join(", ")}
       </span>
     ),
   },

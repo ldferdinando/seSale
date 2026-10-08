@@ -230,6 +230,7 @@ export function EventForm({
       location_id: "",
       location_name: "",
       location_address: "",
+      location_text: "",
       ticket_type: "gratis",
       price_at_door: "",
       price_advance: "",
@@ -256,6 +257,7 @@ export function EventForm({
   const locationAddressValue = watch("location_address");
   const locationLatitudeValue = watch("location_latitude");
   const locationLongitudeValue = watch("location_longitude");
+  const locationTextValue = watch("location_text");
 
   const selectedCity = (cities ?? []).find((c) => c.id === cityIdValue);
 
@@ -323,6 +325,8 @@ export function EventForm({
       city_id: values.city_id || undefined,
       ...(values.location_mode === "preset"
         ? { location_id: values.location_id || undefined }
+        : values.location_mode === "text"
+        ? { location_text: values.location_text?.trim() || undefined }
         : {
             location_data: {
               name: values.location_name || undefined,
@@ -511,7 +515,12 @@ export function EventForm({
           cityLongitude={selectedCity?.longitude ?? activeCity?.longitude}
           cityName={selectedCity?.name ?? activeCity?.name}
           mode={locationMode}
-          onModeChange={(mode) => setValue("location_mode", mode, { shouldValidate: true })}
+          onModeChange={(mode) => {
+            // Al salir de "dirección libre" se descarta lo escrito, para no
+            // mandar datos mezclados si después vuelve a ese modo.
+            if (locationMode === "text" && mode !== "text") setValue("location_text", "");
+            setValue("location_mode", mode, { shouldValidate: true });
+          }}
           locationId={locationIdValue || undefined}
           onLocationIdChange={(id) => setValue("location_id", id, { shouldValidate: true })}
           mapName={locationNameValue ?? ""}
@@ -524,8 +533,11 @@ export function EventForm({
             if (fields.latitude !== undefined) setValue("location_latitude", fields.latitude);
             if (fields.longitude !== undefined) setValue("location_longitude", fields.longitude);
           }}
+          locationText={locationTextValue ?? ""}
+          onLocationTextChange={(text) => setValue("location_text", text, { shouldValidate: true })}
           locationIdError={errors.location_id?.message}
           addressError={errors.location_address?.message}
+          locationTextError={errors.location_text?.message}
         />
       </div>
 

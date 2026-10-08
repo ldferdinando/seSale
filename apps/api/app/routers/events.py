@@ -96,6 +96,7 @@ def post_event(
             categories=payload.categories,
             location_id=payload.location_id,
             location_data=payload.location_data,
+            location_text=payload.location_text,
             ticket_type=payload.ticket_type,
             price_at_door=payload.price_at_door,
             price_advance=payload.price_advance,

@@ -317,7 +317,7 @@ def _resolve_event_location(
     if location_data is not None:
         _validate_location_city_matches_event(location_data.city_id, event_city_id)
         return create_location_from_event_data(session, location_data)
-    raise ValueError("Se requiere location_id o location_data")
+    raise ValueError("Se requiere location_id, location_data o location_text")
 
 
 def create_event(
@@ -331,6 +331,7 @@ def create_event(
     categories: list[str],
     location_id: UUID | None = None,
     location_data: LocationCreate | None = None,
+    location_text: str | None = None,
     time_end: time,  # Etapa 10a — obligatorio, sin default (igual que el modelo)
     date_end: date | None = None,  # Etapa 10b — None => mismo día que event_date
     ticket_type: TicketType = TicketType.gratis,
@@ -390,14 +391,23 @@ def create_event(
 
     target_city_id = _resolve_target_city(session, city_id, organizer.city_id)
 
-    location = _resolve_event_location(
-        session, location_id=location_id, location_data=location_data, event_city_id=target_city_id
-    )
+    # Migración 0034: con dirección libre no se crea ni vincula ningún
+    # Location. La exclusión mutua con location_id/location_data ya la
+    # valida EventCreate; acá se repite para llamadas directas al service.
+    if location_text is not None:
+        if location_id is not None or location_data is not None:
+            raise ValueError("Elegí un lugar o escribí la dirección, no las dos cosas.")
+        resolved_location_id = None
+    else:
+        resolved_location_id = _resolve_event_location(
+            session, location_id=location_id, location_data=location_data, event_city_id=target_city_id
+        ).id
 
     event = Event(
         city_id=target_city_id,
         organizer_id=organizer.id,
-        location_id=location.id,
+        location_id=resolved_location_id,
+        location_text=location_text,
         title=title,
         description=description,
         date=event_date,
@@ -559,8 +569,10 @@ def update_event(
 
     new_location_id = data.pop("location_id", None)
     new_location_data = data.pop("location_data", None)
+    new_location_text = data.pop("location_text", None)
     if new_location_id is not None:
         event.location_id = get_location_or_404(session, new_location_id).id
+        event.location_text = None
     elif new_location_data is not None:
         location_data = (
             new_location_data
@@ -569,7 +581,13 @@ def update_event(
         )
         _validate_location_city_matches_event(location_data.city_id, target_city_id)
         event.location_id = create_location_from_event_data(session, location_data).id
-    # Si vienen ambos None (no se mandaron), no se toca la ubicación actual.
+        event.location_text = None
+    elif new_location_text is not None:
+        # Migración 0034: pasa a dirección libre — se desvincula el Location
+        # (el Location en sí no se toca, puede tener otros eventos).
+        event.location_id = None
+        event.location_text = new_location_text
+    # Si no vino ninguno (o vinieron en None), no se toca la ubicación actual.
 
     event.city_id = target_city_id
 

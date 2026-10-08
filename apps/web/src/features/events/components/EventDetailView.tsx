@@ -46,6 +46,7 @@ import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import type { EventDetail } from "@/features/events/types";
 import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
+import { buildEventMapUrl, eventPlaceLabel } from "@/features/events/lib/eventLocation";
 
 /** "Recordarme este evento" (botón + panel WhatsApp/Email) — pendiente de
  * decisión de producto (no funcional, sin definir el caso sin sesión). */
@@ -71,26 +72,13 @@ const PLAN_NAME: Record<"dest" | "pro", string> = {
   pro: "Destacado Plus",
 };
 
-/** Google Maps: navegación directa por coordenadas si existen, si no
- * búsqueda por dirección. Mismo criterio que `buildMapUrl` en
- * GastroPlaceCard.tsx/GastroDetailView.tsx (Etapa 10b-1). */
-function buildLocationMapUrl(location: EventDetail["location"]): string | null {
-  if (location.latitude != null && location.longitude != null) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`;
-  }
-  if (location.address) {
-    return `https://www.google.com/maps/search/${encodeURIComponent(location.address)}`;
-  }
-  return null;
-}
-
 function shareEvent(event: EventDetail) {
   const eventDate = parseISO(event.date);
   const dateLabel = format(eventDate, "EEEE d 'de' MMMM", { locale: es });
   const timeLabel = formatEventTime(toEventDateTimeISO(event.date, event.time));
   const url = typeof window !== "undefined" ? `${window.location.origin}/eventos/${event.id}` : "";
   const title = `${event.title} — seSALE`;
-  const text = `${event.title} · ${dateLabel} · ${timeLabel} hs · ${event.location.name}. ¡Organicemos para ir! Lo vi en seSALE: ${url}`;
+  const text = `${event.title} · ${dateLabel} · ${timeLabel} hs · ${eventPlaceLabel(event)}. ¡Organicemos para ir! Lo vi en seSALE: ${url}`;
 
   if (typeof navigator !== "undefined" && navigator.share) {
     navigator.share({ title, text, url }).catch(() => {});
@@ -192,8 +180,9 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const hasContact = contactItems.some((item) => Boolean(item.href));
 
   // Etapa 10b-2: botón "Llegar" del bloque Lugar (mismo criterio que
-  // GastroPlaceCard.tsx/GastroDetailView.tsx en la Etapa 10b-1).
-  const locationMapUrl = buildLocationMapUrl(event.location);
+  // GastroPlaceCard.tsx/GastroDetailView.tsx en la Etapa 10b-1). Con
+  // dirección libre (location_text) es una búsqueda de texto en Maps.
+  const locationMapUrl = buildEventMapUrl(event.location, event.location_text, event.city_name);
 
   // Etapa 8b — el bloque de imagen/placeholder es exclusivo del plan
   // Destacado Plus (`pro`). Para `dest`/`gratis` no se renderiza nada (ni
@@ -289,8 +278,10 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           <div className="flex items-start gap-2 rounded-xl border border-border bg-card p-3">
             <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Lugar</p>
-              <p className="text-sm font-bold text-foreground">{event.location.name}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">
+                {event.location ? "Lugar" : "Dirección"}
+              </p>
+              <p className="text-sm font-bold text-foreground">{eventPlaceLabel(event)}</p>
             </div>
           </div>
         </div>
@@ -304,7 +295,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             siempre es quien lo organiza (ej. una banda tocando en un bar que
             no es suyo). Sin llamadas nuevas: event.location ya trae todo
             (LocationRead anidado en EventRead desde la Etapa 7b). */}
-        {event.location.name && (
+        {event.location?.name && (
           <div className="flex flex-col gap-2">
             <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Lugar</p>
             <div
@@ -348,6 +339,39 @@ export function EventDetailView({ event }: EventDetailViewProps) {
                 />
               )}
 
+              {locationMapUrl && (
+                <a
+                  href={locationMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="event-location-map-link"
+                  className="flex items-center gap-1.5 border-t border-border pt-3 text-xs font-bold text-primary"
+                >
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                  Cómo llegar (Google Maps)
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Dirección libre (location_text): sin Location vinculado no hay
+            ficha, mapa embebido ni coordenadas — solo la dirección tal cual
+            la escribió el organizador y un "Cómo llegar" que busca ese texto
+            en Google Maps. */}
+        {!event.location && event.location_text && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-5">Dirección</p>
+            <div
+              className="flex flex-col gap-3 rounded-xl border border-[#E91E8C44] bg-card p-3.5"
+              data-testid="event-location-text-card"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-surface-2">
+                  <MapPin className="h-5 w-5 text-primary" aria-hidden />
+                </div>
+                <p className="min-w-0 flex-1 break-words text-sm font-bold text-foreground">{event.location_text}</p>
+              </div>
               {locationMapUrl && (
                 <a
                   href={locationMapUrl}

@@ -12,6 +12,7 @@ import { EVENT_CATEGORIES, type Event } from "@/features/events/types";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 import { formatEventDateRange } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
+import { eventPlaceLabel } from "@/features/events/lib/eventLocation";
 
 const VISIBLE_CATEGORY_BADGES = 2;
 
@@ -201,7 +202,7 @@ export function EventCard({ event }: EventCardProps) {
                   </span>
                   <span className="flex min-w-0 items-center gap-1 truncate">
                     <MapPin className="h-3 w-3 flex-shrink-0 text-[#ff6fa5]" aria-hidden />
-                    <span className="truncate">{event.location.name}</span>
+                    <span className="truncate">{eventPlaceLabel(event)}</span>
                   </span>
                 </p>
               </div>
@@ -277,7 +278,7 @@ export function EventCard({ event }: EventCardProps) {
               </span>
               <span className="flex min-w-0 items-center gap-1 truncate">
                 <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
-                <span className="truncate">{event.location.name}</span>
+                <span className="truncate">{eventPlaceLabel(event)}</span>
               </span>
             </p>
           </div>

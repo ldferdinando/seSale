@@ -40,7 +40,12 @@ export interface Event {
   id: string;
   city_id: string;
   organizer_id: string;
-  location_id: string;
+  // Dirección libre (migración 0034 del backend): un evento tiene un
+  // Location vinculado (location_id + location) O una dirección como texto
+  // (location_text), nunca las dos. Con location_text no hay coordenadas
+  // ni ficha de lugar.
+  location_id: string | null;
+  location_text: string | null;
   title: string;
   description: string | null;
   date: string;
@@ -65,7 +70,7 @@ export interface Event {
   // feed de Instagram"), reemplaza al flyer dual desktop/mobile de la
   // Etapa 12b.
   flyer_url: string | null;
-  location: EventLocation;
+  location: EventLocation | null;
   // Etapa 10b-2: expuesto también al organizador dueño (antes solo en
   // AdminEventRead) — autoservicio "Dar de baja"/"Volver a publicar".
   is_active: boolean;
@@ -133,10 +138,12 @@ export interface EventCreateInput {
   categories: string[];
   /** Ciudad del evento — Etapa 7a. Sin ella, el backend usa la ciudad del organizador. */
   city_id?: string;
-  // Etapa 7b — uno de los dos, nunca ambos vacíos: location_id (lugar
-  // precargado, Tab A) o location_data (dirección libre + mapa, Tab B).
+  // Etapa 7b — uno de los tres, nunca vacíos: location_id (lugar
+  // precargado, Tab A), location_data (dirección + mapa, Tab B) o
+  // location_text (dirección como texto libre, sin Location — fallback).
   location_id?: string;
   location_data?: LocationDataInput;
+  location_text?: string;
   ticket_type: TicketType;
   price_at_door?: number;
   price_advance?: number;

@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 
 import type { AdItemAdmin, AdSlot, AdSlotAdmin, MyAdItem } from "@/features/ads/types";
-import type { AdminEvent, Event, EventDetail, EventStats } from "@/features/events/types";
+import type { AdminEvent, Event, EventDetail, EventLocation, EventStats } from "@/features/events/types";
 import type { User } from "@/features/auth/types";
 import type { UserAdmin } from "@/features/users/types";
 import type { AdminCity } from "@/features/cities/types";
@@ -13,12 +13,27 @@ import type { AdminSubscription, Subscription } from "@/features/subscriptions/t
 
 const API_URL = "http://localhost:8000";
 
+export const MOCK_EVENT_LOCATION: EventLocation = {
+  id: "33333333-3333-3333-3333-333333333333",
+  name: "El Tinglado Bar",
+  address: "Av. Roca 1240",
+  city_id: "22222222-2222-2222-2222-222222222222",
+  latitude: null,
+  longitude: null,
+  description: null,
+  hours: null,
+  place_type: null,
+  is_verified: false,
+  is_public: false,
+};
+
 export function makeEvent(overrides: Partial<Event> = {}): Event {
   return {
     id: "11111111-1111-1111-1111-111111111111",
     city_id: "22222222-2222-2222-2222-222222222222",
     organizer_id: "44444444-4444-4444-4444-444444444444",
     location_id: "33333333-3333-3333-3333-333333333333",
+    location_text: null,
     title: "Noche de Rock Nacional",
     description: "Un evento de prueba",
     date: "2099-01-01",
@@ -40,19 +55,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     contact_web: null,
     contact_email: null,
     flyer_url: null,
-    location: {
-      id: "33333333-3333-3333-3333-333333333333",
-      name: "El Tinglado Bar",
-      address: "Av. Roca 1240",
-      city_id: "22222222-2222-2222-2222-222222222222",
-      latitude: null,
-      longitude: null,
-      description: null,
-      hours: null,
-      place_type: null,
-      is_verified: false,
-      is_public: false,
-    },
+    location: { ...MOCK_EVENT_LOCATION },
     is_active: true,
     ...overrides,
   };
