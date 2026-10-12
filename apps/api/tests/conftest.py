@@ -45,6 +45,15 @@ def _reset_rate_limiter() -> None:
     limiter.reset()
 
 
+@pytest.fixture(autouse=True)
+def _disable_resend(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Si el `.env` local tiene un RESEND_API_KEY real, los tests mandarían
+    # emails de verdad (y los que esperan "Resend no configurado", como el
+    # `reset_token` de debug de forgot-password, fallarían). Los tests que
+    # prueban el envío setean la key a mano y mockean resend.Emails.send.
+    monkeypatch.setattr(settings, "resend_api_key", None)
+
+
 @pytest.fixture(name="session")
 def session_fixture() -> Generator[Session, None, None]:
     engine = create_engine(

@@ -10,6 +10,7 @@ import {
   Building2,
   Calendar,
   Clock,
+  DollarSign,
   Facebook as FacebookIcon,
   Flag,
   Globe,
@@ -406,10 +407,12 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           )}
         </div>
 
+        {/* Canal de entradas "En el lugar / mapa el día del evento" del form
+            (available_on_site) — se paga en la puerta, de ahí el ícono $. */}
         {event.available_on_site && (
           <div className="flex items-center gap-2 rounded-xl bg-surface-5 p-3 text-sm font-semibold text-ink-2">
-            <MapPin className="h-4 w-4 text-primary" aria-hidden />
-            Habrá lugar en la puerta el día del evento
+            <DollarSign className="h-4 w-4 text-primary" aria-hidden data-testid="on-site-ticket-icon" />
+            Entradas en puerta
           </div>
         )}
 

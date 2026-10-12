@@ -1,11 +1,16 @@
 "use client";
 
-import { LayoutGrid, Tag } from "lucide-react";
+import { ChevronUp, LayoutGrid, Tag } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
 import { CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from "@/features/events/lib/categoryStyles";
 import type { EventFiltersState } from "@/features/events/types";
 import { cn } from "@/lib/utils";
+
+/** Categorías visibles con la lista colapsada (las primeras N en el orden
+ * del catálogo: sort_order, después nombre — lo resuelve el backend). */
+export const COLLAPSED_CATEGORY_COUNT = 6;
 
 interface CategoryChipsProps {
   category?: EventFiltersState["category"];
@@ -17,6 +22,17 @@ interface CategoryChipsProps {
  * falla, así que acá no hace falta un estado de loading aparte. */
 export function CategoryChips({ category, onChange }: CategoryChipsProps) {
   const { categories } = useCategoryCatalog();
+  const [expanded, setExpanded] = useState(false);
+
+  // Si la categoría elegida queda fuera de las primeras N (p. ej. filtros
+  // restaurados al volver desde un evento), se expande para que se vea.
+  const activeIndex = category ? categories.findIndex((c) => c.key === category) : -1;
+  useEffect(() => {
+    if (activeIndex >= COLLAPSED_CATEGORY_COUNT) setExpanded(true);
+  }, [activeIndex]);
+
+  const hiddenCount = Math.max(categories.length - COLLAPSED_CATEGORY_COUNT, 0);
+  const visibleCategories = expanded ? categories : categories.slice(0, COLLAPSED_CATEGORY_COUNT);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -37,7 +53,7 @@ export function CategoryChips({ category, onChange }: CategoryChipsProps) {
           Todos
         </button>
 
-        {categories.map((c) => {
+        {visibleCategories.map((c) => {
           const style = CATEGORY_STYLES[c.key] ?? DEFAULT_CATEGORY_STYLE;
           const Icon = style.icon;
           const on = category === c.key;
@@ -60,6 +76,26 @@ export function CategoryChips({ category, onChange }: CategoryChipsProps) {
             </button>
           );
         })}
+
+        {/* "+N más" / "Ver menos": mismo chip que las categorías pero
+            punteado, para que se lea como acción y no como filtro. */}
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((e) => !e)}
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-primary/60 bg-transparent px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="h-4 w-4" aria-hidden />
+                Ver menos
+              </>
+            ) : (
+              `+${hiddenCount} más`
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

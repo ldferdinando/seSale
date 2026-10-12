@@ -1,9 +1,10 @@
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Etapa 9c — valor por defecto de SECRET_KEY, nunca debe usarse en producción
 # (ver el model_validator más abajo, que lo rechaza explícitamente ahí).
 _DEV_SECRET_KEY = "change-me-in-dev"
+_DEFAULT_RESEND_FROM_EMAIL = "seSALE <onboarding@resend.dev>"
 
 
 class Settings(BaseSettings):
@@ -34,6 +35,13 @@ class Settings(BaseSettings):
 
     resend_api_key: str | None = None
     admin_email: str = "admin@sesale.com.ar"
+    # Remitente de todos los emails (formato "Nombre <direccion>"). El default
+    # es el remitente de prueba de Resend, que funciona sin dominio verificado
+    # (solo entrega a la casilla dueña de la cuenta de Resend). En producción,
+    # setear RESEND_FROM_EMAIL a una dirección del dominio verificado.
+    resend_from_email: str = _DEFAULT_RESEND_FROM_EMAIL
+    # Opcional: si tiene valor, las respuestas a los emails van a esta casilla.
+    resend_reply_to: str | None = None
 
     # Login con Google (ID token, sin client secret) — POST /api/auth/google.
     # Debe coincidir con el Client ID usado en el frontend
@@ -59,6 +67,22 @@ class Settings(BaseSettings):
     # del guard automático (410 si ya existe un admin). Setear a "true" en
     # Railway una vez creado el primer admin.
     disable_setup_endpoint: bool = False
+
+    # `.env.example` deja RESEND_FROM_EMAIL/RESEND_REPLY_TO vacíos: un string
+    # vacío en el entorno se trata como "no configurado" (default / sin reply-to).
+    @field_validator("resend_from_email", mode="before")
+    @classmethod
+    def _blank_from_email_uses_default(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return _DEFAULT_RESEND_FROM_EMAIL
+        return value
+
+    @field_validator("resend_reply_to", mode="before")
+    @classmethod
+    def _blank_reply_to_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @property
     def allowed_origins_list(self) -> list[str]:

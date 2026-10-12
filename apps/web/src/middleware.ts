@@ -10,6 +10,8 @@ import type { NextRequest } from "next/server";
 const ALWAYS_ALLOWED = [
   "/proximamente", // la página de mantenimiento
   "/login", // para que el admin pueda entrar
+  "/privacidad", // Google exige que la Política de Privacidad y los
+  "/terminos", //   Términos sean públicos aun con el sitio en mantenimiento
   "/api", // el backend pasa sin filtro
   "/_next", // assets de Next.js
   "/favicon",

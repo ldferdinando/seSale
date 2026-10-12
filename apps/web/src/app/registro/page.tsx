@@ -23,6 +23,18 @@ export default function RegistroPage() {
       </header>
 
       <RegisterForm />
+
+      <p className="px-1 text-center text-xs text-ink-4">
+        Al registrarte aceptás nuestros{" "}
+        <Link href="/terminos" className="font-semibold text-primary">
+          Términos de Servicio
+        </Link>{" "}
+        y nuestra{" "}
+        <Link href="/privacidad" className="font-semibold text-primary">
+          Política de Privacidad
+        </Link>
+        .
+      </p>
     </main>
   );
 }

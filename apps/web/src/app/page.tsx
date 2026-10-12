@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
+import { LegalLinks } from "@/components/LegalLinks";
 import { AdSlots, AdSlotsGrid } from "@/features/events/components/AdSlots";
 import { CategoryChips } from "@/features/events/components/CategoryChips";
 import { EventFilters } from "@/features/events/components/EventFilters";
@@ -13,6 +14,8 @@ import { StatsBar } from "@/features/events/components/StatsBar";
 import { TodayBanner } from "@/features/events/components/TodayBanner";
 import { ViewTabs, type EventView } from "@/features/events/components/ViewTabs";
 import { getDateRangeForPreset } from "@/features/events/lib/dateRanges";
+import { chipFiltersChanged, scrollToResults } from "@/features/events/lib/scrollToResults";
+import { useListReturn } from "@/features/events/hooks/useListReturn";
 import { useEvents } from "@/features/events/hooks/useEvents";
 import type { EventFiltersState } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
@@ -39,6 +42,23 @@ export default function HomePage() {
   const { activeCity } = useActiveCity();
   const router = useRouter();
   const listRef = useRef<HTMLDivElement>(null);
+  // Remonta EventFilters (input de búsqueda, preset de fecha: estado local)
+  // cuando se restauran filtros al volver desde un evento.
+  const [filtersKey, setFiltersKey] = useState(0);
+
+  const saveListPosition = useListReturn({ filters, view }, (restored) => {
+    setFilters(restored.filters);
+    setView(restored.view);
+    setFiltersKey((k) => k + 1);
+  });
+
+  /** Cambio de filtros desde la UI: si cambió un filtro de chip (fecha,
+   * momento, categoría, entrada), lleva la pantalla a los resultados. */
+  function updateFilters(next: EventFiltersState) {
+    const changed = chipFiltersChanged(filters, next);
+    setFilters(next);
+    if (changed) scrollToResults(() => listRef.current);
+  }
 
   const effectiveFilters: EventFiltersState = activeCity ? { ...filters, cityId: activeCity.id } : filters;
 
@@ -87,19 +107,21 @@ export default function HomePage() {
             buscador → fecha → categorías → momento → tipo de entrada. */}
         <div className="px-4 pt-3.5">
           <EventFilters
+            key={filtersKey}
             filters={filters}
-            onChange={setFilters}
+            onChange={updateFilters}
             categorySlot={
               <CategoryChips
                 category={filters.category}
-                onChange={(category) => setFilters((f) => ({ ...f, category }))}
+                onChange={(category) => updateFilters({ ...filters, category })}
               />
             }
           />
         </div>
 
         {/* Tabs de vista — DEBAJO de los filtros (orden de seSALE.html).
-            listRef: destino del scroll al presionar "Ahora" en TodayBanner. */}
+            listRef: destino del scroll al presionar "Ahora" en TodayBanner y
+            al cambiar un filtro (scrollToResults). */}
         <div ref={listRef} data-testid="events-list-anchor" className="scroll-mt-2">
           <ViewTabs value={view} onChange={setView} />
         </div>
@@ -129,12 +151,16 @@ export default function HomePage() {
             <EventsMap
               events={mapEvents.data ?? []}
               activeCity={activeCity}
-              onEventClick={(eventId) => router.push(`/eventos/${eventId}`)}
+              onEventClick={(eventId) => {
+                saveListPosition();
+                router.push(`/eventos/${eventId}`);
+              }}
             />
           </div>
         )}
 
         <StatsBar />
+        <LegalLinks className="py-4" />
       </div>
     </main>
   );

@@ -1,7 +1,6 @@
-import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { EventBackLink } from "@/features/events/components/EventBackLink";
 import { EventDetailPage } from "@/features/events/components/EventDetailPage";
 import type { EventDetail } from "@/features/events/types";
 
@@ -50,10 +49,7 @@ export default async function EventoDetallePage({ params, searchParams }: PagePr
 
   return (
     <main className="container mx-auto flex max-w-2xl flex-col gap-4 py-6">
-      <Link href="/" className="flex items-center gap-3 border-b border-border pb-3 text-ink-3">
-        <ArrowLeft className="h-5 w-5 text-primary" aria-hidden />
-        <span className="text-sm font-medium">Volver</span>
-      </Link>
+      <EventBackLink />
       {sinPermiso && (
         <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
           No tenés permiso para editar este evento.

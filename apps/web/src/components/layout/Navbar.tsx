@@ -110,6 +110,8 @@ export function Navbar() {
 
   return (
     <header
+      // Lo mide scrollToResults para no dejar los resultados debajo del nav.
+      data-sticky-header
       className={cn(
         // Etapa "Logo: variante para modo oscuro": el nav ya no fuerza
         // fondo claro fijo (ver `.sesale-navbar-fixed-light`, eliminado de

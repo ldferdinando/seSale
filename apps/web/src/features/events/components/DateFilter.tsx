@@ -34,10 +34,22 @@ interface DateFilterProps {
   onChange: (filters: EventFiltersState) => void;
 }
 
+function presetForRange(filters: EventFiltersState): DatePreset | null {
+  if (!filters.dateFrom || !filters.dateTo) return null;
+  return (
+    DATE_PRESETS.find((preset) => {
+      const range = getDateRangeForPreset(preset);
+      return range.dateFrom === filters.dateFrom && range.dateTo === filters.dateTo;
+    }) ?? null
+  );
+}
+
 export function DateFilter({ filters, onChange }: DateFilterProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | undefined>();
-  const [activePreset, setActivePreset] = useState<DatePreset | null>(null);
+  // Al montar con un rango ya aplicado (filtros restaurados al volver desde
+  // un evento, ver useListReturn) se marca el preset que coincide.
+  const [activePreset, setActivePreset] = useState<DatePreset | null>(() => presetForRange(filters));
 
   // Etapa 11b — Parte 3c: si el filtro de fecha se limpia desde afuera (ej.
   // "Limpiar filtros" en EventFilters, que resetea todo el EventFiltersState

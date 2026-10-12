@@ -21,6 +21,16 @@ def _format_argentina_datetime(value: datetime) -> str:
     return f"{local.day} de {_MESES[local.month - 1]} de {local.year}, {local.strftime('%H:%M')}hs"
 
 
+def _sender_fields() -> dict[str, str]:
+    """Remitente (y reply-to opcional) de todos los emails, desde
+    RESEND_FROM_EMAIL / RESEND_REPLY_TO — configurables sin tocar código
+    (p. ej. onboarding@resend.dev mientras el dominio no esté verificado)."""
+    fields = {"from": settings.resend_from_email}
+    if settings.resend_reply_to:
+        fields["reply_to"] = settings.resend_reply_to
+    return fields
+
+
 def send_report_email(
     event_title: str,
     event_id: UUID,
@@ -50,7 +60,7 @@ def send_report_email(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <reportes@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [settings.admin_email],
                 "subject": f"Reporte de evento: {event_title}",
                 "text": body,
@@ -87,7 +97,7 @@ def send_location_report_email(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <reportes@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [settings.admin_email],
                 "subject": f"Reporte de lugar: {location_name}",
                 "text": body,
@@ -133,7 +143,7 @@ def send_transfer_notification_to_admin(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <pagos@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [settings.admin_email],
                 "subject": f"Nueva transferencia pendiente — {plan_name}",
                 "text": body,
@@ -166,7 +176,7 @@ def send_subscription_approved_email(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <pagos@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [user_email],
                 "subject": f"¡Tu plan {plan_name} está activo! — seSALE",
                 "text": body,
@@ -204,7 +214,7 @@ def send_password_reset_email(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <cuentas@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [user_email],
                 "subject": "Recuperá tu contraseña — seSALE",
                 "text": body,
@@ -238,7 +248,7 @@ def send_subscription_rejected_email(
         resend.api_key = settings.resend_api_key
         resend.Emails.send(
             {
-                "from": "seSALE <pagos@sesale.com.ar>",
+                **_sender_fields(),
                 "to": [user_email],
                 "subject": "Tu pago no pudo ser verificado — seSALE",
                 "text": body,

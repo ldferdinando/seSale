@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { LegalLinks } from "@/components/LegalLinks";
 import { Logo } from "@/components/Logo";
 
 /**
@@ -329,6 +330,7 @@ export function QueEsSesaleContent() {
           </span>
         </div>
 
+        <LegalLinks />
       </div>
     </main>
   );

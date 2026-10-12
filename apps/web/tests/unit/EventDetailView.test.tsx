@@ -92,14 +92,18 @@ describe("EventDetailView", () => {
         <EventDetailView event={makeEventDetail({ available_on_site: false })} />
       </QueryClientProvider>,
     );
-    expect(screen.queryByText(/Habrá lugar en la puerta/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Entradas en puerta")).not.toBeInTheDocument();
 
     rerender(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <EventDetailView event={makeEventDetail({ available_on_site: true })} />
       </QueryClientProvider>,
     );
-    expect(screen.getByText(/Habrá lugar en la puerta/)).toBeInTheDocument();
+    // Canal "en el lugar": copy "Entradas en puerta" + ícono de $ (antes
+    // "Habrá lugar en la puerta el día del evento" con un pin de mapa).
+    expect(screen.getByText("Entradas en puerta")).toBeInTheDocument();
+    expect(screen.getByTestId("on-site-ticket-icon")).toHaveClass("lucide-dollar-sign");
+    expect(screen.queryByText(/Habrá lugar en la puerta/)).not.toBeInTheDocument();
   });
 
   it("only renders contact links that have a value", () => {

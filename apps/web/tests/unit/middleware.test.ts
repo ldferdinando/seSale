@@ -56,6 +56,14 @@ describe("middleware — modo mantenimiento (Etapa 9d)", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
+  it.each(["/privacidad", "/terminos"])("permite %s en modo mantenimiento (páginas legales públicas)", (path) => {
+    vi.stubEnv("NEXT_PUBLIC_MAINTENANCE_MODE", "true");
+
+    const response = middleware(makeRequest(path));
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
   it("permite /_next/* en modo mantenimiento", () => {
     vi.stubEnv("NEXT_PUBLIC_MAINTENANCE_MODE", "true");
 

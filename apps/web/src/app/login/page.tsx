@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+import { LegalLinks } from "@/components/LegalLinks";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 interface LoginPageProps {
@@ -49,6 +50,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       )}
 
       <LoginForm redirect={safeTarget} />
+      <LegalLinks />
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import { CalendarX, Sun, Ticket, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { AdGridPool } from "@/components/AdGridPool";
 import { BannerSlot } from "@/components/BannerSlot";
@@ -11,6 +11,8 @@ import { DateFilter } from "@/features/events/components/DateFilter";
 import { EventList } from "@/features/events/components/EventList";
 import { MomentPills } from "@/features/events/components/MomentPills";
 import { TICKET_TYPE_OPTIONS } from "@/features/events/components/EventFilters";
+import { useListReturn } from "@/features/events/hooks/useListReturn";
+import { chipFiltersChanged, scrollToResults } from "@/features/events/lib/scrollToResults";
 import type { Category, EventFiltersState } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { useBannerSlots } from "@/hooks/useBannerSlots";
@@ -48,6 +50,23 @@ function CategoriaVacia({ categoryName, cityName }: { categoryName: string; city
 export function CategoriaDetalleContent({ category }: CategoriaDetalleContentProps) {
   const { activeCity } = useActiveCity();
   const [filters, setFilters] = useState<EventFiltersState>({});
+  const resultsRef = useRef<HTMLDivElement>(null);
+  // Remonta DateFilter (preset activo: estado local) al restaurar filtros
+  // volviendo desde un evento.
+  const [filtersKey, setFiltersKey] = useState(0);
+
+  useListReturn(filters, (restored) => {
+    setFilters(restored);
+    setFiltersKey((k) => k + 1);
+  });
+
+  /** Mismo criterio que Home: un filtro nuevo lleva a los resultados. */
+  function updateFilters(next: EventFiltersState) {
+    const changed = chipFiltersChanged(filters, next);
+    setFilters(next);
+    if (changed) scrollToResults(() => resultsRef.current);
+  }
+
   const cityId = activeCity?.id ?? null;
 
   const wideBanners = useBannerSlots({ cityId, section: "categoria-wide", category_key: category.key });
@@ -92,7 +111,7 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
       )}
 
       <div className="flex flex-col gap-4">
-        <DateFilter filters={filters} onChange={setFilters} />
+        <DateFilter key={filtersKey} filters={filters} onChange={updateFilters} />
 
         <div className="flex flex-col gap-1.5">
           <p className="flex items-center gap-1.5 border-l-[3px] border-brand-pink pl-[10px] text-[13px] font-bold uppercase tracking-[1.6px] text-brand-lime">
@@ -101,7 +120,7 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
           </p>
           <MomentPills
             value={filters.moment}
-            onChange={(moment) => setFilters((f) => ({ ...f, moment }))}
+            onChange={(moment) => updateFilters({ ...filters, moment })}
           />
         </div>
 
@@ -125,7 +144,7 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
                   key={option.label}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => setFilters((f) => ({ ...f, ticketType: option.value }))}
+                  onClick={() => updateFilters({ ...filters, ticketType: option.value })}
                   className={cn(
                     "flex flex-1 items-center justify-center rounded-full border px-3 py-2 text-xs font-bold transition-colors",
                     active
@@ -146,7 +165,7 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         {hasActiveFilters && (
           <button
             type="button"
-            onClick={() => setFilters({})}
+            onClick={() => updateFilters({})}
             className="flex w-fit items-center gap-1.5 rounded-[20px] bg-surface-5 px-[13px] py-[5px] text-[11px] font-semibold text-white hover:bg-surface-6"
           >
             <X className="h-3 w-3" aria-hidden />
@@ -155,22 +174,26 @@ export function CategoriaDetalleContent({ category }: CategoriaDetalleContentPro
         )}
       </div>
 
-      {showGridInsteadOfList ? (
-        <AdGridPool items={gridPool} rotationIntervalSeconds={gridRotationIntervalSeconds} />
-      ) : (
-        <EventList
-          filters={effectiveFilters}
-          enabled={activeCity !== null}
-          // Con filtros aplicados se usa la leyenda por defecto de EventList
-          // ("Aún no se registran eventos", igual que Home); sin filtros se
-          // mantiene la card con CTA a otras categorías.
-          emptyState={
-            hasActiveFilters ? undefined : (
-              <CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />
-            )
-          }
-        />
-      )}
+      {/* Ancla de resultados: destino de scrollToResults al cambiar un
+          filtro (la lista, o la leyenda de "sin eventos" en su lugar). */}
+      <div ref={resultsRef} data-testid="categoria-results-anchor" className="scroll-mt-2">
+        {showGridInsteadOfList ? (
+          <AdGridPool items={gridPool} rotationIntervalSeconds={gridRotationIntervalSeconds} />
+        ) : (
+          <EventList
+            filters={effectiveFilters}
+            enabled={activeCity !== null}
+            // Con filtros aplicados se usa la leyenda por defecto de EventList
+            // ("Aún no se registran eventos", igual que Home); sin filtros se
+            // mantiene la card con CTA a otras categorías.
+            emptyState={
+              hasActiveFilters ? undefined : (
+                <CategoriaVacia categoryName={category.name} cityName={activeCity?.name} />
+              )
+            }
+          />
+        )}
+      </div>
     </div>
   );
 }

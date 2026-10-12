@@ -39,4 +39,11 @@ describe("LoginPage (Etapa 9e)", () => {
 
     expect(screen.queryByText(/Para publicar un evento necesitás una cuenta/i)).not.toBeInTheDocument();
   });
+
+  it("linkea a Términos y Política de Privacidad", async () => {
+    await renderPage({});
+
+    expect(screen.getByRole("link", { name: "Términos de Servicio" })).toHaveAttribute("href", "/terminos");
+    expect(screen.getByRole("link", { name: "Política de Privacidad" })).toHaveAttribute("href", "/privacidad");
+  });
 });

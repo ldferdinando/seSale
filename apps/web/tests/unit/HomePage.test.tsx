@@ -1,12 +1,14 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 import HomePage from "@/app/page";
+import { markListReturning, readListReturn, saveListReturn } from "@/features/events/lib/listReturn";
+import { makeEvent } from "./mocks/handlers";
 import { server } from "./mocks/server";
 import { renderWithActiveCity } from "./test-utils";
 
@@ -214,5 +216,100 @@ describe("HomePage — sin resultados", () => {
 
     const group = await screen.findByRole("group", { name: "¿Cuándo?" });
     expect(within(group).getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+function placeAnchorBelowViewport(anchor: HTMLElement) {
+  const scrollIntoView = vi.fn();
+  // jsdom da top 0 a todo ("ya está viendo los resultados"): se baja el ancla.
+  anchor.getBoundingClientRect = () => ({ top: 900 }) as DOMRect;
+  anchor.scrollIntoView = scrollIntoView;
+  return scrollIntoView;
+}
+
+describe("HomePage — scroll a resultados al filtrar", () => {
+  beforeEach(() => window.sessionStorage.clear());
+
+  it("smooth-scrolls to the results when a category chip or a moment pill is chosen", async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([])));
+    renderWithActiveCity(<HomePage />);
+    await screen.findAllByText("General Roca");
+    const scrollIntoView = placeAnchorBelowViewport(screen.getByTestId("events-list-anchor"));
+
+    // Categoría: vive en otro bloque (categorySlot) que fecha/momento/entrada.
+    fireEvent.click(await screen.findByRole("button", { name: /Teatro/ }));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" }));
+
+    scrollIntoView.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /De día/ }));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not scroll while typing in the search box", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+    renderWithActiveCity(<HomePage />);
+    await screen.findAllByText("General Roca");
+    const scrollIntoView = placeAnchorBelowViewport(screen.getByTestId("events-list-anchor"));
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "rock" } });
+    await waitFor(() => expect(urls.some((u) => u.includes("search=rock"))).toBe(true));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+});
+
+describe("HomePage — volver desde el detalle de evento", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("saves filters, view and scroll position when opening an event", async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([makeEvent({ id: "ev-1" })])));
+    renderWithActiveCity(<HomePage />);
+    await screen.findAllByText("General Roca");
+
+    fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+    const [link] = await screen.findAllByTestId("event-card-link");
+    link.addEventListener("click", (e) => e.preventDefault());
+    fireEvent.click(link);
+
+    expect(readListReturn()).toEqual({
+      path: "/",
+      scrollY: window.scrollY,
+      state: { filters: { moment: "nocturno" }, view: "lista" },
+    });
+  });
+
+  it("restores filters and scroll position when coming back", async () => {
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 6000 });
+    const urls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json([makeEvent()]);
+      }),
+    );
+    saveListReturn("/", 2400, { filters: { category: "teatro", ticketType: "gratis" }, view: "lista" });
+    markListReturning("/");
+
+    try {
+      renderWithActiveCity(<HomePage />);
+
+      await waitFor(() =>
+        expect(urls.some((u) => u.includes("category=teatro") && u.includes("ticket_type=gratis"))).toBe(true),
+      );
+      await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 2400, behavior: "instant" }));
+    } finally {
+      Reflect.deleteProperty(document.documentElement, "scrollHeight");
+    }
   });
 });

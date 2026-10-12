@@ -1,8 +1,9 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CategoriaDetalleContent } from "@/app/categorias/[key]/CategoriaDetalleContent";
+import { markListReturning, readListReturn, saveListReturn } from "@/features/events/lib/listReturn";
 import type { Category } from "@/features/events/types";
 import { makeEvent } from "./mocks/handlers";
 import { server } from "./mocks/server";
@@ -256,5 +257,101 @@ describe("CategoriaDetalleContent — chip 'Todos' y sin resultados", () => {
     fireEvent.click(within(group).getByRole("button", { name: /Mañana/ }));
     expect(todos).toHaveAttribute("aria-pressed", "false");
     expect(await screen.findByText("Aún no se registran eventos")).toBeInTheDocument();
+  });
+});
+
+/** El ancla de resultados queda "debajo" del viewport (jsdom da top 0 a
+ * todo, que se interpretaría como "ya está viendo los resultados"). */
+function placeAnchorBelowViewport(anchor: HTMLElement) {
+  const scrollIntoView = vi.fn();
+  anchor.getBoundingClientRect = () => ({ top: 900 }) as DOMRect;
+  anchor.scrollIntoView = scrollIntoView;
+  return scrollIntoView;
+}
+
+describe("CategoriaDetalleContent — scroll a resultados y volver desde el detalle", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/categorias/musica");
+  });
+
+  it("smooth-scrolls to the results when any filter changes (fecha, momento, entrada)", async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([])));
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+    const scrollIntoView = placeAnchorBelowViewport(screen.getByTestId("categoria-results-anchor"));
+
+    fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" }));
+
+    scrollIntoView.mockClear();
+    fireEvent.click(within(screen.getByRole("group", { name: "¿Cuándo?" })).getByRole("button", { name: /Mañana/ }));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+
+    scrollIntoView.mockClear();
+    fireEvent.click(within(screen.getByRole("group", { name: "Tipo de entrada" })).getByRole("button", { name: "Gratis" }));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not scroll on first load", async () => {
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+    const scrollIntoView = placeAnchorBelowViewport(screen.getByTestId("categoria-results-anchor"));
+    await new Promise((r) => setTimeout(r, 250));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("saves the filters + scroll position when opening an event", async () => {
+    server.use(http.get(`${API_URL}/api/events`, () => HttpResponse.json([makeEvent({ id: "ev-1" })])));
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /De noche/ }));
+    const link = await screen.findByTestId("event-card-link");
+    link.addEventListener("click", (e) => e.preventDefault());
+    fireEvent.click(link);
+
+    expect(readListReturn()).toEqual({
+      path: "/categorias/musica",
+      scrollY: window.scrollY,
+      state: { moment: "nocturno" },
+    });
+  });
+
+  it("restores the filters and the scroll position when coming back from the event", async () => {
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 5000 });
+    const urls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json([makeEvent()]);
+      }),
+    );
+    saveListReturn("/categorias/musica", 1800, { moment: "nocturno" });
+    markListReturning("/categorias/musica");
+
+    try {
+      renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+      await waitFor(() => expect(urls.some((u) => u.includes("moment=nocturno"))).toBe(true));
+      await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 1800, behavior: "instant" }));
+    } finally {
+      Reflect.deleteProperty(document.documentElement, "scrollHeight");
+    }
+  });
+
+  it("does not restore when entering the category normally (no return mark)", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(`${API_URL}/api/events`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+    saveListReturn("/categorias/musica", 1800, { moment: "nocturno" });
+
+    renderWithActiveCity(<CategoriaDetalleContent category={MUSICA} />);
+
+    await waitFor(() => expect(urls.some((u) => u.includes("category=musica"))).toBe(true));
+    expect(urls.some((u) => u.includes("moment="))).toBe(false);
   });
 });

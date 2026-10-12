@@ -199,3 +199,87 @@ def test_send_password_reset_email_logs_and_does_not_raise_on_failure(monkeypatc
         reset_url="https://sesale.com.ar/reset-contrasena?token=abc123",
     )
     # No debe lanzar excepción — el token ya se guardó igual.
+
+
+# Remitente configurable: RESEND_FROM_EMAIL + RESEND_REPLY_TO opcional.
+
+
+def _capture_sends(monkeypatch) -> list[dict]:
+    sent: list[dict] = []
+
+    def fake_send(payload):
+        sent.append(payload)
+        return {"id": "email-1"}
+
+    monkeypatch.setattr(email_module.resend.Emails, "send", fake_send)
+    return sent
+
+
+def _send_all_emails() -> None:
+    """Dispara las seis funciones de envío del módulo."""
+    email_module.send_report_email(
+        event_title="Show", event_id=uuid4(), report_text="x",
+        contact_phone="2984123456", event_url="https://sesale.com.ar/eventos/1",
+    )
+    email_module.send_location_report_email(
+        location_name="Bar", location_id=uuid4(), report_text="x",
+        contact_phone="2984123456", location_url="https://sesale.com.ar/gastro/1",
+    )
+    email_module.send_transfer_notification_to_admin(
+        user_public_name="Org", plan_name="Destacado", amount=3500,
+        subscription_id=uuid4(), transfer_note=None, admin_panel_url="https://sesale.com.ar",
+    )
+    email_module.send_subscription_approved_email(
+        user_email="org@example.com", user_public_name="Org", plan_name="Destacado",
+        expires_at=datetime(2026, 9, 12, 15, 0, tzinfo=timezone.utc),
+    )
+    email_module.send_password_reset_email(
+        user_email="org@example.com", user_name="Org", reset_url="https://sesale.com.ar/r?t=1",
+    )
+    email_module.send_subscription_rejected_email(
+        user_email="org@example.com", user_public_name="Org", plan_name="Destacado", admin_notes=None,
+    )
+
+
+def test_all_emails_use_configured_from_without_reply_to(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "resend_from_email", "seSALE <onboarding@resend.dev>")
+    monkeypatch.setattr(settings, "resend_reply_to", None)
+    sent = _capture_sends(monkeypatch)
+
+    _send_all_emails()
+
+    assert len(sent) == 6
+    for payload in sent:
+        assert payload["from"] == "seSALE <onboarding@resend.dev>"
+        assert "reply_to" not in payload
+
+
+def test_all_emails_include_reply_to_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "resend_from_email", "seSALE <hola@midominio.com>")
+    monkeypatch.setattr(settings, "resend_reply_to", "consultas@example.com")
+    sent = _capture_sends(monkeypatch)
+
+    _send_all_emails()
+
+    assert len(sent) == 6
+    for payload in sent:
+        assert payload["from"] == "seSALE <hola@midominio.com>"
+        assert payload["reply_to"] == "consultas@example.com"
+
+
+def test_settings_read_sender_from_env_and_treat_blank_as_unset(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setenv("RESEND_FROM_EMAIL", "seSALE <hola@midominio.com>")
+    monkeypatch.setenv("RESEND_REPLY_TO", "consultas@example.com")
+    configured = Settings(_env_file=None)
+    assert configured.resend_from_email == "seSALE <hola@midominio.com>"
+    assert configured.resend_reply_to == "consultas@example.com"
+
+    monkeypatch.setenv("RESEND_FROM_EMAIL", "")
+    monkeypatch.setenv("RESEND_REPLY_TO", "")
+    blank = Settings(_env_file=None)
+    assert blank.resend_from_email == "seSALE <onboarding@resend.dev>"
+    assert blank.resend_reply_to is None
