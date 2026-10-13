@@ -253,7 +253,7 @@ async def test_new_espacios_type_flows_to_public_catalog_and_gastro_places(
         "city_id": str(city.id),
         "gastro_types": ["teatro-independiente"],
     }
-    place = await client.post("/api/admin/gastro", json=place_payload, headers=admin_token_headers)
+    place = await client.post("/api/admin/locations", json=place_payload, headers=admin_token_headers)
     assert place.status_code == 201
 
     listed = await client.get("/api/gastro", params={"city_id": str(city.id), "gastro_type": "teatro-independiente"})

@@ -11,6 +11,8 @@ export function useCreateAdminLocation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-locations"] });
       queryClient.invalidateQueries({ queryKey: ["locations"] });
+      // El panel unificado también edita lugares de Gastronomía/Espacios.
+      queryClient.invalidateQueries({ queryKey: ["gastro"] });
     },
   });
 }

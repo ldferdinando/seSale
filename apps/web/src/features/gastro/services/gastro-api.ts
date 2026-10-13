@@ -1,17 +1,14 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPostFile, apiPut } from "@/lib/api-client";
 import type {
-  AdminGastroPlace,
-  AdminGastroPlaceFilters,
   GastroPlace,
-  GastroPlaceCreateInput,
   GastroPlaceFilters,
-  GastroPlaceUpdateInput,
   GastroPlan,
   GastroType,
   GastroTypeAdmin,
   GastroTypeCreateInput,
   GastroTypeUpdateInput,
 } from "@/features/gastro/types";
+import type { AdminLocation } from "@/features/locations/types";
 
 // ── Público ──────────────────────────────────────────────────────────────
 
@@ -37,39 +34,12 @@ export async function fetchGastroPlace(id: string): Promise<GastroPlace> {
 
 // ── Admin ────────────────────────────────────────────────────────────────
 
-export async function fetchAdminGastroPlaces(filters: AdminGastroPlaceFilters): Promise<AdminGastroPlace[]> {
-  return apiGet<AdminGastroPlace[]>("/api/admin/gastro", {
-    city_id: filters.city_id,
-    gastro_type: filters.gastro_type,
-    is_active: filters.is_active !== undefined ? String(filters.is_active) : undefined,
-    is_public: filters.is_public !== undefined ? String(filters.is_public) : undefined,
-    is_verified: filters.is_verified !== undefined ? String(filters.is_verified) : undefined,
-    plan: filters.plan,
-    search: filters.search,
-  });
-}
+// El listado/alta/edición/borrado/verificación de lugares (con o sin tipos)
+// vive en features/locations/services (panel unificado de Lugares). Acá
+// quedan solo el plan y la portada, específicos de Gastronomía/Espacios.
 
-export async function createGastroPlace(input: GastroPlaceCreateInput): Promise<AdminGastroPlace> {
-  return apiPost<AdminGastroPlace>("/api/admin/gastro", input);
-}
-
-export async function updateGastroPlace(
-  id: string,
-  input: GastroPlaceUpdateInput,
-): Promise<AdminGastroPlace> {
-  return apiPut<AdminGastroPlace>(`/api/admin/gastro/${id}`, input);
-}
-
-export async function deleteGastroPlace(id: string): Promise<void> {
-  return apiDelete<void>(`/api/admin/gastro/${id}`);
-}
-
-export async function verifyGastroPlace(id: string, isVerified: boolean): Promise<AdminGastroPlace> {
-  return apiPatch<AdminGastroPlace>(`/api/admin/gastro/${id}/verify`, { is_verified: isVerified });
-}
-
-export async function setGastroPlan(id: string, plan: GastroPlan): Promise<AdminGastroPlace> {
-  return apiPatch<AdminGastroPlace>(`/api/admin/gastro/${id}/plan`, { plan });
+export async function setGastroPlan(id: string, plan: GastroPlan): Promise<AdminLocation> {
+  return apiPatch<AdminLocation>(`/api/admin/gastro/${id}/plan`, { plan });
 }
 
 export interface GastroCoverResponse {

@@ -57,15 +57,6 @@ export interface GastroPlace {
   event_count: number;
 }
 
-export interface AdminGastroPlace extends GastroPlace {
-  is_active: boolean;
-  is_gastro: boolean;
-  is_public: boolean;
-  featured_until: string | null;
-  place_type: string | null;
-  created_at: string;
-}
-
 export interface GastroPlaceFilters {
   city_id: string;
   gastro_type?: string;
@@ -74,40 +65,6 @@ export interface GastroPlaceFilters {
   has_reservations?: boolean;
   price_range?: string;
 }
-
-export interface AdminGastroPlaceFilters {
-  city_id?: string;
-  gastro_type?: string;
-  is_active?: boolean;
-  is_public?: boolean;
-  is_verified?: boolean;
-  plan?: GastroPlan;
-  search?: string;
-}
-
-export interface GastroPlaceCreateInput {
-  name: string;
-  address: string;
-  city_id: string;
-  gastro_types: string[];
-  description?: string;
-  hours?: string;
-  opening_hours?: OpeningHours | null;
-  gastro_whatsapp?: string;
-  gastro_instagram?: string;
-  gastro_web?: string;
-  gastro_email?: string;
-  gastro_facebook?: string;
-  gastro_phone?: string;
-  has_delivery?: boolean;
-  has_reservations?: boolean;
-  price_range?: PriceRange | null;
-  latitude?: number;
-  longitude?: number;
-  is_verified?: boolean;
-}
-
-export type GastroPlaceUpdateInput = Partial<GastroPlaceCreateInput> & { is_active?: boolean };
 
 /** "gastro" (cervecería/restaurante/...) o "espacios" (club/centro cultural/
  * salón de eventos) — Etapa "Gastronomía y otros". Ver TIPO_GRUPO en

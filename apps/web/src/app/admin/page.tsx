@@ -9,7 +9,6 @@ import { AdminCategoriesPanel } from "@/features/admin/components/AdminCategorie
 import { AdminCitiesPanel } from "@/features/admin/components/AdminCitiesPanel";
 import { AdminEventsPanel } from "@/features/admin/components/AdminEventsPanel";
 import { AdminFeaturedPanel } from "@/features/admin/components/AdminFeaturedPanel";
-import { AdminGastroPanel } from "@/features/admin/components/AdminGastroPanel";
 import { AdminGastroTypesPanel } from "@/features/admin/components/AdminGastroTypesPanel";
 import { AdminLocationsPanel } from "@/features/admin/components/AdminLocationsPanel";
 import { AdminReportsPanel } from "@/features/admin/components/AdminReportsPanel";
@@ -23,7 +22,6 @@ const ADMIN_TABS = [
   { value: "destacados", label: "Destacados" },
   { value: "eventos", label: "Eventos" },
   { value: "lugares", label: "Lugares" },
-  { value: "gastronomia", label: "Gastronomía" },
   { value: "categorias", label: "Categorías" },
   { value: "tipos-gastronomicos", label: "Tipos de lugar" },
   { value: "banners", label: "Banners" },
@@ -61,8 +59,8 @@ export default function AdminPage() {
 
       {tab === "destacados" && <AdminFeaturedPanel />}
       {tab === "eventos" && <AdminEventsPanel initialOrganizerId={eventsOrganizerFilter} />}
+      {/* Etapa "Unificar panel admin de Lugares": incluye Gastronomía y Espacios. */}
       {tab === "lugares" && <AdminLocationsPanel />}
-      {tab === "gastronomia" && <AdminGastroPanel />}
       {tab === "categorias" && <AdminCategoriesPanel />}
       {tab === "tipos-gastronomicos" && <AdminGastroTypesPanel />}
       {tab === "banners" && <AdminAdsPanel />}

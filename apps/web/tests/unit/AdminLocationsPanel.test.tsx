@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
@@ -70,5 +70,68 @@ describe("AdminLocationsPanel", () => {
 
     await waitFor(() => expect(capturedBody).not.toBeNull());
     expect(capturedBody).toMatchObject({ name: "Bar Nuevo", address: "Calle Falsa 123" });
+  });
+
+  it("shows type chips, plan badge and plan selector for places with types", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/locations`, () =>
+        HttpResponse.json([makeAdminLocation({ is_gastro: true, plan: "pro", gastro_types: ["bar", "club"] })]),
+      ),
+    );
+
+    renderWithClient();
+
+    const row = await screen.findByTestId("admin-location-row");
+    expect(await within(row).findByText("Bares")).toBeInTheDocument();
+    expect(within(row).getByText("Clubes")).toBeInTheDocument();
+    expect(within(row).getAllByText("Destacado Plus").length).toBeGreaterThanOrEqual(1);
+    expect(within(row).getByRole("combobox", { name: "Plan de El Tinglado Bar" })).toBeInTheDocument();
+  });
+
+  it("marks places without types as event-only and hides the plan selector", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/locations`, () => HttpResponse.json([makeAdminLocation()])),
+    );
+
+    renderWithClient();
+
+    expect(await screen.findByText("Sin tipo · solo eventos")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /Plan de/ })).not.toBeInTheDocument();
+  });
+
+  it("shows an inactive badge and toggles is_active via PUT", async () => {
+    let body: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API_URL}/api/admin/locations`, () => HttpResponse.json([makeAdminLocation({ is_active: false })])),
+      http.put(`${API_URL}/api/admin/locations/:id`, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeAdminLocation());
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    expect(await screen.findByText("Inactivo")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Activar" }));
+
+    await waitFor(() => expect(body).toEqual({ is_active: true }));
+  });
+
+  it("filters by grupo through the query string", async () => {
+    const grupos: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/admin/locations`, ({ request }) => {
+        grupos.push(new URL(request.url).searchParams.get("grupo"));
+        return HttpResponse.json([makeAdminLocation()]);
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await screen.findByText("El Tinglado Bar");
+    await user.click(screen.getByRole("combobox", { name: "Filtrar por tipo" }));
+    await user.click(await screen.findByRole("option", { name: "Espacios" }));
+
+    await waitFor(() => expect(grupos).toContain("espacios"));
   });
 });

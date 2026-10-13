@@ -142,7 +142,7 @@ async def test_get_gastro_place_detail_includes_future_approved_event_count(
     assert response.json()["event_count"] == 1
 
 
-# ── POST/PUT /api/admin/gastro ───────────────────────────────────────────
+# ── POST/PUT /api/admin/locations (alta/edición unificada) ───────────────────────────────────────────
 
 
 async def test_post_admin_gastro_forces_is_gastro_and_plan_gratis(
@@ -150,7 +150,7 @@ async def test_post_admin_gastro_forces_is_gastro_and_plan_gratis(
 ):
     payload = {**GASTRO_PAYLOAD, "city_id": str(city.id)}
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=admin_token_headers)
 
     assert response.status_code == 201
     body = response.json()
@@ -164,7 +164,7 @@ async def test_post_admin_gastro_requires_admin(
 ):
     payload = {**GASTRO_PAYLOAD, "city_id": str(city.id)}
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=user_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=user_token_headers)
 
     assert response.status_code == 403
 
@@ -174,19 +174,23 @@ async def test_post_admin_gastro_invalid_type_returns_422(
 ):
     payload = {**GASTRO_PAYLOAD, "city_id": str(city.id), "gastro_types": ["sushi"]}
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=admin_token_headers)
 
     assert response.status_code == 422
 
 
-async def test_post_admin_gastro_zero_types_returns_422(
+async def test_post_admin_location_zero_types_is_not_gastro(
     client: AsyncClient, city: City, admin_token_headers: dict[str, str]
 ):
+    # Etapa "Unificar panel admin de Lugares": los tipos son opcionales — sin
+    # tipos el lugar es "solo venue de eventos" (antes: 422).
     payload = {**GASTRO_PAYLOAD, "city_id": str(city.id), "gastro_types": []}
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=admin_token_headers)
 
-    assert response.status_code == 422
+    assert response.status_code == 201
+    assert response.json()["is_gastro"] is False
+    assert response.json()["gastro_types"] == []
 
 
 async def test_post_admin_gastro_six_types_returns_422(
@@ -198,7 +202,7 @@ async def test_post_admin_gastro_six_types_returns_422(
         "gastro_types": ["bar", "cafe", "pizzeria", "parrilla", "vinoteca", "otro"],
     }
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=admin_token_headers)
 
     assert response.status_code == 422
 
@@ -209,7 +213,7 @@ async def test_put_admin_gastro_replaces_gastro_types(
     location = _make_gastro_location(session, city=city, gastro_types=["bar", "cerveceria"])
 
     response = await client.put(
-        f"/api/admin/gastro/{location.id}",
+        f"/api/admin/locations/{location.id}",
         json={"gastro_types": ["cafe"]},
         headers=admin_token_headers,
     )
@@ -229,7 +233,7 @@ async def test_put_admin_gastro_unknown_id_returns_404(
     client: AsyncClient, admin_token_headers: dict[str, str]
 ):
     response = await client.put(
-        "/api/admin/gastro/00000000-0000-0000-0000-000000000000",
+        "/api/admin/locations/00000000-0000-0000-0000-000000000000",
         json={"description": "x"},
         headers=admin_token_headers,
     )
@@ -237,7 +241,7 @@ async def test_put_admin_gastro_unknown_id_returns_404(
     assert response.status_code == 404
 
 
-# ── DELETE /api/admin/gastro/{id} ────────────────────────────────────────
+# ── DELETE /api/admin/locations/{id} ────────────────────────────────────────
 
 
 async def test_delete_admin_gastro_with_future_events_returns_409(
@@ -258,7 +262,7 @@ async def test_delete_admin_gastro_with_future_events_returns_409(
     )
     session.commit()
 
-    response = await client.delete(f"/api/admin/gastro/{location.id}", headers=admin_token_headers)
+    response = await client.delete(f"/api/admin/locations/{location.id}", headers=admin_token_headers)
 
     assert response.status_code == 409
     assert "evento" in response.json()["detail"].lower()
@@ -269,7 +273,7 @@ async def test_delete_admin_gastro_without_future_events_succeeds(
 ):
     location = _make_gastro_location(session, city=city)
 
-    response = await client.delete(f"/api/admin/gastro/{location.id}", headers=admin_token_headers)
+    response = await client.delete(f"/api/admin/locations/{location.id}", headers=admin_token_headers)
 
     assert response.status_code == 200
     assert session.get(Location, location.id) is None
@@ -323,7 +327,7 @@ async def test_patch_admin_gastro_verify_toggles(
     location = _make_gastro_location(session, city=city, is_verified=False)
 
     response = await client.patch(
-        f"/api/admin/gastro/{location.id}/verify",
+        f"/api/admin/locations/{location.id}/verify",
         json={"is_verified": True},
         headers=admin_token_headers,
     )
@@ -371,11 +375,11 @@ async def test_post_admin_gastro_cover_too_large_returns_422(
     assert response.status_code == 422
 
 
-# ── GET /api/admin/gastro ────────────────────────────────────────────────
+# ── GET /api/admin/locations ────────────────────────────────────────────────
 
 
 async def test_get_admin_gastro_requires_admin(client: AsyncClient, user_token_headers: dict[str, str]):
-    response = await client.get("/api/admin/gastro", headers=user_token_headers)
+    response = await client.get("/api/admin/locations", headers=user_token_headers)
 
     assert response.status_code == 403
 
@@ -386,7 +390,7 @@ async def test_get_admin_gastro_includes_inactive_and_private(
     _make_gastro_location(session, city=city, name="Activo", is_active=True)
     _make_gastro_location(session, city=city, name="Inactivo", is_active=False)
 
-    response = await client.get("/api/admin/gastro", headers=admin_token_headers)
+    response = await client.get("/api/admin/locations", headers=admin_token_headers)
 
     assert response.status_code == 200
     names = {p["name"] for p in response.json()}
@@ -406,7 +410,7 @@ async def test_post_admin_gastro_persists_facebook_and_phone(
         "gastro_phone": "2984123456",
     }
 
-    response = await client.post("/api/admin/gastro", json=payload, headers=admin_token_headers)
+    response = await client.post("/api/admin/locations", json=payload, headers=admin_token_headers)
 
     assert response.status_code == 201
     body = response.json()
@@ -420,7 +424,7 @@ async def test_put_admin_gastro_updates_facebook_and_phone(
     location = _make_gastro_location(session, city=city)
 
     response = await client.put(
-        f"/api/admin/gastro/{location.id}",
+        f"/api/admin/locations/{location.id}",
         json={"gastro_facebook": "nuevapagina", "gastro_phone": "2984999999"},
         headers=admin_token_headers,
     )

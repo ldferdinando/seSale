@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-MIN_GASTRO_TYPES = 1
 MAX_GASTRO_TYPES = 5
 
 VALID_PRICE_RANGES = {"$", "$$", "$$$"}
@@ -34,11 +33,17 @@ def _validate_opening_hours(value: dict | None) -> dict | None:
 def _validate_gastro_types(value: list[str]) -> list[str]:
     """Solo valida forma (sin duplicados). La pertenencia a tipos activos
     (antes, la constante GASTRO_TYPES hardcodeada) se valida en
-    app.services.location_service (create_gastro_place/update_gastro_place)
+    app.services.location_service (create_admin_location/update_admin_location)
     contra la tabla gastro_types_catalog — Etapa 12a: requiere la sesión de
     DB, que un field_validator de Pydantic no tiene."""
     if len(value) != len(set(value)):
         raise ValueError("No se pueden repetir tipos gastronómicos")
+    return value
+
+
+def _validate_price_range(value: str | None) -> str | None:
+    if value is not None and value not in VALID_PRICE_RANGES:
+        raise ValueError("price_range debe ser '$', '$$', '$$$' o null")
     return value
 
 
@@ -61,12 +66,6 @@ class LocationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class LocationAdminRead(LocationRead):
-    """Extiende LocationRead con la cantidad de eventos asociados — solo admin."""
-
-    event_count: int
-
-
 class LocationCreate(BaseModel):
     """Ubicación creada por un organizador con dirección libre (Tab B del
     formulario de evento) — nace con is_public=False, no aparece en el
@@ -79,42 +78,11 @@ class LocationCreate(BaseModel):
     longitude: float | None = None
 
 
-class LocationAdminCreate(BaseModel):
-    """Alta de un lugar precargado desde el panel admin — is_public se fuerza
-    a True en el servicio, no se puede setear desde acá."""
-
-    name: str = Field(min_length=1, max_length=255)
-    address: str = Field(min_length=1, max_length=500)
-    city_id: UUID
-    description: str | None = Field(default=None, max_length=1000)
-    hours: str | None = Field(default=None, max_length=500)
-    place_type: str | None = Field(default=None, max_length=50)
-    latitude: float | None = None
-    longitude: float | None = None
-    is_verified: bool = False
-
-
-class LocationAdminUpdate(BaseModel):
-    """Edición de cualquier campo de un Location, incluido is_public — así el
-    admin puede "promover" una ubicación automática a lugar oficial."""
-
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    address: str | None = Field(default=None, min_length=1, max_length=500)
-    city_id: UUID | None = None
-    description: str | None = Field(default=None, max_length=1000)
-    hours: str | None = Field(default=None, max_length=500)
-    place_type: str | None = Field(default=None, max_length=50)
-    latitude: float | None = None
-    longitude: float | None = None
-    is_verified: bool | None = None
-    is_public: bool | None = None
-
-
 class LocationVerifyUpdate(BaseModel):
     is_verified: bool
 
 
-# ── Etapa 8e — Gastronomía ──────────────────────────────────────────────────
+# ── Etapa 8e — Gastronomía (vista pública) ─────────────────────────────────
 
 
 class LocationGastroRead(BaseModel):
@@ -148,8 +116,23 @@ class LocationGastroRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class LocationGastroAdminRead(LocationGastroRead):
-    """Extiende LocationGastroRead con los campos que solo ve el admin."""
+# ── Etapa "Unificar panel admin de Lugares" ────────────────────────────────
+#
+# Un solo alta/edición para cualquier Location (antes: LocationAdmin* para
+# lugares de eventos y LocationGastro* para gastronomía, sobre la misma
+# tabla). Los campos de contacto (gastro_whatsapp/instagram/web/email/
+# facebook/phone) quedan disponibles para CUALQUIER lugar — conservan el
+# prefijo `gastro_` por compatibilidad (ver a_revisar.md). Los tipos del
+# catálogo son opcionales: un lugar sin tipos es "solo venue de eventos".
+# Los campos específicos de grupo (opening_hours para gastro/espacios;
+# price_range/has_delivery/has_reservations/portada solo gastro) los
+# normaliza el servicio según los tipos asignados.
+
+
+class LocationAdminRead(LocationGastroRead):
+    """Lugar completo para el panel admin unificado. `event_count` acá es el
+    total de eventos asociados (cualquier fecha/estado) — es lo que bloquea
+    el borrado."""
 
     is_active: bool
     is_gastro: bool
@@ -159,17 +142,17 @@ class LocationGastroAdminRead(LocationGastroRead):
     created_at: datetime
 
 
-class LocationGastroCreate(BaseModel):
-    """Alta de un lugar gastronómico desde el panel admin. is_gastro se fuerza
-    a True y plan se fuerza a "gratis" en el servicio — no se pueden setear
-    desde acá."""
+class LocationAdminCreate(BaseModel):
+    """Alta de un lugar desde el panel admin — is_public se fuerza a True y
+    plan a "gratis" en el servicio; is_gastro se deriva de gastro_types."""
 
     name: str = Field(min_length=1, max_length=255)
     address: str = Field(min_length=1, max_length=500)
     city_id: UUID
-    gastro_types: list[str] = Field(min_length=MIN_GASTRO_TYPES, max_length=MAX_GASTRO_TYPES)
+    gastro_types: list[str] = Field(default_factory=list, max_length=MAX_GASTRO_TYPES)
     description: str | None = Field(default=None, max_length=1000)
     hours: str | None = Field(default=None, max_length=500)
+    place_type: str | None = Field(default=None, max_length=50)
     opening_hours: dict | None = None
     gastro_whatsapp: str | None = Field(default=None, max_length=50)
     gastro_instagram: str | None = Field(default=None, max_length=100)
@@ -192,9 +175,7 @@ class LocationGastroCreate(BaseModel):
     @field_validator("price_range")
     @classmethod
     def validate_price_range(cls, value: str | None) -> str | None:
-        if value is not None and value not in VALID_PRICE_RANGES:
-            raise ValueError("price_range debe ser '$', '$$', '$$$' o null")
-        return value
+        return _validate_price_range(value)
 
     @field_validator("opening_hours")
     @classmethod
@@ -202,20 +183,19 @@ class LocationGastroCreate(BaseModel):
         return _validate_opening_hours(value)
 
 
-class LocationGastroUpdate(BaseModel):
-    """Edición de un lugar gastronómico. Todos los campos opcionales.
-    gastro_types, si viene, reemplaza completo la lista existente (replace
-    total, igual que event_categories). is_gastro no se puede cambiar desde
-    acá — hay un endpoint separado para eso."""
+class LocationAdminUpdate(BaseModel):
+    """Edición de cualquier campo de un Location, incluido is_public (así el
+    admin puede "promover" una ubicación automática a lugar oficial) e
+    is_active. gastro_types, si viene, reemplaza completo la lista — `[]`
+    le saca todos los tipos (vuelve a ser "solo venue de eventos")."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     address: str | None = Field(default=None, min_length=1, max_length=500)
     city_id: UUID | None = None
-    gastro_types: list[str] | None = Field(
-        default=None, min_length=MIN_GASTRO_TYPES, max_length=MAX_GASTRO_TYPES
-    )
+    gastro_types: list[str] | None = Field(default=None, max_length=MAX_GASTRO_TYPES)
     description: str | None = Field(default=None, max_length=1000)
     hours: str | None = Field(default=None, max_length=500)
+    place_type: str | None = Field(default=None, max_length=50)
     opening_hours: dict | None = None
     gastro_whatsapp: str | None = Field(default=None, max_length=50)
     gastro_instagram: str | None = Field(default=None, max_length=100)
@@ -229,6 +209,7 @@ class LocationGastroUpdate(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     is_verified: bool | None = None
+    is_public: bool | None = None
     is_active: bool | None = None
 
     @field_validator("gastro_types")
@@ -241,18 +222,12 @@ class LocationGastroUpdate(BaseModel):
     @field_validator("price_range")
     @classmethod
     def validate_price_range(cls, value: str | None) -> str | None:
-        if value is not None and value not in VALID_PRICE_RANGES:
-            raise ValueError("price_range debe ser '$', '$$', '$$$' o null")
-        return value
+        return _validate_price_range(value)
 
     @field_validator("opening_hours")
     @classmethod
     def validate_opening_hours(cls, value: dict | None) -> dict | None:
         return _validate_opening_hours(value)
-
-
-class LocationGastroVerifyUpdate(BaseModel):
-    is_verified: bool
 
 
 class LocationGastroPlanUpdate(BaseModel):

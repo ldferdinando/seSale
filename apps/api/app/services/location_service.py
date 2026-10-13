@@ -8,6 +8,7 @@ from app.core.storage import delete_cover, upload_cover
 from app.core.timezone import argentina_today
 from app.models.city import City
 from app.models.event import Event, EventStatus
+from app.models.gastro_type_catalog import GastroTypeCatalog
 from app.models.location import Location
 from app.models.location_gastro_type import LocationGastroType
 from app.schemas.location import (
@@ -15,10 +16,7 @@ from app.schemas.location import (
     LocationAdminRead,
     LocationAdminUpdate,
     LocationCreate,
-    LocationGastroAdminRead,
-    LocationGastroCreate,
     LocationGastroRead,
-    LocationGastroUpdate,
     LocationRead,
 )
 from app.services.gastro_type_catalog_service import get_active_gastro_type_keys
@@ -50,11 +48,17 @@ def list_public_locations(
     search: str | None = None,
     place_type: str | None = None,
 ) -> list[LocationRead]:
-    """Lugares precargados (is_public=True) de una ciudad — selector del
-    formulario de evento. Orden: verificados primero, luego alfabético."""
+    """Lugares precargados (is_public=True) y activos de una ciudad — selector
+    del formulario de evento. No filtra por is_gastro ni por tipos: un lugar
+    sin tipos asignados ("solo venue de eventos") también se puede elegir.
+    Orden: verificados primero, luego alfabético."""
     stmt = (
         select(Location)
-        .where(Location.city_id == city_id, Location.is_public == True)  # noqa: E712
+        .where(
+            Location.city_id == city_id,
+            Location.is_public == True,  # noqa: E712
+            Location.is_active == True,  # noqa: E712
+        )
         .options(*_LOCATION_LOAD_OPTIONS)
     )
     if search:
@@ -127,120 +131,6 @@ def _event_counts(session: Session, location_ids: list[UUID]) -> dict[UUID, int]
     return dict(session.exec(stmt).all())
 
 
-def list_admin_locations(
-    session: Session,
-    *,
-    city_id: UUID | None = None,
-    is_public: bool | None = None,
-    is_verified: bool | None = None,
-    place_type: str | None = None,
-    search: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> list[LocationAdminRead]:
-    stmt = select(Location).options(*_LOCATION_LOAD_OPTIONS)
-    if city_id is not None:
-        stmt = stmt.where(Location.city_id == city_id)
-    if is_public is not None:
-        stmt = stmt.where(Location.is_public == is_public)
-    if is_verified is not None:
-        stmt = stmt.where(Location.is_verified == is_verified)
-    if place_type is not None:
-        stmt = stmt.where(Location.place_type == place_type)
-    if search:
-        stmt = stmt.where(
-            (Location.name.ilike(f"%{search}%")) | (Location.address.ilike(f"%{search}%"))
-        )
-
-    locations = session.exec(stmt).all()
-    locations = sorted(
-        locations, key=lambda loc: (not loc.is_public, not loc.is_verified, loc.name.lower())
-    )
-    page = locations[offset : offset + limit]
-    counts = _event_counts(session, [loc.id for loc in page])
-    return [
-        LocationAdminRead(**_to_location_read(loc).model_dump(), event_count=counts.get(loc.id, 0))
-        for loc in page
-    ]
-
-
-def create_admin_location(session: Session, data: LocationAdminCreate) -> LocationAdminRead:
-    city = session.get(City, data.city_id)
-    if city is None:
-        raise LookupError("Ciudad no encontrada")
-
-    location = Location(
-        name=data.name.strip(),
-        address=data.address.strip(),
-        city_id=data.city_id,
-        description=data.description,
-        hours=data.hours,
-        place_type=data.place_type,
-        latitude=data.latitude,
-        longitude=data.longitude,
-        is_verified=data.is_verified,
-        is_public=True,  # el admin solo crea lugares públicos desde acá
-    )
-    session.add(location)
-    session.commit()
-    session.refresh(location)
-    return LocationAdminRead(**_to_location_read(location).model_dump(), event_count=0)
-
-
-def update_admin_location(
-    session: Session, location_id: UUID, data: LocationAdminUpdate
-) -> LocationAdminRead:
-    location = session.get(Location, location_id)
-    if location is None:
-        raise LookupError("Lugar no encontrado")
-
-    updates = data.model_dump(exclude_unset=True)
-    if "city_id" in updates and updates["city_id"] is not None:
-        city = session.get(City, updates["city_id"])
-        if city is None:
-            raise LookupError("Ciudad no encontrada")
-
-    for field, value in updates.items():
-        setattr(location, field, value)
-
-    session.add(location)
-    session.commit()
-    session.refresh(location)
-    count = _event_counts(session, [location.id]).get(location.id, 0)
-    return LocationAdminRead(**_to_location_read(location).model_dump(), event_count=count)
-
-
-def verify_location(session: Session, location_id: UUID, is_verified: bool) -> LocationAdminRead:
-    location = session.get(Location, location_id)
-    if location is None:
-        raise LookupError("Lugar no encontrado")
-
-    location.is_verified = is_verified
-    session.add(location)
-    session.commit()
-    session.refresh(location)
-    count = _event_counts(session, [location.id]).get(location.id, 0)
-    return LocationAdminRead(**_to_location_read(location).model_dump(), event_count=count)
-
-
-def delete_admin_location(session: Session, location_id: UUID) -> None:
-    location = session.get(Location, location_id)
-    if location is None:
-        raise LookupError("Lugar no encontrado")
-
-    event_count = session.exec(
-        select(func.count(Event.id)).where(Event.location_id == location_id)
-    ).one()
-    if event_count > 0:
-        raise ValueError(
-            f"Este lugar tiene {event_count} evento(s) asociado(s). "
-            "Reasigná los eventos antes de eliminarlo."
-        )
-
-    session.delete(location)
-    session.commit()
-
-
 # ── Etapa 8e — Gastronomía ──────────────────────────────────────────────────
 
 _GASTRO_LOAD_OPTIONS = (selectinload(Location.city), selectinload(Location.gastro_types))
@@ -303,18 +193,6 @@ def _to_gastro_read(location: Location, event_count: int) -> LocationGastroRead:
         plan=location.plan,
         is_verified=location.is_verified,
         event_count=event_count,
-    )
-
-
-def _to_gastro_admin_read(location: Location, event_count: int) -> LocationGastroAdminRead:
-    return LocationGastroAdminRead(
-        **_to_gastro_read(location, event_count).model_dump(),
-        is_active=location.is_active,
-        is_gastro=location.is_gastro,
-        is_public=location.is_public,
-        featured_until=location.featured_until,
-        place_type=location.place_type,
-        created_at=location.created_at,
     )
 
 
@@ -394,18 +272,75 @@ def get_gastro_place(session: Session, location_id: UUID) -> LocationGastroRead:
     return _to_gastro_read(location, count)
 
 
-def list_admin_gastro_places(
+# ── Etapa "Unificar panel admin de Lugares" ────────────────────────────────
+
+
+def _to_admin_read(location: Location, event_count: int) -> LocationAdminRead:
+    return LocationAdminRead(
+        **_to_gastro_read(location, event_count).model_dump(),
+        is_active=location.is_active,
+        is_gastro=location.is_gastro,
+        is_public=location.is_public,
+        featured_until=location.featured_until,
+        place_type=location.place_type,
+        created_at=location.created_at,
+    )
+
+
+def _admin_read(session: Session, location: Location) -> LocationAdminRead:
+    count = _event_counts(session, [location.id]).get(location.id, 0)
+    return _to_admin_read(location, count)
+
+
+def _gastro_type_groups(session: Session, gastro_types: list[str]) -> set[str]:
+    """Grupos del catálogo ("gastro"/"espacios") a los que pertenecen los
+    tipos asignados — incluye tipos desactivados (eliminación lógica: el
+    lugar los conserva)."""
+    if not gastro_types:
+        return set()
+    rows = session.exec(
+        select(GastroTypeCatalog.grupo).where(GastroTypeCatalog.key.in_(gastro_types))
+    )
+    return set(rows)
+
+
+def _apply_gastro_type_rules(session: Session, location: Location, gastro_types: list[str]) -> None:
+    """Deriva is_gastro de los tipos asignados y resetea los campos que no
+    aplican al grupo, para que un lugar que deja de ser gastronómico no
+    arrastre datos invisibles en el admin:
+    - sin tipos: no aparece en Gastronomía/Espacios (is_gastro=False), plan
+      vuelve a "gratis" y se borran los horarios estructurados;
+    - sin tipo del grupo "gastro": se borran precio/delivery/reservas.
+    La portada (cover_img_url) no se toca acá — borrarla implica storage y
+    la UI solo la muestra con un tipo de Gastronomía (ver a_revisar.md)."""
+    groups = _gastro_type_groups(session, gastro_types)
+    location.is_gastro = bool(gastro_types)
+    if not location.is_gastro:
+        location.plan = "gratis"
+        location.featured_until = None
+        location.opening_hours = None
+    if "gastro" not in groups:
+        location.price_range = None
+        location.has_delivery = False
+        location.has_reservations = False
+
+
+def list_admin_locations(
     session: Session,
     *,
     city_id: UUID | None = None,
-    gastro_type: str | None = None,
     is_active: bool | None = None,
     is_public: bool | None = None,
     is_verified: bool | None = None,
-    plan: str | None = None,
+    grupo: str | None = None,
     search: str | None = None,
-) -> list[LocationGastroAdminRead]:
-    stmt = select(Location).where(Location.is_gastro == True).options(*_GASTRO_LOAD_OPTIONS)  # noqa: E712
+    limit: int = 200,
+    offset: int = 0,
+) -> list[LocationAdminRead]:
+    """Todos los Location (públicos o no, activos o no) para el panel admin
+    unificado. `grupo`: "gastro"/"espacios" = tiene algún tipo de ese grupo;
+    "none" = sin ningún tipo (solo venue de eventos)."""
+    stmt = select(Location).options(*_GASTRO_LOAD_OPTIONS)
     if city_id is not None:
         stmt = stmt.where(Location.city_id == city_id)
     if is_active is not None:
@@ -414,26 +349,30 @@ def list_admin_gastro_places(
         stmt = stmt.where(Location.is_public == is_public)
     if is_verified is not None:
         stmt = stmt.where(Location.is_verified == is_verified)
-    if plan is not None:
-        stmt = stmt.where(Location.plan == plan)
     if search:
         stmt = stmt.where(
-            (Location.name.ilike(f"%{search}%")) | (Location.description.ilike(f"%{search}%"))
+            (Location.name.ilike(f"%{search}%")) | (Location.address.ilike(f"%{search}%"))
         )
-    if gastro_type:
-        type_subq = select(LocationGastroType.location_id).where(
-            LocationGastroType.location_id == Location.id,
-            LocationGastroType.gastro_type == gastro_type,
+    if grupo == "none":
+        any_type = select(LocationGastroType.location_id).where(
+            LocationGastroType.location_id == Location.id
         )
-        stmt = stmt.where(type_subq.exists())
-    stmt = stmt.order_by(_GASTRO_ORDER_RANK, Location.name.asc())
+        stmt = stmt.where(~any_type.exists())
+    elif grupo is not None:
+        grupo_type = (
+            select(LocationGastroType.location_id)
+            .join(GastroTypeCatalog, GastroTypeCatalog.key == LocationGastroType.gastro_type)
+            .where(LocationGastroType.location_id == Location.id, GastroTypeCatalog.grupo == grupo)
+        )
+        stmt = stmt.where(grupo_type.exists())
+    stmt = stmt.order_by(_GASTRO_ORDER_RANK, Location.name.asc()).offset(offset).limit(limit)
 
     locations = list(session.exec(stmt).all())
-    counts = _gastro_event_counts(session, [loc.id for loc in locations])
-    return [_to_gastro_admin_read(loc, counts.get(loc.id, 0)) for loc in locations]
+    counts = _event_counts(session, [loc.id for loc in locations])
+    return [_to_admin_read(loc, counts.get(loc.id, 0)) for loc in locations]
 
 
-def create_gastro_place(session: Session, data: LocationGastroCreate) -> LocationGastroAdminRead:
+def create_admin_location(session: Session, data: LocationAdminCreate) -> LocationAdminRead:
     city = session.get(City, data.city_id)
     if city is None:
         raise LookupError("Ciudad no encontrada")
@@ -441,43 +380,28 @@ def create_gastro_place(session: Session, data: LocationGastroCreate) -> Locatio
     _validate_gastro_types_active(session, data.gastro_types)
 
     location = Location(
+        **data.model_dump(exclude={"gastro_types", "name", "address"}),
         name=data.name.strip(),
         address=data.address.strip(),
-        city_id=data.city_id,
-        description=data.description,
-        hours=data.hours,
-        opening_hours=data.opening_hours,
-        gastro_whatsapp=data.gastro_whatsapp,
-        gastro_instagram=data.gastro_instagram,
-        gastro_web=data.gastro_web,
-        gastro_email=data.gastro_email,
-        gastro_facebook=data.gastro_facebook,
-        gastro_phone=data.gastro_phone,
-        has_delivery=data.has_delivery,
-        has_reservations=data.has_reservations,
-        price_range=data.price_range,
-        latitude=data.latitude,
-        longitude=data.longitude,
-        is_verified=data.is_verified,
-        is_gastro=True,  # forzado, no viene del payload
         plan="gratis",  # forzado, no viene del payload
-        is_public=True,
+        is_public=True,  # el admin solo crea lugares públicos desde acá
         is_active=True,
     )
+    _apply_gastro_type_rules(session, location, data.gastro_types)
     session.add(location)
     session.flush()
     _sync_gastro_types(session, location.id, data.gastro_types)
     session.commit()
     session.refresh(location)
-    return _to_gastro_admin_read(location, 0)
+    return _to_admin_read(location, 0)
 
 
-def update_gastro_place(
-    session: Session, location_id: UUID, data: LocationGastroUpdate
-) -> LocationGastroAdminRead:
+def update_admin_location(
+    session: Session, location_id: UUID, data: LocationAdminUpdate
+) -> LocationAdminRead:
     location = session.get(Location, location_id)
-    if location is None or not location.is_gastro:
-        raise LookupError("Lugar gastronómico no encontrado")
+    if location is None:
+        raise LookupError("Lugar no encontrado")
 
     updates = data.model_dump(exclude_unset=True, exclude={"gastro_types"})
     if "city_id" in updates and updates["city_id"] is not None:
@@ -487,9 +411,13 @@ def update_gastro_place(
 
     if data.gastro_types is not None:
         _validate_gastro_types_active(session, data.gastro_types)
+        gastro_types = data.gastro_types
+    else:
+        gastro_types = [t.gastro_type for t in location.gastro_types]
 
     for field, value in updates.items():
         setattr(location, field, value)
+    _apply_gastro_type_rules(session, location, gastro_types)
 
     if data.gastro_types is not None:
         _sync_gastro_types(session, location.id, data.gastro_types)
@@ -497,24 +425,35 @@ def update_gastro_place(
     session.add(location)
     session.commit()
     session.refresh(location)
-    count = _gastro_event_counts(session, [location.id]).get(location.id, 0)
-    return _to_gastro_admin_read(location, count)
+    return _admin_read(session, location)
 
 
-def delete_gastro_place(session: Session, location_id: UUID) -> None:
+def verify_location(session: Session, location_id: UUID, is_verified: bool) -> LocationAdminRead:
     location = session.get(Location, location_id)
-    if location is None or not location.is_gastro:
-        raise LookupError("Lugar gastronómico no encontrado")
+    if location is None:
+        raise LookupError("Lugar no encontrado")
 
-    today = argentina_today()
-    future_event_count = session.exec(
-        select(func.count(Event.id)).where(
-            Event.location_id == location_id, Event.date >= today
-        )
+    location.is_verified = is_verified
+    session.add(location)
+    session.commit()
+    session.refresh(location)
+    return _admin_read(session, location)
+
+
+def delete_admin_location(session: Session, location_id: UUID) -> None:
+    """Bloquea el borrado si el lugar tiene CUALQUIER evento asociado (no solo
+    futuros): Event.location_id es FK, borrar con eventos pasados rompería la
+    integridad referencial."""
+    location = session.get(Location, location_id)
+    if location is None:
+        raise LookupError("Lugar no encontrado")
+
+    event_count = session.exec(
+        select(func.count(Event.id)).where(Event.location_id == location_id)
     ).one()
-    if future_event_count > 0:
+    if event_count > 0:
         raise ValueError(
-            f"Este lugar tiene {future_event_count} evento(s) futuro(s). "
+            f"Este lugar tiene {event_count} evento(s) asociado(s). "
             "Reasigná los eventos antes de eliminarlo."
         )
 
@@ -526,20 +465,7 @@ def delete_gastro_place(session: Session, location_id: UUID) -> None:
     session.commit()
 
 
-def verify_gastro_place(session: Session, location_id: UUID, is_verified: bool) -> LocationGastroAdminRead:
-    location = session.get(Location, location_id)
-    if location is None or not location.is_gastro:
-        raise LookupError("Lugar gastronómico no encontrado")
-
-    location.is_verified = is_verified
-    session.add(location)
-    session.commit()
-    session.refresh(location)
-    count = _gastro_event_counts(session, [location.id]).get(location.id, 0)
-    return _to_gastro_admin_read(location, count)
-
-
-def set_gastro_plan(session: Session, location_id: UUID, plan: str) -> LocationGastroAdminRead:
+def set_gastro_plan(session: Session, location_id: UUID, plan: str) -> LocationAdminRead:
     from datetime import datetime, timedelta, timezone
 
     location = session.get(Location, location_id)
@@ -553,8 +479,18 @@ def set_gastro_plan(session: Session, location_id: UUID, plan: str) -> LocationG
     session.add(location)
     session.commit()
     session.refresh(location)
-    count = _gastro_event_counts(session, [location.id]).get(location.id, 0)
-    return _to_gastro_admin_read(location, count)
+    return _admin_read(session, location)
+
+
+def _get_gastro_group_location(session: Session, location_id: UUID) -> Location:
+    """La portada es un campo específico del grupo Gastronomía: requiere al
+    menos un tipo del grupo "gastro"."""
+    location = session.get(Location, location_id)
+    if location is None or "gastro" not in _gastro_type_groups(
+        session, [t.gastro_type for t in location.gastro_types]
+    ):
+        raise LookupError("Lugar gastronómico no encontrado")
+    return location
 
 
 def upload_gastro_cover(
@@ -565,9 +501,7 @@ def upload_gastro_cover(
     filename: str,
     content_type: str,
 ) -> str:
-    location = session.get(Location, location_id)
-    if location is None or not location.is_gastro:
-        raise LookupError("Lugar gastronómico no encontrado")
+    location = _get_gastro_group_location(session, location_id)
 
     # upload_cover borra la portada anterior recién después de procesar con
     # éxito la nueva (P0-4).
@@ -582,8 +516,8 @@ def upload_gastro_cover(
 
 def delete_gastro_cover(session: Session, location_id: UUID) -> None:
     location = session.get(Location, location_id)
-    if location is None or not location.is_gastro:
-        raise LookupError("Lugar gastronómico no encontrado")
+    if location is None:
+        raise LookupError("Lugar no encontrado")
 
     if location.cover_img_url:
         delete_cover(location.cover_img_url, location.id)

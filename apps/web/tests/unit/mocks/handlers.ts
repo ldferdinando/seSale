@@ -5,7 +5,7 @@ import type { AdminEvent, Event, EventDetail, EventLocation, EventStats } from "
 import type { User } from "@/features/auth/types";
 import type { UserAdmin } from "@/features/users/types";
 import type { AdminCity } from "@/features/cities/types";
-import type { AdminGastroPlace, GastroPlace } from "@/features/gastro/types";
+import type { GastroPlace } from "@/features/gastro/types";
 import type { AdminLocation, Location } from "@/features/locations/types";
 import type { Plan } from "@/features/plans/types";
 import type { AdminReport } from "@/features/reports/types";
@@ -199,6 +199,23 @@ export function makeAdminLocation(overrides: Partial<AdminLocation> = {}): Admin
   return {
     ...makeLocation(),
     event_count: 0,
+    gastro_types: [],
+    opening_hours: null,
+    gastro_whatsapp: null,
+    gastro_instagram: null,
+    gastro_web: null,
+    gastro_email: null,
+    gastro_facebook: null,
+    gastro_phone: null,
+    has_delivery: false,
+    has_reservations: false,
+    price_range: null,
+    cover_img_url: null,
+    plan: "gratis",
+    is_active: true,
+    is_gastro: false,
+    featured_until: null,
+    created_at: "2099-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -309,19 +326,6 @@ export function makeGastroPlace(overrides: Partial<GastroPlace> = {}): GastroPla
     plan: "dest",
     is_verified: true,
     event_count: 2,
-    ...overrides,
-  };
-}
-
-export function makeAdminGastroPlace(overrides: Partial<AdminGastroPlace> = {}): AdminGastroPlace {
-  return {
-    ...makeGastroPlace(),
-    is_active: true,
-    is_gastro: true,
-    is_public: true,
-    featured_until: null,
-    place_type: null,
-    created_at: "2099-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -667,27 +671,11 @@ export const handlers = [
       { status: 201 },
     );
   }),
-  http.get(`${API_URL}/api/admin/gastro`, () => {
-    return HttpResponse.json([makeAdminGastroPlace()]);
-  }),
-  http.post(`${API_URL}/api/admin/gastro`, async ({ request }) => {
-    const body = (await request.json()) as Record<string, unknown>;
-    return HttpResponse.json(makeAdminGastroPlace({ ...body } as Partial<AdminGastroPlace>), { status: 201 });
-  }),
-  http.put(`${API_URL}/api/admin/gastro/:id`, async ({ params, request }) => {
-    const body = (await request.json()) as Record<string, unknown>;
-    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, ...body } as Partial<AdminGastroPlace>));
-  }),
-  http.delete(`${API_URL}/api/admin/gastro/:id`, () => {
-    return HttpResponse.json({ detail: "Lugar gastronómico eliminado" });
-  }),
-  http.patch(`${API_URL}/api/admin/gastro/:id/verify`, async ({ params, request }) => {
-    const body = (await request.json()) as Record<string, unknown>;
-    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, is_verified: body.is_verified as boolean }));
-  }),
   http.patch(`${API_URL}/api/admin/gastro/:id/plan`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
-    return HttpResponse.json(makeAdminGastroPlace({ id: params.id as string, plan: body.plan as AdminGastroPlace["plan"] }));
+    return HttpResponse.json(
+      makeAdminLocation({ id: params.id as string, is_gastro: true, plan: body.plan as AdminLocation["plan"] }),
+    );
   }),
   http.post(`${API_URL}/api/admin/gastro/:id/cover`, () => {
     return HttpResponse.json({ cover_img_url: "https://storage.example.com/cover.jpg" });

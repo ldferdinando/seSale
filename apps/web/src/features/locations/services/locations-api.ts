@@ -23,9 +23,10 @@ export async function fetchLocationById(locationId: string): Promise<Location> {
 export async function fetchAdminLocations(filters: AdminLocationFilters): Promise<AdminLocation[]> {
   return apiGet<AdminLocation[]>("/api/admin/locations", {
     city_id: filters.city_id,
+    is_active: filters.is_active != null ? String(filters.is_active) : undefined,
     is_public: filters.is_public != null ? String(filters.is_public) : undefined,
     is_verified: filters.is_verified != null ? String(filters.is_verified) : undefined,
-    place_type: filters.place_type,
+    grupo: filters.grupo,
     search: filters.search,
   });
 }

@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
@@ -32,11 +33,7 @@ from app.schemas.location import (
     LocationAdminCreate,
     LocationAdminRead,
     LocationAdminUpdate,
-    LocationGastroAdminRead,
-    LocationGastroCreate,
     LocationGastroPlanUpdate,
-    LocationGastroUpdate,
-    LocationGastroVerifyUpdate,
     LocationVerifyUpdate,
 )
 from app.schemas.plan import PlanPriceAdminRead, PlanPriceCreate, PlanPricingAdminRead
@@ -80,17 +77,12 @@ from app.services.gastro_type_catalog_service import (
 )
 from app.services.location_service import (
     create_admin_location,
-    create_gastro_place,
     delete_admin_location,
     delete_gastro_cover,
-    delete_gastro_place,
-    list_admin_gastro_places,
     list_admin_locations,
     set_gastro_plan,
     update_admin_location,
-    update_gastro_place,
     upload_gastro_cover,
-    verify_gastro_place,
     verify_location,
 )
 from app.services.payment_service import (
@@ -366,20 +358,24 @@ def patch_admin_report_status(
 def get_admin_locations(
     request: Request,
     city_id: UUID | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
     is_public: bool | None = Query(default=None),
     is_verified: bool | None = Query(default=None),
-    place_type: str | None = Query(default=None),
+    grupo: Literal["gastro", "espacios", "none"] | None = Query(default=None),
     search: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
 ) -> list[LocationAdminRead]:
+    """Panel admin unificado de Lugares — lugares de eventos, Gastronomía y
+    Espacios (Etapa "Unificar panel admin de Lugares")."""
     return list_admin_locations(
         session,
         city_id=city_id,
+        is_active=is_active,
         is_public=is_public,
         is_verified=is_verified,
-        place_type=place_type,
+        grupo=grupo,
         search=search,
         limit=limit,
         offset=offset,
@@ -395,6 +391,8 @@ def post_admin_location(
         return create_admin_location(session, payload)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.put("/locations/{location_id}", response_model=LocationAdminRead)
@@ -407,6 +405,8 @@ def put_admin_location(
         return update_admin_location(session, location_id, payload)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.patch("/locations/{location_id}/verify", response_model=LocationAdminRead)
@@ -597,92 +597,17 @@ def patch_admin_ad_items_reorder(
 
 
 # ── Etapa 8e — Gastronomía ────────────────────────────────────────────────
+# El alta/edición/listado/borrado/verificación de lugares gastronómicos se
+# unificó en /api/admin/locations (Etapa "Unificar panel admin de Lugares").
+# Acá quedan solo las acciones específicas del grupo: plan y portada.
 
 
-@router.get("/gastro", response_model=list[LocationGastroAdminRead])
-@limiter.limit("30/minute")
-def get_admin_gastro_places(
-    request: Request,
-    city_id: UUID | None = Query(default=None),
-    gastro_type: str | None = Query(default=None),
-    is_active: bool | None = Query(default=None),
-    is_public: bool | None = Query(default=None),
-    is_verified: bool | None = Query(default=None),
-    plan: str | None = Query(default=None),
-    search: str | None = Query(default=None),
-    session: Session = Depends(get_session),
-) -> list[LocationGastroAdminRead]:
-    return list_admin_gastro_places(
-        session,
-        city_id=city_id,
-        gastro_type=gastro_type,
-        is_active=is_active,
-        is_public=is_public,
-        is_verified=is_verified,
-        plan=plan,
-        search=search,
-    )
-
-
-@router.post("/gastro", response_model=LocationGastroAdminRead, status_code=status.HTTP_201_CREATED)
-def post_admin_gastro_place(
-    payload: LocationGastroCreate,
-    session: Session = Depends(get_session),
-) -> LocationGastroAdminRead:
-    try:
-        return create_gastro_place(session, payload)
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-
-
-@router.put("/gastro/{location_id}", response_model=LocationGastroAdminRead)
-def put_admin_gastro_place(
-    location_id: UUID,
-    payload: LocationGastroUpdate,
-    session: Session = Depends(get_session),
-) -> LocationGastroAdminRead:
-    try:
-        return update_gastro_place(session, location_id, payload)
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-
-
-@router.delete("/gastro/{location_id}")
-def delete_admin_gastro_place(
-    location_id: UUID,
-    session: Session = Depends(get_session),
-) -> dict[str, str]:
-    try:
-        delete_gastro_place(session, location_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return {"detail": "Lugar gastronómico eliminado"}
-
-
-@router.patch("/gastro/{location_id}/verify", response_model=LocationGastroAdminRead)
-def patch_admin_gastro_verify(
-    location_id: UUID,
-    payload: LocationGastroVerifyUpdate,
-    session: Session = Depends(get_session),
-) -> LocationGastroAdminRead:
-    try:
-        return verify_gastro_place(session, location_id, payload.is_verified)
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-
-@router.patch("/gastro/{location_id}/plan", response_model=LocationGastroAdminRead)
+@router.patch("/gastro/{location_id}/plan", response_model=LocationAdminRead)
 def patch_admin_gastro_plan(
     location_id: UUID,
     payload: LocationGastroPlanUpdate,
     session: Session = Depends(get_session),
-) -> LocationGastroAdminRead:
+) -> LocationAdminRead:
     try:
         return set_gastro_plan(session, location_id, payload.plan)
     except LookupError as exc:

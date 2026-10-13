@@ -1,3 +1,5 @@
+import type { GastroPlan, GastroTypeGrupo, OpeningHours, PriceRange } from "@/features/gastro/types";
+
 export interface Location {
   id: string;
   name: string;
@@ -13,8 +15,30 @@ export interface Location {
   is_public: boolean;
 }
 
+/** Lugar completo del panel admin unificado (Etapa "Unificar panel admin de
+ * Lugares") — mismo Location para lugares de eventos, Gastronomía y
+ * Espacios. Los campos de contacto conservan el prefijo `gastro_` del
+ * backend pero aplican a cualquier lugar. `event_count` = total de eventos
+ * asociados (bloquea el borrado). */
 export interface AdminLocation extends Location {
   event_count: number;
+  gastro_types: string[];
+  opening_hours: OpeningHours | null;
+  gastro_whatsapp: string | null;
+  gastro_instagram: string | null;
+  gastro_web: string | null;
+  gastro_email: string | null;
+  gastro_facebook: string | null;
+  gastro_phone: string | null;
+  has_delivery: boolean;
+  has_reservations: boolean;
+  price_range: PriceRange | null;
+  cover_img_url: string | null;
+  plan: GastroPlan;
+  is_active: boolean;
+  is_gastro: boolean;
+  featured_until: string | null;
+  created_at: string;
 }
 
 export interface LocationFilters {
@@ -23,11 +47,15 @@ export interface LocationFilters {
   place_type?: string;
 }
 
+/** `grupo`: "gastro"/"espacios" = tiene algún tipo de ese grupo; "none" = sin tipos. */
+export type AdminLocationGrupoFilter = GastroTypeGrupo | "none";
+
 export interface AdminLocationFilters {
   city_id?: string;
+  is_active?: boolean;
   is_public?: boolean;
   is_verified?: boolean;
-  place_type?: string;
+  grupo?: AdminLocationGrupoFilter;
   search?: string;
 }
 
@@ -35,24 +63,25 @@ export interface LocationAdminCreateInput {
   name: string;
   address: string;
   city_id: string;
+  gastro_types?: string[];
   description?: string;
   hours?: string;
-  place_type?: string;
+  opening_hours?: OpeningHours | null;
+  gastro_whatsapp?: string | null;
+  gastro_instagram?: string | null;
+  gastro_web?: string | null;
+  gastro_email?: string | null;
+  gastro_facebook?: string | null;
+  gastro_phone?: string | null;
+  has_delivery?: boolean;
+  has_reservations?: boolean;
+  price_range?: PriceRange | null;
   latitude?: number;
   longitude?: number;
   is_verified?: boolean;
 }
 
-export type LocationAdminUpdateInput = Partial<LocationAdminCreateInput> & { is_public?: boolean };
-
-/** Tipos de lugar sugeridos en el frontend — texto libre en el backend, sin enum. */
-export const PLACE_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "bar", label: "Bar" },
-  { value: "teatro", label: "Teatro" },
-  { value: "plaza", label: "Plaza" },
-  { value: "club", label: "Club" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "cultural", label: "Espacio cultural" },
-  { value: "deportivo", label: "Deportivo" },
-  { value: "otro", label: "Otro" },
-];
+export type LocationAdminUpdateInput = Partial<LocationAdminCreateInput> & {
+  is_public?: boolean;
+  is_active?: boolean;
+};

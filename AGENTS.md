@@ -170,7 +170,8 @@ root/
 │   │   │   │   ├── subscriptions/  # Mis suscripciones — Etapa 6, revisión admin de transferencias — Etapa 6b-1
 │   │   │   │   ├── site-settings/  # Config general del sitio (alias de pago): types/services/hooks — fix transferencia
 │   │   │   │   └── admin/          # Panel admin (destacados — Etapa 5, usuarios — Etapa 5.6, suscripciones — Etapa 6, lugares — Etapa 7b,
-│   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d, gastronomía — AdminGastroPanel.tsx/GastroForm.tsx — Etapa 8e;
+│   │   │   │                      #   ciudades — Etapa 8a, banners — Etapa 8d; AdminLocationsPanel.tsx/LocationForm.tsx = panel ÚNICO de Lugares
+│   │   │   │                      #   (eventos + Gastronomía + Espacios; AdminGastroPanel/GastroForm eliminados — Etapa "Unificar Lugares");
 │   │   │   │                      #   listado de usuarios — AdminUsersTable.tsx/UserDetailModal.tsx — Etapa 9b;
 │   │   │   │                      #   + AdminCategoriesPanel.tsx/AdminGastroTypesPanel.tsx (catálogos) — Etapa 12a)
 │   │   │   ├── lib/                # Utilidades, clientes API, helpers

@@ -7,7 +7,7 @@ interface UseLocationsOptions {
   enabled?: boolean;
 }
 
-/** Lugares precargados (is_public=True) de una ciudad — selector del formulario de evento. */
+/** Lugares precargados (is_public y is_active, con o sin tipos) de una ciudad — selector del formulario de evento. */
 export function useLocations(filters: LocationFilters, options: UseLocationsOptions = {}) {
   return useQuery({
     queryKey: ["locations", filters],
