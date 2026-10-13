@@ -195,8 +195,14 @@ export function MapPicker({
     onLocationSelect({ latitude: lat, longitude: lng, address: displayNameToAddress(result) });
   }
 
+  // `isolate` (isolation: isolate): Leaflet pone z-index 400–1000 en sus
+  // panes/controles, y sin un stacking context propio esos z-index compiten
+  // con los dropdowns portaleados al <body> (Radix Select, z-50) — bug real:
+  // el selector de "Hora inicio"/"Hora fin" quedaba tapado por el mapa del
+  // formulario de evento. Con `isolate` todo el mapa queda en z-index 0 del
+  // documento.
   return (
-    <div className={cn("relative w-full overflow-hidden rounded-2xl border border-border", heightClassName)}>
+    <div className={cn("relative isolate w-full overflow-hidden rounded-2xl border border-border", heightClassName)}>
       {!readonly && (
         <div className="absolute left-2 top-2 z-[1000] w-[calc(100%-1rem)] max-w-xs">
           <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-md">

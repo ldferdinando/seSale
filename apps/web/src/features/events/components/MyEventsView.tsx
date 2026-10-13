@@ -1,14 +1,17 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { EventCard } from "@/features/events/components/EventCard";
+import { useDeleteEvent } from "@/features/events/hooks/useDeleteEvent";
 import { useMyEvents } from "@/features/events/hooks/useMyEvents";
-import type { EventStatus } from "@/features/events/types";
+import type { Event, EventStatus } from "@/features/events/types";
 import {
   PendingPaymentCard,
   selectResumablePayments,
@@ -33,6 +36,21 @@ export function MyEventsView() {
   // moderación esté el evento.
   const { data: subscriptions } = useMySubscriptions(Boolean(currentUser));
   const resumablePayments = selectResumablePayments(subscriptions);
+  // Borrado lógico del propio evento (DELETE /api/events/{id}): el backend
+  // marca deleted_at y deja de devolverlo en /api/events/mine. No se puede
+  // deshacer desde la UI — por eso el diálogo de confirmación.
+  const deleteEvent = useDeleteEvent();
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  function handleConfirmDelete() {
+    if (!eventToDelete) return;
+    deleteEvent.mutate(eventToDelete.id, {
+      onSuccess: () => setDeleteMessage({ kind: "ok", text: "El evento fue eliminado." }),
+      onError: () => setDeleteMessage({ kind: "error", text: "No pudimos eliminar el evento. Intentá de nuevo." }),
+      onSettled: () => setEventToDelete(null),
+    });
+  }
 
   if (isLoadingUser) {
     return (
@@ -67,6 +85,15 @@ export function MyEventsView() {
         </section>
       )}
 
+      {deleteMessage && (
+        <p
+          role={deleteMessage.kind === "error" ? "alert" : "status"}
+          className={deleteMessage.kind === "error" ? "text-sm text-destructive" : "text-sm font-semibold text-brand-green"}
+        >
+          {deleteMessage.text}
+        </p>
+      )}
+
       <Tabs tabs={STATUS_TABS} value={status} onChange={(value) => setStatus(value as EventStatus)} />
 
       {isLoading && (
@@ -89,9 +116,34 @@ export function MyEventsView() {
       {data && data[status].length > 0 && (
         <div className="flex flex-col gap-3">
           {data[status].map((event) => (
-            <EventCard key={event.id} event={event} />
+            <div key={event.id} className="flex flex-col gap-1.5">
+              <EventCard event={event} />
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteMessage(null);
+                  setEventToDelete(event);
+                }}
+                aria-label={`Eliminar ${event.title}`}
+                className="flex w-fit items-center gap-1.5 self-end rounded-full px-3 py-1 text-xs font-bold text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                Eliminar
+              </button>
+            </div>
           ))}
         </div>
+      )}
+
+      {eventToDelete && (
+        <ConfirmDialog
+          title="¿Seguro que querés eliminar este evento?"
+          description={`"${eventToDelete.title}" dejará de aparecer en el sitio y en tus eventos. Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          isConfirming={deleteEvent.isPending}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setEventToDelete(null)}
+        />
       )}
     </div>
   );

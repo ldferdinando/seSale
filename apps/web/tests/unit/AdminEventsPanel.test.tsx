@@ -221,6 +221,80 @@ describe("AdminEventsPanel", () => {
     expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
   });
 
+  it("confirmar el borrado manda DELETE y el evento desaparece del listado", async () => {
+    let deleted = false;
+    let deleteCalls = 0;
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json(deleted ? [] : [makeAdminEvent({ id: "a", title: "Festival de Otoño" })]),
+      ),
+      http.delete(`${API_URL}/api/events/:id`, () => {
+        deleteCalls += 1;
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(screen.queryByText("Festival de Otoño")).not.toBeInTheDocument());
+    expect(deleteCalls).toBe(1);
+  });
+
+  it("un evento eliminado (con 'Mostrar eliminados') muestra el badge y no ofrece Eliminar", async () => {
+    let includeDeleted: string | null = null;
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, ({ request }) => {
+        includeDeleted = new URL(request.url).searchParams.get("include_deleted");
+        return HttpResponse.json(
+          includeDeleted === "true"
+            ? [makeAdminEvent({ id: "a", title: "Borrado", is_active: false, deleted_at: "2026-10-13T12:00:00Z" })]
+            : [],
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByLabelText("Mostrar eliminados"));
+
+    expect(await screen.findByText("Borrado")).toBeInTheDocument();
+    expect(includeDeleted).toBe("true");
+    expect(screen.getByText("Eliminado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Editar/ })).not.toBeInTheDocument();
+  });
+
+  it("un evento dado de baja (sin deleted_at) no se marca como Eliminado", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () =>
+        HttpResponse.json([makeAdminEvent({ id: "a", title: "Pausado", is_active: false })]),
+      ),
+    );
+    renderWithClient();
+
+    expect(await screen.findByText("Dado de baja")).toBeInTheDocument();
+    expect(screen.queryByText("Eliminado")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar" })).toBeInTheDocument();
+  });
+
+  it("muestra un error si el backend rechaza el borrado", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/events`, () => HttpResponse.json([makeAdminEvent({ id: "a" })])),
+      http.delete(`${API_URL}/api/events/:id`, () => HttpResponse.json({ detail: "Evento no encontrado" }, { status: 404 })),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("No se pudo eliminar el evento. Intentá de nuevo.")).toBeInTheDocument();
+  });
+
   describe("en viewport mobile (Etapa admin-responsive-1)", () => {
     it("muestra cada evento como tarjeta con etiqueta: valor y las acciones siguen funcionando", async () => {
       mockMatchMedia();

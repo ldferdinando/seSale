@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.core.moment import calculate_moments
 from app.core.storage import delete_flyer, upload_flyer
-from app.core.timezone import ARGENTINA_TZ, utc_time_to_argentina
+from app.core.timezone import ARGENTINA_DAY_START_UTC, ARGENTINA_TZ, event_end_datetime, utc_time_to_argentina
 from app.models.category import EventCategory
 from app.models.city import City
 from app.models.event import Event, EventStatus, TicketType
@@ -57,7 +57,7 @@ def _sync_event_moments(session: Session, event: Event) -> None:
 def is_event_currently_visible(
     event_date: date,
     date_end: date | None,
-    time_end: time,
+    time_end: time | None,
     now: datetime,
 ) -> bool:
     """Etapa 10b — ¿debe aparecer este evento en el listado público ahora?
@@ -74,18 +74,19 @@ def is_event_currently_visible(
     event_date` — mismo criterio que `EventRead.date_end` y
     `Event.date_end` en el modelo.
 
-    `now` es un datetime aware en UTC — la comparación es 100% en UTC,
-    consistente con cómo se guardan `time`/`time_end` (nunca se convierte a
-    hora Argentina acá).
+    `now` es un datetime aware (cualquier huso). El fin del evento se arma
+    con `event_end_datetime`: `date_end` es día de negocio ART y `time_end`
+    hora UTC — combinarlos directo como si ambos fueran UTC (versión
+    anterior) hacía que un evento de 22:00–23:55 ART "terminara" 24 h antes.
+    Sin `time_end` (opcional desde la migración 0036) el evento es visible
+    hasta el fin de su día de negocio.
 
     Cambio de comportamiento real respecto a la Etapa 10a: un evento de
     HOY cuyo horario ya terminó (ej. terminó a las 10:00 y son las 15:00)
     deja de ser visible apenas termina — antes, cualquier evento con
     `event_date == hoy` quedaba visible todo el día sin importar la hora.
     """
-    effective_date_end = date_end or event_date
-    end_datetime = datetime.combine(effective_date_end, time_end, tzinfo=timezone.utc)
-    return end_datetime >= now
+    return event_end_datetime(event_date, date_end, time_end) >= now
 
 
 def _current_utc_now() -> datetime:
@@ -112,6 +113,18 @@ SEARCH_RESULT_LIMIT = 50
 def _escape_like(value: str) -> str:
     """Escapa los comodines de LIKE para que el texto se busque literal."""
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+# Orden por hora LOCAL dentro de un mismo día de negocio: `Event.time` está
+# en UTC, y las horas UTC < 03:00 son la noche (21:00–23:59 ART) de ese día,
+# así que van al final. Ordenar por `Event.time` solo ponía un evento de las
+# 22:00 antes que uno de las 20:00.
+_LOCAL_TIME_RANK = case((Event.time < ARGENTINA_DAY_START_UTC, 1), else_=0)
+
+
+def _local_sort_key(event: Event) -> tuple[date, time]:
+    """(día de negocio, hora ART) — orden cronológico real en Python."""
+    return (event.date, utc_time_to_argentina(event.date, event.time))
 
 
 _ORDER_RANK = case(
@@ -141,7 +154,16 @@ def list_public_events(
     Orden (siempre, independientemente de los filtros activos) — Etapa 11c:
     1. plan (pro → dest → gratis)
     2. date ASC (evento más próximo primero)
-    3. time ASC (dentro del mismo día, el más temprano primero)
+    3. hora LOCAL (ART) ASC dentro del mismo día — no `Event.time` (UTC)
+       crudo, ver `_LOCAL_TIME_RANK`
+
+    Criterio "¿a qué día pertenece un evento?" para `date_from`/`date_to`
+    (chips Hoy/Mañana/Finde/... de Home y categoría): el día de INICIO en
+    Argentina (`Event.date`, que siempre es día de negocio ART, nunca la
+    fecha UTC). Un evento que cruza medianoche (sáb 23:00 → dom 02:00)
+    aparece en el chip del sábado, no en el del domingo; el domingo a la
+    madrugada sigue visible en el listado sin filtro de fecha mientras no
+    haya terminado (`is_event_currently_visible`).
 
     `is_featured` ya no afecta este orden (antes subía al tope dentro del
     mismo plan) — sigue existiendo en el modelo y el admin puede marcarlo,
@@ -202,7 +224,7 @@ def list_public_events(
         )
         stmt = stmt.where(moment_subq.exists())
     if date_from is not None:
-        stmt = stmt.where(Event.date >= date_from)
+        stmt = stmt.where(Event.date >= date_from)  # día de inicio ART, ver docstring
     if date_to is not None:
         stmt = stmt.where(Event.date <= date_to)
     search = search.strip() if search else None
@@ -235,7 +257,7 @@ def list_public_events(
     elif ticket_type == "pago":
         stmt = stmt.where(Event.ticket_type.in_([TicketType.pago, TicketType.anticipo]))
 
-    stmt = stmt.order_by(_ORDER_RANK, Event.date.asc(), Event.time.asc())
+    stmt = stmt.order_by(_ORDER_RANK, Event.date.asc(), _LOCAL_TIME_RANK, Event.time.asc())
     if search:
         stmt = stmt.limit(SEARCH_RESULT_LIMIT)
 
@@ -332,7 +354,7 @@ def create_event(
     location_id: UUID | None = None,
     location_data: LocationCreate | None = None,
     location_text: str | None = None,
-    time_end: time,  # Etapa 10a — obligatorio, sin default (igual que el modelo)
+    time_end: time | None = None,  # Opcional desde la migración 0036
     date_end: date | None = None,  # Etapa 10b — None => mismo día que event_date
     ticket_type: TicketType = TicketType.gratis,
     price_at_door: int | None = None,
@@ -437,6 +459,15 @@ def create_event(
     return event
 
 
+def _get_live_event(session: Session, event_id: UUID) -> Event:
+    """Evento no eliminado, o LookupError (404). Un evento con `deleted_at`
+    no se puede editar, volver a eliminar ni gestionar su flyer."""
+    event = session.get(Event, event_id)
+    if event is None or event.deleted_at is not None:
+        raise LookupError("Evento no encontrado")
+    return event
+
+
 def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatus, list[Event]]:
     """Eventos del organizador, agrupados por status — GET /api/events/mine.
 
@@ -449,6 +480,7 @@ def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatu
     stmt = (
         select(Event)
         .where(Event.organizer_id == user_id)
+        .where(Event.deleted_at.is_(None))
         .options(*_EVENT_LOAD_OPTIONS)
         .order_by(Event.created_at.desc())
     )
@@ -461,7 +493,7 @@ def get_events_for_organizer(session: Session, user_id: UUID) -> dict[EventStatu
     }
     for event in events:
         grouped[event.status].append(event)
-    grouped[EventStatus.approved].sort(key=lambda event: event.date)
+    grouped[EventStatus.approved].sort(key=_local_sort_key)
     return grouped
 
 
@@ -533,9 +565,13 @@ def get_event_detail(session: Session, event_id: UUID, current_user: User | None
     if event is None:
         raise LookupError("Evento no encontrado")
 
+    is_admin = current_user is not None and current_user.role == "admin"
+    # Eliminado (migración 0036): solo el admin puede seguir viéndolo.
+    if event.deleted_at is not None and not is_admin:
+        raise LookupError("Evento no encontrado")
+
     is_public = event.status == EventStatus.approved and event.is_active
     is_owner = current_user is not None and event.organizer_id == current_user.id
-    is_admin = current_user is not None and current_user.role == "admin"
     if not is_public and not is_owner and not is_admin:
         raise LookupError("Evento no encontrado")
 
@@ -545,9 +581,7 @@ def get_event_detail(session: Session, event_id: UUID, current_user: User | None
 def update_event(
     session: Session, event_id: UUID, current_user: User, payload: EventUpdate
 ) -> Event:
-    event = session.get(Event, event_id)
-    if event is None:
-        raise LookupError("Evento no encontrado")
+    event = _get_live_event(session, event_id)
 
     is_owner = event.organizer_id == current_user.id
     is_admin = current_user.role == "admin"
@@ -621,21 +655,27 @@ def update_event(
 
 
 def delete_event(session: Session, event_id: UUID, current_user: User) -> Event:
-    """Soft delete: nunca se borra la fila, se marca is_active=False.
+    """Borrado lógico: nunca se borra la fila, se marca `deleted_at` (y
+    `is_active=False`, para que todos los filtros públicos existentes que
+    ya miran `is_active` lo excluyan sin cambios).
 
-    Permitido para el organizador dueño del evento o para un admin.
+    Permitido para el organizador dueño del evento o para un admin. Un
+    evento ya eliminado devuelve LookupError (404): el intento no se puede
+    repetir. Es lógico y no físico para conservar el rastro de
+    suscripciones/pagos asociados (subscriptions.event_id sigue apuntando a
+    una fila existente).
     """
-    event = session.get(Event, event_id)
-    if event is None:
-        raise LookupError("Evento no encontrado")
+    event = _get_live_event(session, event_id)
 
     is_owner = event.organizer_id == current_user.id
     is_admin = current_user.role == "admin"
     if not is_owner and not is_admin:
         raise PermissionError("No tenés permiso para eliminar este evento")
 
+    now = datetime.now(timezone.utc)
     event.is_active = False
-    event.updated_at = datetime.now(timezone.utc)
+    event.deleted_at = now
+    event.updated_at = now
     session.add(event)
     session.commit()
     session.refresh(event)
@@ -674,9 +714,7 @@ def upload_event_flyer(
     filename: str,
     content_type: str,
 ) -> Event:
-    event = session.get(Event, event_id)
-    if event is None:
-        raise LookupError("Evento no encontrado")
+    event = _get_live_event(session, event_id)
 
     _check_flyer_permission_and_plan(event, current_user)
 
@@ -699,9 +737,7 @@ def upload_event_flyer(
 
 
 def delete_event_flyer(session: Session, event_id: UUID, current_user: User) -> Event:
-    event = session.get(Event, event_id)
-    if event is None:
-        raise LookupError("Evento no encontrado")
+    event = _get_live_event(session, event_id)
 
     is_owner = event.organizer_id == current_user.id
     is_admin = current_user.role == "admin"
@@ -735,6 +771,7 @@ def list_admin_events(
     date_from: date | None = None,
     date_to: date | None = None,
     organizer_id: UUID | None = None,
+    include_deleted: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Event]:
@@ -750,6 +787,10 @@ def list_admin_events(
         selectinload(Event.category_links),
     )
 
+    # Migración 0036: los eliminados no se listan salvo que se pidan
+    # explícitamente (filtro "Mostrar eliminados" del panel).
+    if not include_deleted:
+        stmt = stmt.where(Event.deleted_at.is_(None))
     if status is not None:
         stmt = stmt.where(Event.status == status)
     if city_id is not None:

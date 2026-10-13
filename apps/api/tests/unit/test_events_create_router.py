@@ -499,15 +499,36 @@ async def test_create_event_with_banner_plan_returns_422(
 # Etapa 10a — time_end obligatorio; Etapa 10b — date_end + coherencia inicio/fin
 
 
-async def test_create_event_without_time_end_returns_422(
+async def test_create_event_without_time_end_returns_201(
     client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):
+    """Hora de fin opcional desde la migración 0036 (antes 422)."""
     payload = _valid_payload(str(location.id))
     del payload["time_end"]
 
     response = await client.post("/api/events", json=payload, headers=user_token_headers)
 
-    assert response.status_code == 422
+    assert response.status_code == 201
+    assert response.json()["time_end"] is None
+    assert response.json()["date_end"] == payload["date"]
+
+
+async def test_create_event_night_event_same_business_day_returns_201(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    """20:00–22:00 ART del mismo día = 23:00–01:00 UTC con la MISMA fecha
+    (día de negocio ART). Antes `_validate_event_span` combinaba fecha ART
+    con hora UTC y lo rechazaba como "fin anterior al inicio"."""
+    payload = _valid_payload(str(location.id))
+    payload["time"] = "23:00:00"
+    payload["time_end"] = "01:00:00"
+    payload["date_end"] = payload["date"]
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["date"] == payload["date"]
+    assert response.json()["date_end"] == payload["date"]
 
 
 async def test_create_event_time_end_equal_to_time_returns_422_with_message(

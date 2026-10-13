@@ -152,6 +152,7 @@ def get_admin_events(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     organizer_id: UUID | None = Query(default=None),
+    include_deleted: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
@@ -166,6 +167,7 @@ def get_admin_events(
         date_from=date_from,
         date_to=date_to,
         organizer_id=organizer_id,
+        include_deleted=include_deleted,
         limit=limit,
         offset=offset,
     )
@@ -174,6 +176,7 @@ def get_admin_events(
         AdminEventRead(
             **EventRead.model_validate(event).model_dump(),
             organizer_public_name=event.organizer.public_name,
+            deleted_at=event.deleted_at,
             organizer_subscription=_to_organizer_subscription_read(latest_subscriptions.get(event.id)),
         )
         for event in events

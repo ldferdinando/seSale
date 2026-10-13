@@ -61,7 +61,17 @@ function EventTitleCell({ event }: { event: AdminEvent }) {
     <div className="flex flex-wrap items-center gap-2">
       <p className="text-sm font-bold text-foreground">{event.title}</p>
       <StatusBadge status={event.status} />
-      {!event.is_active && <Badge variant="muted">Eliminado</Badge>}
+      {/* "Eliminado" = borrado lógico real (deleted_at, migración 0036 del
+          backend). Antes este badge salía con !is_active, que también es
+          "Dar de baja" (pausa reversible del organizador) — un evento
+          dado de baja no está eliminado. */}
+      {event.deleted_at ? (
+        <Badge variant="muted" className="bg-destructive/15 text-destructive">
+          Eliminado
+        </Badge>
+      ) : (
+        !event.is_active && <Badge variant="muted">Dado de baja</Badge>
+      )}
     </div>
   );
 }
@@ -102,13 +112,15 @@ function EventRowActions({ event }: { event: AdminEvent }) {
   const deleteEvent = useDeleteEvent();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
       return;
     }
-    await deleteEvent.mutateAsync(event.id);
-    setConfirmingDelete(false);
+    // `mutate` (no `mutateAsync` sin catch): un error del backend se
+    // muestra abajo vía `deleteEvent.isError` en vez de quedar como
+    // promesa rechazada silenciosa.
+    deleteEvent.mutate(event.id, { onSettled: () => setConfirmingDelete(false) });
   }
 
   return (
@@ -147,26 +159,37 @@ function EventRowActions({ event }: { event: AdminEvent }) {
         Ver detalle
       </Link>
 
-      <Link
-        href={`/eventos/${event.id}/editar`}
-        className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
-      >
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
-        Editar
-      </Link>
+      {/* Un evento ya eliminado no se edita ni se vuelve a eliminar (el
+          backend responde 404 a las dos cosas). */}
+      {!event.deleted_at && (
+        <Link
+          href={`/eventos/${event.id}/editar`}
+          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+          Editar
+        </Link>
+      )}
 
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        disabled={deleteEvent.isPending}
-        onClick={handleDelete}
-        onBlur={() => setConfirmingDelete(false)}
-        className={confirmingDelete ? "flex items-center gap-1 bg-destructive/15 text-destructive" : "flex items-center gap-1"}
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        {confirmingDelete ? "Confirmar" : "Eliminar"}
-      </Button>
+      {!event.deleted_at && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={deleteEvent.isPending}
+          onClick={handleDelete}
+          onBlur={() => setConfirmingDelete(false)}
+          className={confirmingDelete ? "flex items-center gap-1 bg-destructive/15 text-destructive" : "flex items-center gap-1"}
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          {confirmingDelete ? "Confirmar" : "Eliminar"}
+        </Button>
+      )}
+      {deleteEvent.isError && (
+        <p role="alert" className="w-full text-xs text-destructive">
+          No se pudo eliminar el evento. Intentá de nuevo.
+        </p>
+      )}
     </>
   );
 }
@@ -304,6 +327,18 @@ export function AdminEventsPanel({ initialOrganizerId }: { initialOrganizerId?: 
           aria-label="Buscar evento"
           className="w-[200px]"
         />
+
+        {/* Los eliminados se ocultan por defecto (el backend los excluye
+            salvo con include_deleted). */}
+        <label className="flex items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold text-ink-3">
+          <input
+            type="checkbox"
+            checked={filters.include_deleted ?? false}
+            onChange={(e) => updateFilter("include_deleted", e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+          Mostrar eliminados
+        </label>
       </div>
 
       {isLoading && (

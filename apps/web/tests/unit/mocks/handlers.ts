@@ -125,6 +125,7 @@ export function makeAdminEvent(overrides: Partial<AdminEvent> = {}): AdminEvent 
     ...makeEvent(),
     organizer_public_name: "El Tinglado Bar",
     is_active: true,
+    deleted_at: null,
     organizer_subscription: null,
     ...overrides,
   };

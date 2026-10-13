@@ -153,7 +153,9 @@ export function EventsMap({ events, activeCity, onEventClick }: EventsMapProps) 
   }
 
   return (
-    <div ref={containerRef} className="relative h-full w-full">
+    // `isolate`: ver el comentario en MapPicker.tsx — los z-index de
+    // Leaflet (400–1000) no deben competir con dropdowns/modales del sitio.
+    <div ref={containerRef} className="relative isolate h-full w-full">
       <button
         type="button"
         onClick={handleNearMeClick}

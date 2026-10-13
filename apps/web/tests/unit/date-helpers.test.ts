@@ -4,7 +4,6 @@ import {
   argentinaTodayIso,
   formatEventDateRange,
   formatEventTime,
-  localDateTimeToUtc,
   localTimeToUtc,
   toEventDateTimeISO,
   utcTimeToLocal,
@@ -42,16 +41,6 @@ describe("localTimeToUtc", () => {
   });
 });
 
-describe("localDateTimeToUtc", () => {
-  it("no cruza medianoche: devuelve la misma fecha", () => {
-    expect(localDateTimeToUtc("2024-03-15", "17:00")).toEqual({ date: "2024-03-15", time: "20:00" });
-  });
-
-  it("cruza medianoche (ART >= 21:00): la fecha UTC avanza un día", () => {
-    expect(localDateTimeToUtc("2024-03-15", "22:00")).toEqual({ date: "2024-03-16", time: "01:00" });
-  });
-});
-
 describe("utcTimeToLocal", () => {
   it("es la inversa de localTimeToUtc", () => {
     expect(utcTimeToLocal("2024-03-15", "20:00")).toBe("17:00");
@@ -70,6 +59,10 @@ describe("formatEventDateRange", () => {
 
   it("termina en más de un día después: formato con fechas cortas", () => {
     expect(formatEventDateRange("2024-03-15", "23:00:00", "2024-03-17", "05:00:00")).toBe("20:00 15/3 – 02:00 17/3");
+  });
+
+  it("sin hora de fin (timeEnd null): solo la hora de inicio", () => {
+    expect(formatEventDateRange("2024-03-15", "01:00:00", "2024-03-15", null)).toBe("22:00");
   });
 
   it("dateEnd null/undefined: solo la hora de inicio, como fallback", () => {

@@ -13,7 +13,7 @@ import type {
   EventsByStatus,
   EventUpdateInput,
 } from "@/features/events/types";
-import { localDateTimeToUtc } from "@/lib/date-helpers";
+import { localTimeToUtc } from "@/lib/date-helpers";
 
 export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> {
   return apiGet<Event[]>("/api/events", {
@@ -29,38 +29,32 @@ export async function fetchEvents(filters: EventFiltersState): Promise<Event[]> 
 
 /**
  * `date`/`time`/`time_end`/`date_end` en el payload vienen en hora
- * argentina (lo que tipeó el usuario en el formulario). La API guarda
- * `time`/`time_end` en UTC — esta es la única conversión antes de
- * mandarlos, para que quede consistente con `formatEventTime` (que asume
- * que lo que devuelve la API ya es UTC).
+ * argentina (lo que eligió el usuario en el formulario). Contrato del
+ * backend (`app/core/timezone.py`): `date`/`date_end` son el DÍA DE NEGOCIO
+ * en Argentina y viajan tal cual; solo `time`/`time_end` se convierten a
+ * UTC ("HH:mm").
  *
- * `date`/`date_end` representan el día de negocio en Argentina, pero el
- * backend los combina directamente con `time`/`time_end` como si ya
- * estuvieran en UTC (`datetime.combine(date_end, time_end,
- * tzinfo=timezone.utc)` en event_service.py) — así que acá tienen que
- * viajar ya ajustados a la fecha UTC real. Bug real reportado (Etapa
- * 10d): para horas ART >= 21:00 la conversión a UTC cruza medianoche
- * (Argentina es UTC-3 constante, sin horario de verano) y si `date`/
- * `date_end` no se corrigen quedan un día atrás de lo que corresponde
- * (ej. 28/08 22:00 ART -> se mandaba date_end=28/08 + time_end=01:00 UTC,
- * que combinados dan 28/08 01:00 UTC = 27/08 22:00 ART, anterior al
- * inicio). Cada límite (inicio/fin) se ajusta con su propia fecha de
- * referencia — `date` para `time`, `date_end` para `time_end` — no la
- * misma fecha para ambos, porque un evento de varios días puede tener
- * `date_end` distinto de `date`.
+ * Bug real de producción (ver a_revisar.md): el fix de la Etapa 10d
+ * mandaba `date`/`date_end` ajustados a la fecha UTC, así que un evento del
+ * sábado 17/10 a las 22:00 ART se guardaba como domingo 18/10 — y aparecía
+ * en el chip del día equivocado. El backend ya no combina fecha y hora como
+ * si ambas fueran UTC (`event_local_datetime`), así que no hace falta
+ * correr la fecha.
+ *
+ * `time_end` vacío (hora de fin opcional) viaja como `null`, para que una
+ * edición pueda quitar una hora de fin ya guardada.
  */
-function toUtcPayload<T extends { date?: string; time?: string; time_end?: string; date_end?: string }>(
-  input: T,
-): T {
+function toUtcPayload<
+  T extends { date?: string; time?: string; time_end?: string | null; date_end?: string },
+>(input: T): T {
   if (!input.date || !input.time) return input;
-  const start = localDateTimeToUtc(input.date, input.time);
-  const end =
-    input.time_end && input.date_end ? localDateTimeToUtc(input.date_end, input.time_end) : undefined;
+  const referenceEndDate = input.date_end || input.date;
   return {
     ...input,
-    date: start.date,
-    time: start.time,
-    ...(end ? { date_end: end.date, time_end: end.time } : {}),
+    time: localTimeToUtc(input.date, input.time),
+    ...("time_end" in input
+      ? { time_end: input.time_end ? localTimeToUtc(referenceEndDate, input.time_end) : null }
+      : {}),
   };
 }
 
@@ -129,5 +123,6 @@ export async function fetchAdminEvents(filters: AdminEventFilters): Promise<Admi
     date_from: filters.date_from,
     date_to: filters.date_to,
     organizer_id: filters.organizer_id,
+    include_deleted: filters.include_deleted ? "true" : undefined,
   });
 }

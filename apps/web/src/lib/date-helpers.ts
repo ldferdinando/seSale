@@ -27,33 +27,16 @@ export function toEventDateTimeISO(date: string, time: string): string {
  * UTC ("HH:mm"), lista para mandar a la API. `date` solo se usa como
  * referencia para el cálculo.
  *
- * OJO: para horas ART >= 21:00, sumar el offset (+3h) cruza medianoche UTC
- * — el "HH:mm" que devuelve esta función queda corresponde al día
- * siguiente, pero la función no lo dice. Si el resultado se va a mandar
- * junto con la fecha (como hace `toUtcPayload` en events-api.ts), usar
- * `localDateTimeToUtc` en su lugar, que devuelve la fecha UTC correcta.
+ * Para horas ART >= 21:00 la hora UTC resultante es de madrugada (ej. 22:00
+ * -> 01:00). Eso es correcto: la API guarda `date` como el día de negocio
+ * en Argentina (NO la fecha UTC) junto a la hora UTC, y arma el instante
+ * real con `event_local_datetime` (app/core/timezone.py). Nunca correr la
+ * fecha al día siguiente acá — ver a_revisar.md, "evento nocturno en el
+ * día equivocado".
  */
 export function localTimeToUtc(date: string, localTime: string): string {
-  return localDateTimeToUtc(date, localTime).time;
-}
-
-/**
- * Igual que `localTimeToUtc`, pero devuelve también la fecha UTC
- * correspondiente (no la fecha ART de referencia) — para horas ART >= 21:00
- * el resultado cae en el día siguiente (Argentina es UTC-3 todo el año, sin
- * horario de verano). Bug real reportado: `toUtcPayload` mandaba
- * `date`/`date_end` sin ajustar mientras que `time`/`time_end` sí cruzaban
- * medianoche al convertirse a UTC, produciendo pares fecha/hora
- * inconsistentes (ej. 28/08 22:00 ART -> se mandaba date_end=28/08 con
- * time_end=01:00 UTC, que en realidad es 29/08 01:00 UTC).
- */
-export function localDateTimeToUtc(date: string, localTime: string): { date: string; time: string } {
   const utcDate = fromZonedTime(`${date}T${localTime}`, ARGENTINA_TZ);
-  const zoned = toZonedTime(utcDate, "UTC");
-  return {
-    date: format(zoned, "yyyy-MM-dd", { timeZone: "UTC" }),
-    time: format(zoned, "HH:mm", { timeZone: "UTC" }),
-  };
+  return format(toZonedTime(utcDate, "UTC"), "HH:mm", { timeZone: "UTC" });
 }
 
 /**
@@ -80,8 +63,8 @@ export function argentinaTodayIso(): string {
  * `toEventDateTimeISO` — no duplica la conversión UTC → hora argentina.
  *
  * - `dateEnd` vacío (no debería pasar desde la Etapa 10b, el backend
- *   siempre lo completa con `date`; queda como fallback defensivo): solo
- *   la hora de inicio.
+ *   siempre lo completa con `date`; queda como fallback defensivo) o
+ *   `timeEnd` vacío (hora de fin opcional): solo la hora de inicio.
  * - `dateEnd === date`: "HH:mm – HH:mm".
  * - `dateEnd === date + 1 día`: "HH:mm – HH:mm +1" — el "+1" es texto
  *   plano acá; el estilo diferenciado (tamaño/color) se aplica en el
@@ -93,11 +76,12 @@ export function formatEventDateRange(
   date: string,
   timeStart: string,
   dateEnd: string | null | undefined,
-  timeEnd: string,
+  timeEnd: string | null | undefined,
 ): string {
   const start = formatEventTime(toEventDateTimeISO(date, timeStart));
 
-  if (!dateEnd) {
+  // Sin hora de fin (opcional desde la migración 0036): solo el inicio.
+  if (!dateEnd || !timeEnd) {
     return start;
   }
 

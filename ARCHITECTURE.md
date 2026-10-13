@@ -319,8 +319,9 @@ class Event(SQLModel, table=True):
     description: str | None = Field(default=None)
     date: date                                     # día de negocio en Argentina — no se convierte
     time: time                                     # hora inicio, en UTC
-    time_end: time                                 # hora fin, en UTC — OBLIGATORIO desde la Etapa 10a
-                                                    # (antes time | None).
+    time_end: time | None                          # hora fin, en UTC — OPCIONAL desde la migración 0036
+                                                    # (Etapa 10a la había hecho obligatoria). None = el
+                                                    # evento sigue vigente hasta el fin de su día de negocio.
     date_end: date | None                          # Etapa 10b — fecha de fin explícita. None = mismo
                                                     # día que `date` (retrocompatible con filas de antes
                                                     # de esta etapa) — nunca se lee crudo, siempre
@@ -339,7 +340,10 @@ class Event(SQLModel, table=True):
     plan: PlanType = Field(default=PlanType.gratis)
     is_featured: bool = Field(default=False)       # admin puede marcar manualmente
     featured_until: datetime | None = Field(default=None)  # vencimiento del plan pago
-    is_active: bool = Field(default=True)
+    is_active: bool = Field(default=True)          # False = "Dar de baja" (reversible) o eliminado
+    deleted_at: datetime | None = Field(default=None)  # migración 0036 — borrado lógico real: no se
+                                                    # lista, no se edita, no se reelimina (404). La fila
+                                                    # se conserva por las suscripciones/pagos asociados.
     available_on_site: bool = Field(default=False)  # "habrá lugar en la puerta" (Etapa 4)
 
     # Entradas
@@ -441,9 +445,21 @@ class EventMoment(SQLModel, table=True):
 seSALE opera en horario Argentina (`America/Argentina/Buenos_Aires`,
 UTC-3, sin horario de verano). Convención:
 
-- **`Event.date` nunca se convierte.** Representa el día de negocio en
-  Argentina (para qué día es el evento) — se manda, guarda y filtra tal
-  cual, tanto en el frontend como en el backend.
+- **`Event.date`/`Event.date_end` nunca se convierten.** Representan el día
+  de negocio en Argentina (para qué día es el evento) — se mandan, guardan y
+  filtran tal cual, tanto en el frontend como en el backend. Nunca mandar la
+  fecha UTC: entre las 21:00 y las 23:59 ART es el día siguiente (bug real
+  de producción, migración 0036 — ver a_revisar.md).
+- **Nunca combinar `date` + `time` como si fueran del mismo huso.** El par
+  es (día ART, hora UTC); el instante real se arma con
+  `event_local_datetime()` / `event_end_datetime()` de
+  `app/core/timezone.py` (visibilidad, validación inicio/fin). Para ordenar
+  dentro de un día se usa la hora local (`_LOCAL_TIME_RANK` en
+  `event_service.py`, `sortEventsForAgenda` en el frontend).
+- **Criterio de día de un evento que cruza medianoche:** pertenece a su día
+  de INICIO (`Event.date`) para los filtros por fecha (chips Hoy/Mañana/
+  Finde…). Mientras no termine sigue visible en el listado sin filtro de
+  fecha.
 - **`Event.time`/`Event.time_end` se guardan en UTC.** El frontend
   convierte la hora que tipea el usuario (hora Argentina) a UTC recién al
   mandar el payload (`toUtcPayload` en `events-api.ts`, usando

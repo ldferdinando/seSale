@@ -96,3 +96,51 @@ async def test_delete_event_without_token_returns_401(client: AsyncClient):
     response = await client.delete(f"/api/events/{uuid4()}")
 
     assert response.status_code == 401
+
+
+async def test_delete_event_twice_returns_404_second_time(
+    client: AsyncClient,
+    session: Session,
+    organizer: User,
+    location: Location,
+    city: City,
+    user_token_headers: dict[str, str],
+):
+    """Un evento ya eliminado no se puede volver a eliminar (migración 0036)."""
+    event = _make_event(session, organizer=organizer, location=location, city=city)
+
+    first = await client.delete(f"/api/events/{event.id}", headers=user_token_headers)
+    second = await client.delete(f"/api/events/{event.id}", headers=user_token_headers)
+
+    assert first.status_code == 204
+    assert second.status_code == 404
+    session.refresh(event)
+    assert event.deleted_at is not None
+
+
+async def test_deleted_event_disappears_from_admin_list_and_mine(
+    client: AsyncClient,
+    session: Session,
+    organizer: User,
+    location: Location,
+    city: City,
+    admin_token_headers: dict[str, str],
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, organizer=organizer, location=location, city=city)
+
+    response = await client.delete(f"/api/events/{event.id}", headers=admin_token_headers)
+    assert response.status_code == 204
+
+    admin_list = await client.get("/api/admin/events", headers=admin_token_headers)
+    assert all(item["id"] != str(event.id) for item in admin_list.json())
+
+    with_deleted = await client.get("/api/admin/events?include_deleted=true", headers=admin_token_headers)
+    deleted_item = next(item for item in with_deleted.json() if item["id"] == str(event.id))
+    assert deleted_item["deleted_at"] is not None
+
+    mine = await client.get("/api/events/mine", headers=user_token_headers)
+    assert all(item["id"] != str(event.id) for group in mine.json().values() for item in group)
+
+    detail = await client.get(f"/api/events/{event.id}", headers=user_token_headers)
+    assert detail.status_code == 404

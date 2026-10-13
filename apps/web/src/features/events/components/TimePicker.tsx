@@ -18,6 +18,10 @@ interface TimePickerProps {
  * `<input type="time">`, cuyo AM/PM depende del locale del sistema
  * operativo y no se puede forzar desde la app. `value`/`onChange` usan
  * "HH:mm".
+ *
+ * `value=""` (no `undefined`) cuando no hay hora: Radix Select pasa a modo
+ * no controlado con `undefined` y seguía mostrando la última hora elegida
+ * después de borrarla ("Sin hora de fin" en EventForm).
  */
 export function TimePicker({ id, label, value, onChange }: TimePickerProps) {
   const [hour, minute] = value ? value.split(":") : ["", ""];
@@ -32,7 +36,7 @@ export function TimePicker({ id, label, value, onChange }: TimePickerProps) {
 
   return (
     <div id={id} className="flex items-center gap-1.5">
-      <Select value={hour || undefined} onValueChange={setHour}>
+      <Select value={hour || ""} onValueChange={setHour}>
         <SelectTrigger className="w-[4.5rem]" aria-label={`${label} — hora`}>
           <SelectValue placeholder="HH" />
         </SelectTrigger>
@@ -47,7 +51,7 @@ export function TimePicker({ id, label, value, onChange }: TimePickerProps) {
       <span className="text-sm font-bold text-ink-3" aria-hidden>
         :
       </span>
-      <Select value={minute || undefined} onValueChange={setMinute}>
+      <Select value={minute || ""} onValueChange={setMinute}>
         <SelectTrigger className="w-[4.5rem]" aria-label={`${label} — minutos`}>
           <SelectValue placeholder="mm" />
         </SelectTrigger>

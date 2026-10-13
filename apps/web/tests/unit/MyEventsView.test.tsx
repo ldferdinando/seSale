@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -64,6 +64,59 @@ describe("MyEventsView", () => {
     await user.click(screen.getByRole("tab", { name: "Aprobados" }));
 
     expect(await screen.findByText("No tenés eventos en este estado.")).toBeInTheDocument();
+  });
+
+  it("el organizador puede eliminar su evento con confirmación y desaparece del listado", async () => {
+    mockLoggedIn();
+    let deleted = false;
+    let deletedId: string | null = null;
+    server.use(
+      http.get(`${API_URL}/api/events/mine`, () =>
+        HttpResponse.json({
+          pending: deleted ? [] : [makeEvent({ id: "evt-1", status: "pending" })],
+          approved: [],
+          rejected: [],
+        }),
+      ),
+      http.delete(`${API_URL}/api/events/:id`, ({ params }) => {
+        deletedId = String(params.id);
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar Noche de Rock Nacional" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("¿Seguro que querés eliminar este evento?");
+    expect(dialog).toHaveTextContent("Esta acción no se puede deshacer");
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+
+    expect(await screen.findByText("El evento fue eliminado.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Noche de Rock Nacional")).not.toBeInTheDocument());
+    expect(deletedId).toBe("evt-1");
+  });
+
+  it("cancelar el diálogo no elimina el evento", async () => {
+    mockLoggedIn();
+    let deleteCalls = 0;
+    server.use(
+      http.delete(`${API_URL}/api/events/:id`, () => {
+        deleteCalls += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar Noche de Rock Nacional" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("Noche de Rock Nacional")).toBeInTheDocument();
+    expect(deleteCalls).toBe(0);
   });
 
   it("shows an error state when the request fails", async () => {

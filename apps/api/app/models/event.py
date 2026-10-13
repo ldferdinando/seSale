@@ -61,9 +61,11 @@ class Event(SQLModel, table=True):
     description: str | None = Field(default=None)
     date: date
     time: time
-    # Etapa 10a: obligatorio. Migración 0018 backfillea las filas viejas
-    # (time_start + 2h, o 23:59 si eso cruza medianoche) antes del NOT NULL.
-    time_end: time = Field()
+    # Etapa 10a lo hizo obligatorio; migración 0036 lo vuelve opcional
+    # (hay eventos sin hora de fin definida). None = el evento se considera
+    # vigente hasta el fin de su día de negocio (ver
+    # app.core.timezone.event_end_datetime).
+    time_end: time | None = Field(default=None)
     # Etapa 10b: fecha de fin — None = mismo día que `date` (retrocompatible,
     # todas las filas anteriores a esta etapa quedan con date_end=None). El
     # backend siempre lo trata como `date_end or date` (nunca None a mano);
@@ -82,6 +84,14 @@ class Event(SQLModel, table=True):
     featured_until: datetime | None = Field(default=None)
     is_active: bool = Field(default=True)
     available_on_site: bool = Field(default=False)
+    # Migración 0036 — borrado lógico real. Antes "Eliminar" solo ponía
+    # is_active=False, que es el mismo flag que usa "Dar de baja" (Etapa
+    # 10b-2, reversible por el organizador): un evento eliminado no se
+    # distinguía de uno pausado y seguía en los listados. Un evento con
+    # deleted_at no vuelve: no se lista (salvo admin con include_deleted),
+    # no se edita y no se puede volver a eliminar. La fila se conserva para
+    # no perder el rastro de suscripciones/pagos asociados.
+    deleted_at: datetime | None = Field(default=None)
 
     # Entradas
     ticket_type: TicketType = Field(default=TicketType.gratis)

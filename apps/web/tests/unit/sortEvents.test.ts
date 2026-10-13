@@ -32,6 +32,15 @@ describe("sortEventsForAgenda", () => {
     expect(sorted.map((e) => e.id)).toEqual(["pro", "dest", "gratis"]);
   });
 
+  it("compares start times in Argentina time, not raw UTC (22:00 ART = 01:00 UTC goes last)", () => {
+    const sorted = sortEventsForAgenda([
+      row("22hs-art", "2026-10-17", "01:00:00", "gratis"),
+      row("20hs-art", "2026-10-17", "23:00:00", "gratis"),
+    ]);
+
+    expect(sorted.map((e) => e.id)).toEqual(["20hs-art", "22hs-art"]);
+  });
+
   it("within the same day and plan orders by start time", () => {
     const sorted = sortEventsForAgenda([
       row("dest-22", "2026-10-05", "22:00:00", "dest"),

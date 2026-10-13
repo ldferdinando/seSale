@@ -50,7 +50,7 @@ export interface Event {
   description: string | null;
   date: string;
   time: string;
-  time_end: string; // Etapa 10a — obligatorio, ya no nullable
+  time_end: string | null; // Opcional desde la migración 0036 del backend
   date_end: string; // Etapa 10b — obligatorio, el backend lo completa con `date` si no viene
   categories: string[];
   status: EventStatus;
@@ -133,7 +133,7 @@ export interface EventCreateInput {
   description?: string;
   date: string;
   time: string;
-  time_end: string; // Etapa 10a — obligatorio, ya no opcional
+  time_end?: string | null; // Opcional — vacío/null = sin hora de fin
   date_end: string; // Etapa 10b — obligatorio
   categories: string[];
   /** Ciudad del evento — Etapa 7a. Sin ella, el backend usa la ciudad del organizador. */
@@ -181,6 +181,8 @@ export interface EventsByStatus {
 export interface AdminEvent extends Event {
   organizer_public_name: string;
   // is_active ya viene de Event desde la Etapa 10b-2 (antes era exclusivo de acá).
+  /** Borrado lógico (migración 0036) — solo llega con `include_deleted`. */
+  deleted_at: string | null;
   organizer_subscription: OrganizerSubscriptionStatus | null;
 }
 
@@ -193,6 +195,8 @@ export interface AdminEventFilters {
   date_from?: string;
   date_to?: string;
   organizer_id?: string;
+  /** Mostrar también los eventos eliminados (por defecto se ocultan). */
+  include_deleted?: boolean;
 }
 
 export const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [

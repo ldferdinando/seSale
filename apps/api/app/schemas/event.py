@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.core.timezone import argentina_today
+from app.core.timezone import argentina_today, event_local_datetime
 from app.models.event import EventStatus, TicketType
 from app.models.plan import PlanType
 from app.schemas.location import LocationCreate
@@ -31,11 +31,22 @@ def _validate_categories(value: list[str]) -> list[str]:
 # "cruza medianoche" inferido de forma implícita con time_end < time_start).
 # Ahora que `date_end` es un campo explícito, la validación es directa:
 # el evento tiene que terminar estrictamente después de que empieza.
+#
+# `date`/`date_end` son días de negocio en Argentina y `time`/`time_end`
+# horas UTC: se comparan instantes reales armados con
+# `event_local_datetime`, nunca `datetime.combine(date, time)` directo (eso
+# rechazaba, por ejemplo, 20:00–22:00 ART del mismo día: 23:00 UTC vs 01:00
+# UTC "del mismo día"). Sin hora de fin (opcional desde la migración 0036)
+# solo se exige que la fecha de fin no sea anterior a la de inicio.
 
 
-def _validate_event_span(date_start: date, time_start: time, date_end: date, time_end: time) -> None:
-    start = datetime.combine(date_start, time_start)
-    end = datetime.combine(date_end, time_end)
+def _validate_event_span(date_start: date, time_start: time, date_end: date, time_end: time | None) -> None:
+    if time_end is None:
+        if date_end < date_start:
+            raise ValueError("La fecha de fin no puede ser anterior a la de inicio.")
+        return
+    start = event_local_datetime(date_start, time_start)
+    end = event_local_datetime(date_end, time_end)
     if end <= start:
         raise ValueError("La fecha y hora de fin debe ser posterior al inicio.")
 
@@ -90,7 +101,7 @@ class EventRead(BaseModel):
     description: str | None
     date: date
     time: time
-    time_end: time  # Etapa 10a — obligatorio, ya no Optional
+    time_end: time | None  # Opcional desde la migración 0036
     date_end: date  # Etapa 10b — siempre se devuelve, ver _default_date_end
     categories: list[str]
     status: EventStatus
@@ -186,6 +197,8 @@ class AdminEventRead(EventRead):
     organizer_public_name: str
     # is_active ya viene de EventRead desde la Etapa 10b-2 (antes era
     # exclusivo de este schema).
+    # Migración 0036 — solo el admin ve eventos eliminados (include_deleted).
+    deleted_at: datetime | None = None
     # Estado de pago más reciente del organizador — Etapa 6b-1, para decidir
     # si aprobar el evento sabiendo si ya avisó/confirmó el pago del plan.
     organizer_subscription: OrganizerSubscriptionRead | None = None
@@ -196,7 +209,7 @@ class EventCreate(BaseModel):
     description: str | None = None
     date: date
     time: time
-    time_end: time  # Etapa 10a — obligatorio, sin default
+    time_end: time | None = None  # Opcional desde la migración 0036
     # Etapa 10b: opcional — si no viene, el backend lo completa con `date`
     # (mismo día), ver el validator de abajo.
     date_end: date | None = None
@@ -350,10 +363,10 @@ class EventUpdate(BaseModel):
         # `time` y `time_end` juntos — si trae uno solo, el otro valor
         # vigente vive en el evento ya guardado (no acá), y no es
         # responsabilidad de este schema ir a buscarlo a la DB.
+        # `time_end=None` explícito = se quita la hora de fin (opcional
+        # desde la migración 0036).
         fields = self.model_fields_set
-        if "time" not in fields or "time_end" not in fields:
-            return self
-        if self.time is None or self.time_end is None:
+        if "time" not in fields or "time_end" not in fields or self.time is None:
             return self
 
         date_start = self.date if "date" in fields and self.date is not None else None
@@ -361,7 +374,7 @@ class EventUpdate(BaseModel):
             # No hay forma de saber la fecha vigente del evento acá (vive
             # en la DB) — como mínimo, no permitir que la hora de fin sea
             # exactamente igual a la de inicio.
-            if self.time_end == self.time:
+            if self.time_end is not None and self.time_end == self.time:
                 raise ValueError("La fecha y hora de fin debe ser posterior al inicio.")
             return self
 

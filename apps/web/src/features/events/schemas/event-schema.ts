@@ -16,10 +16,10 @@ export const eventFormSchema = z
       message: "La fecha no puede estar en el pasado",
     }),
     time: z.string().min(1, "La hora es obligatoria"),
-    // Etapa 10a: obligatorio (antes era opcional). La coherencia con
-    // `time`/`date`/`date_end` se valida en los `.refine` de más abajo —
-    // acá solo se exige que venga cargado.
-    time_end: z.string().min(1, "La hora de fin es requerida"),
+    // Opcional (migración 0036 del backend): hay eventos sin hora de fin
+    // definida de antemano. Si viene, la coherencia con `time`/`date`/
+    // `date_end` se valida en los `.refine` de más abajo.
+    time_end: z.string().optional().or(z.literal("")),
     // Etapa 10b: fecha de fin — obligatoria, con default automático
     // (EventForm.tsx la completa sola cuando se elige la hora de inicio).
     date_end: z.string().min(1, "La fecha de fin es obligatoria"),

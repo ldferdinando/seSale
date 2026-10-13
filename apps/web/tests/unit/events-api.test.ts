@@ -30,11 +30,13 @@ async function capturePayload(input: EventCreateInput): Promise<Record<string, u
   return captured;
 }
 
-// Bug real reportado (Etapa 10d): 28/08 20:00 a 22:00 ART mandaba
-// time_end="01:00" con date_end="2026-08-28" sin ajustar, que combinados
-// en el backend dan un instante ANTERIOR al inicio del evento.
+// Bug real de producción (ver a_revisar.md): desde la Etapa 10d el
+// payload mandaba `date`/`date_end` corridos a la fecha UTC, así que un
+// evento del sábado 17/10 a las 22:00 ART quedaba guardado como domingo
+// 18/10. Contrato del backend: `date`/`date_end` = día de negocio ART (sin
+// tocar), `time`/`time_end` = hora UTC.
 describe("createEvent — conversión ART -> UTC (toUtcPayload)", () => {
-  it("no cruza medianoche: date/date_end quedan igual, solo cambia la hora (+3h)", async () => {
+  it("convierte solo las horas (+3h); las fechas viajan como día argentino", async () => {
     const payload = await capturePayload({ ...BASE_INPUT, time_end: "20:30" });
     expect(payload.date).toBe("2026-08-28");
     expect(payload.time).toBe("23:00");
@@ -42,43 +44,42 @@ describe("createEvent — conversión ART -> UTC (toUtcPayload)", () => {
     expect(payload.time_end).toBe("23:30");
   });
 
-  it("caso reportado (bug real): 20:00 a 22:00 ART el 28/08 -> date_end avanza al 29/08", async () => {
-    const payload = await capturePayload(BASE_INPUT);
-    expect(payload.date).toBe("2026-08-28");
-    expect(payload.time).toBe("23:00");
-    expect(payload.date_end).toBe("2026-08-29");
-    expect(payload.time_end).toBe("01:00");
-  });
-
-  it("time_end ART >= 21:00 cruza medianoche UTC: date_end avanza un día", async () => {
-    const payload = await capturePayload({ ...BASE_INPUT, time_end: "22:30" });
-    expect(payload.date_end).toBe("2026-08-29");
-    expect(payload.time_end).toBe("01:30");
-  });
-
-  it("time (inicio) ART >= 21:00 también cruza medianoche UTC: date avanza un día", async () => {
+  it("caso reportado: sábado 17/10 22:00 a 23:55 ART se manda como sábado, no domingo", async () => {
     const payload = await capturePayload({
       ...BASE_INPUT,
+      date: "2026-10-17",
       time: "22:00",
-      time_end: "23:30",
+      date_end: "2026-10-17",
+      time_end: "23:55",
     });
-    expect(payload.date).toBe("2026-08-29");
+    expect(payload.date).toBe("2026-10-17");
     expect(payload.time).toBe("01:00");
-    expect(payload.date_end).toBe("2026-08-29");
-    expect(payload.time_end).toBe("02:30");
+    expect(payload.date_end).toBe("2026-10-17");
+    expect(payload.time_end).toBe("02:55");
   });
 
-  it("evento de varios días: date_end distinto de date se respeta como referencia de time_end", async () => {
+  it("20:00 a 22:00 ART: date_end no avanza aunque la hora UTC sea de madrugada", async () => {
+    const payload = await capturePayload(BASE_INPUT);
+    expect(payload.date_end).toBe("2026-08-28");
+    expect(payload.time_end).toBe("01:00");
+  });
+
+  it("evento que cruza medianoche: date_end es el día argentino elegido", async () => {
     const payload = await capturePayload({
       ...BASE_INPUT,
-      date: "2026-08-28",
-      time: "20:00",
-      date_end: "2026-08-30",
-      time_end: "22:00",
+      time: "23:00",
+      date_end: "2026-08-29",
+      time_end: "02:00",
     });
     expect(payload.date).toBe("2026-08-28");
-    expect(payload.time).toBe("23:00");
-    expect(payload.date_end).toBe("2026-08-31");
-    expect(payload.time_end).toBe("01:00");
+    expect(payload.time).toBe("02:00");
+    expect(payload.date_end).toBe("2026-08-29");
+    expect(payload.time_end).toBe("05:00");
+  });
+
+  it("sin hora de fin: time_end viaja como null", async () => {
+    const payload = await capturePayload({ ...BASE_INPUT, time_end: "" });
+    expect(payload.time_end).toBeNull();
+    expect(payload.date_end).toBe("2026-08-28");
   });
 });
