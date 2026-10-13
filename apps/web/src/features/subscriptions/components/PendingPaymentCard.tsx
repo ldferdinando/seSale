@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCheckout } from "@/features/plans/hooks/useCheckout";
 import { usePlans } from "@/features/plans/hooks/usePlans";
+import { closeCheckoutWindow, goToCheckout, openCheckoutWindow } from "@/features/plans/lib/checkout-window";
 import { useReportPaymentProblem } from "@/features/subscriptions/hooks/useReportPaymentProblem";
 import type { Subscription } from "@/features/subscriptions/types";
 import { ApiError } from "@/lib/api-client";
@@ -60,6 +61,7 @@ export function PendingPaymentCard({ subscription }: PendingPaymentCardProps) {
   const reportProblem = useReportPaymentProblem();
   const [showProblemForm, setShowProblemForm] = useState(false);
   const [note, setNote] = useState("");
+  const [openedInNewTab, setOpenedInNewTab] = useState(false);
 
   const eventId = subscription.event_id ?? "";
   const plan = plans?.find((p) => p.id === subscription.plan_id);
@@ -76,12 +78,16 @@ export function PendingPaymentCard({ subscription }: PendingPaymentCardProps) {
         : null;
 
   function handleContinuePayment() {
+    const checkoutWindow = openCheckoutWindow();
+    setOpenedInNewTab(false);
     checkout.mutate(
       { planId: subscription.plan_id, eventId },
       {
         onSuccess: (response) => {
-          window.location.href = response.init_point;
+          goToCheckout(checkoutWindow, response.init_point);
+          setOpenedInNewTab(Boolean(checkoutWindow));
         },
+        onError: () => closeCheckoutWindow(checkoutWindow),
       },
     );
   }
@@ -136,6 +142,12 @@ export function PendingPaymentCard({ subscription }: PendingPaymentCardProps) {
           </Button>
         )}
       </div>
+
+      {openedInNewTab && (
+        <p role="status" className="text-xs text-ink-3">
+          Abrimos MercadoPago en una pestaña nueva. Cuando termines el pago, volvé a esta pestaña.
+        </p>
+      )}
 
       {checkoutError && (
         <p role="alert" className="text-sm text-destructive">

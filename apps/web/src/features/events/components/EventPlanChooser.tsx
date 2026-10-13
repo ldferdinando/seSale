@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCheckout } from "@/features/plans/hooks/useCheckout";
 import { usePlans } from "@/features/plans/hooks/usePlans";
+import { closeCheckoutWindow, goToCheckout, openCheckoutWindow } from "@/features/plans/lib/checkout-window";
 import { formatPlanPrice } from "@/features/plans/lib/plan-price";
 import type { Plan } from "@/features/plans/types";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
@@ -66,11 +67,16 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
   async function handleContratarMercadoPago(planId: string) {
     setError(null);
     setPendingAction(`mp-${planId}`);
+    const checkoutWindow = openCheckoutWindow();
     try {
       const event = await ensureEventCreated();
       const { init_point } = await checkout.mutateAsync({ planId, eventId: event.id });
-      window.location.href = init_point;
+      goToCheckout(checkoutWindow, init_point);
+      // MP quedó en otra pestaña: esta va a Mis eventos, donde el pago
+      // pendiente aparece con "Continuar pago" si cierra MP sin terminar.
+      if (checkoutWindow) onPublished(event);
     } catch (err) {
+      closeCheckoutWindow(checkoutWindow);
       setError(err instanceof ApiError ? err.message : "No pudimos iniciar el pago.");
       setPendingAction(null);
     }

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PendingPaymentCard, selectResumablePayments } from "@/features/subscriptions/components/PendingPaymentCard";
 import type { Subscription } from "@/features/subscriptions/types";
@@ -51,6 +51,37 @@ describe("PendingPaymentCard", () => {
     });
 
     window.location = originalLocation;
+  });
+
+  it("abre MercadoPago en una pestaña nueva y avisa en esta", async () => {
+    const fakeWindow = { location: { href: "" }, closed: false, close: vi.fn(), opener: window };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow as unknown as Window);
+
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: "Continuar pago con MercadoPago" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Abrimos MercadoPago en una pestaña nueva");
+    expect(fakeWindow.location.href).toBe("https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123");
+
+    openSpy.mockRestore();
+  });
+
+  it("cierra la pestaña en blanco si el checkout falla", async () => {
+    server.use(
+      http.post(`${API_URL}/api/subscriptions/checkout`, () => HttpResponse.json({ detail: "x" }, { status: 502 })),
+    );
+    const fakeWindow = { location: { href: "" }, closed: false, close: vi.fn(), opener: window };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow as unknown as Window);
+
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: "Continuar pago con MercadoPago" }));
+
+    await screen.findByRole("alert");
+    expect(fakeWindow.close).toHaveBeenCalled();
+
+    openSpy.mockRestore();
   });
 
   it("muestra el mensaje del backend si el checkout choca con un aviso de transferencia (409)", async () => {

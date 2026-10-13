@@ -146,4 +146,18 @@ describe("EventSummaryView", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Organizador no encontrado"));
   });
+
+  it("con MercadoPago en pestaña nueva, esta pestaña sigue como publicado (va a Mis eventos)", async () => {
+    const fakeWindow = { location: { href: "" }, closed: false, close: vi.fn(), opener: window };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow as unknown as Window);
+
+    const user = userEvent.setup();
+    const { onPublished } = renderSummary();
+    await user.click((await screen.findAllByRole("button", { name: "Pagar con MercadoPago" }))[0]);
+
+    await waitFor(() => expect(onPublished).toHaveBeenCalled());
+    expect(fakeWindow.location.href).toBe("https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123");
+
+    openSpy.mockRestore();
+  });
 });

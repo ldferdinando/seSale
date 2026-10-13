@@ -8,8 +8,11 @@ import PlanesPage from "@/app/planes/page";
 
 const EVENT_ID = "11111111-1111-1111-1111-111111111111";
 
+const pushMock = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useSearchParams: vi.fn(),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 function renderWithClient() {
@@ -78,5 +81,25 @@ describe("PlanesPage", () => {
     );
 
     window.location = originalLocation;
+  });
+
+  it("abre MercadoPago en una pestaña nueva y lleva esta pestaña a Mis eventos", async () => {
+    const fakeWindow = { location: { href: "" }, closed: false, close: vi.fn(), opener: window };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow as unknown as Window);
+    pushMock.mockClear();
+
+    const user = userEvent.setup();
+    renderWithClient();
+    const contratarButtons = await screen.findAllByRole("button", { name: /Contratar/i });
+    await user.click(contratarButtons[0]);
+
+    await waitFor(() =>
+      expect(fakeWindow.location.href).toBe("https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123"),
+    );
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    expect(fakeWindow.opener).toBeNull();
+    expect(pushMock).toHaveBeenCalledWith("/mis-eventos");
+
+    openSpy.mockRestore();
   });
 });
