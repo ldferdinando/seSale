@@ -96,7 +96,7 @@ describe("EventSummaryView", () => {
     expect(capturedBody!.plan).toBe("gratis");
   });
 
-  it("'Contratar Destacado' muestra las opciones de pago (MercadoPago y transferencia)", async () => {
+  it("'Pagar con MercadoPago' (Destacado) muestra las opciones de pago (MercadoPago y transferencia)", async () => {
     const originalLocation = window.location;
     // @ts-expect-error jsdom no permite navegación real; reemplazamos el objeto por uno espiable
     delete window.location;
@@ -105,7 +105,7 @@ describe("EventSummaryView", () => {
     const user = userEvent.setup();
     renderSummary();
 
-    await user.click(await screen.findByRole("button", { name: "Contratar Destacado" }));
+    await user.click((await screen.findAllByRole("button", { name: "Pagar con MercadoPago" }))[0]);
 
     await waitFor(() =>
       expect(window.location.href).toBe("https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-123"),

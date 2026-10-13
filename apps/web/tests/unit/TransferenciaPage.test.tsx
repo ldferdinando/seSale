@@ -94,4 +94,23 @@ describe("TransferenciaPage", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("No pudimos registrar tu aviso"));
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("muestra el mensaje del backend si ya hay un aviso de transferencia en revisión (409)", async () => {
+    server.use(
+      http.post(`${API_URL}/api/subscriptions/transfer`, () =>
+        HttpResponse.json(
+          { detail: "Ya avisaste una transferencia para este evento y la estamos revisando." },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("Destacado");
+    await user.click(screen.getByRole("button", { name: "Avisar que ya hice una transferencia" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Ya avisaste una transferencia"));
+    expect(pushMock).not.toHaveBeenCalled();
+  });
 });

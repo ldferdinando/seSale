@@ -13,12 +13,12 @@ export default function PagoFallidoPage() {
       <h1 className="text-2xl font-black tracking-tight">El pago no pudo procesarse</h1>
       <p className="text-sm text-ink-4">
         No pudimos completar tu pago. Puede haber sido rechazado por tu medio de pago o cancelado durante el
-        proceso. Podés intentarlo de nuevo cuando quieras.
+        proceso. Desde Mis eventos podés retomar el pago, pasarte a transferencia o avisarnos si tuviste un problema.
       </p>
 
       <div className="flex w-full flex-col gap-2">
         <Button asChild className="h-12 w-full rounded-xl text-base">
-          <Link href="/planes">Intentar nuevamente</Link>
+          <Link href="/mis-eventos">Intentar nuevamente</Link>
         </Button>
         <Button asChild variant="outline" className="h-12 w-full rounded-xl text-base">
           <a href={sesaleWhatsappHref("Hola! Tuve un problema pagando un plan en seSALE.")} target="_blank" rel="noreferrer">

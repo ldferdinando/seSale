@@ -63,4 +63,20 @@ describe("MySubscriptionsSection", () => {
     expect(await screen.findByText("Destacado")).toBeInTheDocument();
     expect(screen.queryByText(/está siendo revisado/)).not.toBeInTheDocument();
   });
+
+  it("avisa de un pago de MercadoPago sin completar y linkea a Mis eventos", async () => {
+    server.use(
+      http.get(`${API_URL}/api/subscriptions/me`, () =>
+        HttpResponse.json([makeSubscription({ status: "pending_payment" })]),
+      ),
+    );
+
+    renderWithClient();
+
+    expect(
+      await screen.findByText('Tu pago con MercadoPago para "Noche de Rock Nacional" quedó sin completar.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Retomar el pago en Mis eventos/ })).toHaveAttribute("href", "/mis-eventos");
+    expect(screen.queryByText("No tenés un plan activo todavía.")).not.toBeInTheDocument();
+  });
 });

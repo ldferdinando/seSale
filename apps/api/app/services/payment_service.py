@@ -158,11 +158,62 @@ def _get_event_for_plan_purchase(session: Session, *, event_id: UUID, user: User
     return event
 
 
+class OpenSubscriptionConflictError(ValueError):
+    """El evento ya tiene un aviso de transferencia esperando revisión: no se
+    puede iniciar otro pago (ni MP ni transferencia) hasta que el admin lo
+    resuelva. El router lo traduce en 409."""
+
+
+TRANSFER_UNDER_REVIEW_MESSAGE = (
+    "Ya avisaste una transferencia para este evento y la estamos revisando. "
+    "Si tenés algún problema, escribinos."
+)
+
+
+def _open_event_subscriptions(
+    session: Session, *, event_id: UUID, status: SubscriptionStatus
+) -> list[Subscription]:
+    """Subscriptions del evento en `status`, de la más nueva a la más vieja."""
+    stmt = (
+        select(Subscription)
+        .where(Subscription.event_id == event_id)
+        .where(Subscription.status == status)
+        .order_by(Subscription.created_at.desc())
+    )
+    return list(session.exec(stmt).all())
+
+
+def _ensure_no_transfer_under_review(session: Session, *, event_id: UUID) -> None:
+    if _open_event_subscriptions(session, event_id=event_id, status=SubscriptionStatus.pending_approval):
+        raise OpenSubscriptionConflictError(TRANSFER_UNDER_REVIEW_MESSAGE)
+
+
+def _take_pending_payment_subscription(session: Session, *, event_id: UUID) -> Subscription | None:
+    """Una sola Subscription pending_payment por evento: devuelve la más nueva
+    (para reusarla) y cancela las demás — quedan de antes de este fix, cuando
+    cada intento de checkout creaba una fila nueva.
+    """
+    pending = _open_event_subscriptions(session, event_id=event_id, status=SubscriptionStatus.pending_payment)
+    if not pending:
+        return None
+    for stale in pending[1:]:
+        stale.status = SubscriptionStatus.cancelled
+        session.add(stale)
+    return pending[0]
+
+
 def create_checkout_preference(
     session: Session, *, user: User, plan_id: UUID, event_id: UUID
 ) -> tuple[Subscription, str]:
     """Crea la preferencia de pago en MercadoPago y una Subscription pending_payment
     para destacar `event_id`.
+
+    Si el evento ya tiene una pending_payment (checkout abandonado: el
+    organizador cerró la ventana de MP), NO crea otra: genera una preferencia
+    nueva y la reusa, actualizando plan/precio al vigente. La preferencia
+    vieja no se reutiliza (no guardamos su init_point y el precio pudo
+    cambiar) — ver a_revisar.md. Si el evento tiene un aviso de transferencia
+    en revisión, rechaza con OpenSubscriptionConflictError.
 
     Devuelve (subscription, init_point).
     """
@@ -182,6 +233,7 @@ def create_checkout_preference(
         raise ValueError("El pago con MercadoPago no está disponible por ahora — usá la opción de transferencia")
 
     event = _get_event_for_plan_purchase(session, event_id=event_id, user=user)
+    _ensure_no_transfer_under_review(session, event_id=event.id)
 
     price = get_current_plan_price(session, plan_id)
     if price is None:
@@ -223,18 +275,24 @@ def create_checkout_preference(
     init_point = response["init_point"]
 
     now = datetime.now(timezone.utc)
-    subscription = Subscription(
-        user_id=user.id,
-        plan_id=plan.id,
-        plan_price_id=price.id,
-        event_id=event.id,
-        status=SubscriptionStatus.pending_payment,
-        starts_at=now,
-        expires_at=now,
-        mp_payment_id=preference_id,
-        amount_paid=price.amount,
-        currency=price.currency,
-    )
+    subscription = _take_pending_payment_subscription(session, event_id=event.id)
+    if subscription is None:
+        subscription = Subscription(
+            user_id=user.id,
+            event_id=event.id,
+            status=SubscriptionStatus.pending_payment,
+        )
+    # user_id también se pisa: external_reference lleva el id de quien paga y
+    # el webhook (_find_pending_subscription) busca por él.
+    subscription.user_id = user.id
+    subscription.plan_id = plan.id
+    subscription.plan_price_id = price.id
+    subscription.payment_method = "mercadopago"
+    subscription.starts_at = now
+    subscription.expires_at = now
+    subscription.mp_payment_id = preference_id
+    subscription.amount_paid = price.amount
+    subscription.currency = price.currency
     session.add(subscription)
     session.commit()
     session.refresh(subscription)
@@ -452,6 +510,11 @@ def create_transfer_subscription(
     El admin la revisa y aprueba/rechaza desde el panel (`review_subscription`).
     El comprobante en sí se manda por fuera del sistema (WhatsApp/mail) — ver
     a_revisar.md, Etapa 6b-1.
+
+    Sin duplicados: si el evento tiene una pending_payment de MercadoPago
+    (checkout abandonado), la convierte en el aviso de transferencia en vez
+    de crear otra fila; si ya hay un aviso en revisión, rechaza con
+    OpenSubscriptionConflictError.
     """
     plan = session.get(Plan, plan_id)
     if plan is None or not plan.is_active:
@@ -463,25 +526,52 @@ def create_transfer_subscription(
         raise ValueError("Este plan no admite pago por transferencia")
 
     event = _get_event_for_plan_purchase(session, event_id=event_id, user=user)
+    _ensure_no_transfer_under_review(session, event_id=event.id)
 
     price = get_current_plan_price(session, plan_id)
     if price is None:
         raise LookupError("El plan no tiene un precio vigente")
 
     now = datetime.now(timezone.utc)
-    subscription = Subscription(
-        user_id=user.id,
-        plan_id=plan.id,
-        plan_price_id=price.id,
-        event_id=event.id,
-        status=SubscriptionStatus.pending_approval,
-        payment_method="transfer",
-        transfer_note=note,
-        starts_at=now,  # placeholder hasta que el admin apruebe, igual que create_checkout_preference
-        expires_at=now,
-        amount_paid=price.amount,
-        currency=price.currency,
-    )
+    subscription = _take_pending_payment_subscription(session, event_id=event.id)
+    if subscription is None:
+        subscription = Subscription(user_id=user.id, event_id=event.id)
+    subscription.plan_id = plan.id
+    subscription.plan_price_id = price.id
+    subscription.status = SubscriptionStatus.pending_approval
+    subscription.payment_method = "transfer"
+    subscription.transfer_note = note
+    subscription.starts_at = now  # placeholder hasta que el admin apruebe, igual que create_checkout_preference
+    subscription.expires_at = now
+    # La preferencia de MP de la pendiente reusada ya no aplica: si después
+    # se pagara igual, el webhook no la encuentra como pending_payment y
+    # crea su propia Subscription activa (ver handle_approved_payment).
+    subscription.mp_payment_id = None
+    subscription.amount_paid = price.amount
+    subscription.currency = price.currency
+    session.add(subscription)
+    session.commit()
+    session.refresh(subscription)
+    return subscription
+
+
+def report_payment_problem(
+    session: Session, *, subscription_id: UUID, user: User, note: str | None
+) -> Subscription:
+    """El organizador avisa que tuvo un problema con un pago de MercadoPago
+    que quedó en pending_payment. Mismo patrón que el aviso de transferencia
+    (nota opcional + mail al admin, que manda el router), pero sin cambiar el
+    estado: el pago sigue sin confirmar y el organizador puede reintentar o
+    pasarse a transferencia.
+    """
+    subscription = session.get(Subscription, subscription_id)
+    if subscription is None or subscription.user_id != user.id:
+        raise LookupError("Suscripción no encontrada")
+    if subscription.status != SubscriptionStatus.pending_payment or subscription.payment_method != "mercadopago":
+        raise ValueError("Esta suscripción no tiene un pago de MercadoPago pendiente")
+
+    subscription.problem_note = note
+    subscription.problem_reported_at = datetime.now(timezone.utc)
     session.add(subscription)
     session.commit()
     session.refresh(subscription)

@@ -166,6 +166,17 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
         </p>
       )}
 
+      {subscription.problem_reported_at && subscription.status === "pending_payment" && (
+        <p
+          data-testid="admin-subscription-problem"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-ink-3"
+        >
+          <strong className="text-destructive">Avisó un problema con el pago</strong> el{" "}
+          {format(parseISO(subscription.problem_reported_at), "d MMM yyyy, HH:mm", { locale: es })}
+          {subscription.problem_note ? `: ${subscription.problem_note}` : " (sin nota)."}
+        </p>
+      )}
+
       {subscription.plan_type === "banner" && subscription.status === "pending_payment" && (
         <ActivateForm subscription={subscription} />
       )}

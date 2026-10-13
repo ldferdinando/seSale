@@ -118,4 +118,23 @@ describe("AdminSubscriptionsPanel", () => {
 
     expect(within(row).getByRole("button", { name: "Aprobar" })).toBeInTheDocument();
   });
+
+  it("muestra el aviso de problema de pago del organizador en una suscripción pending_payment", async () => {
+    server.use(
+      http.get(`${API_URL}/api/admin/subscriptions`, () =>
+        HttpResponse.json([
+          makeAdminSubscription({
+            status: "pending_payment",
+            problem_note: "Me rechazó la tarjeta",
+            problem_reported_at: "2099-01-02T15:30:00Z",
+          }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    const problem = await screen.findByTestId("admin-subscription-problem");
+    expect(problem).toHaveTextContent("Avisó un problema con el pago");
+    expect(problem).toHaveTextContent("Me rechazó la tarjeta");
+  });
 });

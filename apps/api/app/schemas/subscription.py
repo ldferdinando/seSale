@@ -25,6 +25,10 @@ class TransferSubscriptionRequest(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class PaymentProblemRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class SubscriptionRead(BaseModel):
     id: UUID
     plan_id: UUID
@@ -43,6 +47,8 @@ class SubscriptionRead(BaseModel):
     created_at: datetime
     event_id: UUID | None
     event_title: str | None
+    problem_note: str | None = None
+    problem_reported_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

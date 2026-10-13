@@ -153,6 +153,52 @@ def send_transfer_notification_to_admin(
         logger.exception("Error al enviar el aviso de transferencia para la suscripción %s", subscription_id)
 
 
+def send_payment_problem_notification_to_admin(
+    user_public_name: str,
+    user_email: str,
+    plan_name: str,
+    event_title: str | None,
+    amount: int,
+    subscription_id: UUID,
+    problem_note: str | None,
+    admin_panel_url: str,
+) -> None:
+    """Avisa al admin que un organizador tuvo un problema con un pago de
+    MercadoPago que quedó pendiente. Mismo patrón defensivo que
+    send_transfer_notification_to_admin: si el envío falla, se loguea pero no
+    se propaga.
+    """
+    if not settings.resend_api_key:
+        logger.warning(
+            "RESEND_API_KEY no configurada — no se envía aviso de problema de pago para la suscripción %s",
+            subscription_id,
+        )
+        return
+
+    evento = f" para el evento \"{event_title}\"" if event_title else ""
+    nota = f"\nNota del organizador: {problem_note}\n" if problem_note else ""
+    body = (
+        f"{user_public_name} ({user_email}) avisó que tuvo un problema pagando con MercadoPago "
+        f"el plan {plan_name}{evento} por ${amount} ARS.\n"
+        f"{nota}\n"
+        f"La suscripción sigue en \"Pago pendiente\" — contactalo para ayudarlo a completar el pago.\n\n"
+        f"Ver en el panel admin:\n{admin_panel_url}/admin → sección Suscripciones"
+    )
+
+    try:
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send(
+            {
+                **_sender_fields(),
+                "to": [settings.admin_email],
+                "subject": f"Problema con un pago de MercadoPago — {plan_name}",
+                "text": body,
+            }
+        )
+    except Exception:
+        logger.exception("Error al enviar el aviso de problema de pago para la suscripción %s", subscription_id)
+
+
 def send_subscription_approved_email(
     user_email: str,
     user_public_name: str,

@@ -43,3 +43,7 @@ export async function reviewSubscription(
     admin_notes: adminNotes || null,
   });
 }
+
+export async function reportPaymentProblem(subscriptionId: string, note: string | undefined): Promise<Subscription> {
+  return apiPost<Subscription>(`/api/subscriptions/${subscriptionId}/payment-problem`, { note: note || null });
+}

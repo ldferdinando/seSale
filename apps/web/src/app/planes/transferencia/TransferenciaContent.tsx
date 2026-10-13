@@ -34,11 +34,13 @@ export function TransferenciaContent() {
 
   const errorMessage =
     transfer.error instanceof ApiError
-      ? transfer.error.status === 400
-        ? "Este plan no admite pago por transferencia."
-        : transfer.error.status === 404
-          ? "No encontramos el plan o el evento seleccionado."
-          : "No pudimos registrar tu aviso. Intentá de nuevo."
+      ? transfer.error.status === 409
+        ? transfer.error.message // ya hay un aviso de transferencia en revisión para este evento
+        : transfer.error.status === 400
+          ? "Este plan no admite pago por transferencia."
+          : transfer.error.status === 404
+            ? "No encontramos el plan o el evento seleccionado."
+            : "No pudimos registrar tu aviso. Intentá de nuevo."
       : null;
 
   function handleSubmit(e: React.FormEvent) {

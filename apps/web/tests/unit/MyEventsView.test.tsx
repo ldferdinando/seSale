@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { MyEventsView } from "@/features/events/components/MyEventsView";
 import { clearToken, setToken } from "@/features/auth/lib/token-store";
-import { makeEvent, makeUser } from "./mocks/handlers";
+import { makeEvent, makeSubscription, makeUser } from "./mocks/handlers";
 import { server } from "./mocks/server";
 
 const API_URL = "http://localhost:8000";
@@ -72,5 +72,66 @@ describe("MyEventsView", () => {
     renderWithClient();
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  });
+
+  it("does not show the pending payments section when there is nothing to resume", async () => {
+    mockLoggedIn();
+    renderWithClient();
+
+    await screen.findByText("Noche de Rock Nacional");
+
+    expect(screen.queryByText("Pagos sin completar")).not.toBeInTheDocument();
+  });
+
+  it("shows the three actions for a pending MercadoPago payment", async () => {
+    mockLoggedIn();
+    server.use(
+      http.get(`${API_URL}/api/subscriptions/me`, () =>
+        HttpResponse.json([makeSubscription({ status: "pending_payment", mp_payment_id: "pref-123" })]),
+      ),
+    );
+    renderWithClient();
+
+    const card = await screen.findByTestId("pending-payment-card");
+    expect(screen.getByRole("heading", { name: "Pagos sin completar" })).toBeInTheDocument();
+    expect(card).toHaveTextContent('Plan Destacado para "Noche de Rock Nacional"');
+    expect(screen.getByRole("button", { name: "Continuar pago con MercadoPago" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cambiar a transferencia" })).toHaveAttribute(
+      "href",
+      "/planes/transferencia?plan_id=66666666-6666-6666-6666-666666666666&event_id=11111111-1111-1111-1111-111111111111",
+    );
+    expect(screen.getByRole("button", { name: "Tuve un problema, avisanos" })).toBeInTheDocument();
+  });
+
+  it("only considers the latest subscription of each event", async () => {
+    mockLoggedIn();
+    server.use(
+      http.get(`${API_URL}/api/subscriptions/me`, () =>
+        HttpResponse.json([
+          // Más nueva primero: ya avisó transferencia, el pendiente de MP viejo no aplica.
+          makeSubscription({ id: "new", status: "pending_approval", payment_method: "transfer" }),
+          makeSubscription({ id: "old", status: "pending_payment" }),
+        ]),
+      ),
+    );
+    renderWithClient();
+
+    await screen.findByText("Noche de Rock Nacional");
+
+    expect(screen.queryByTestId("pending-payment-card")).not.toBeInTheDocument();
+  });
+
+  it("ignores pending transfer subscriptions", async () => {
+    mockLoggedIn();
+    server.use(
+      http.get(`${API_URL}/api/subscriptions/me`, () =>
+        HttpResponse.json([makeSubscription({ status: "pending_payment", payment_method: "transfer" })]),
+      ),
+    );
+    renderWithClient();
+
+    await screen.findByText("Noche de Rock Nacional");
+
+    expect(screen.queryByTestId("pending-payment-card")).not.toBeInTheDocument();
   });
 });

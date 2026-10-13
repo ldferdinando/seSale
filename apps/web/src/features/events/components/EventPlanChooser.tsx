@@ -133,7 +133,7 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
                         onClick={() => handleContratarMercadoPago(plan.id)}
                         className="h-11 w-full rounded-xl"
                       >
-                        {pendingAction === `mp-${plan.id}` ? "Redirigiendo..." : `Contratar ${copy.label}`}
+                        {pendingAction === `mp-${plan.id}` ? "Redirigiendo..." : "Pagar con MercadoPago"}
                       </Button>
                     )}
                     <Button

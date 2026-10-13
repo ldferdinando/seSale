@@ -36,6 +36,13 @@ class Subscription(SQLModel, table=True):
     transfer_note: str | None = Field(default=None)  # nota del usuario al avisar la transferencia
     reviewed_at: datetime | None = Field(default=None)  # cuándo approved_by revisó (aprobó/rechazó)
 
+    # Aviso "Tuve un problema con el pago" de un checkout de MercadoPago que
+    # quedó en pending_payment (ventana cerrada, pago rechazado raro, etc.).
+    # No cambia el estado: es solo para que el admin lo vea y contacte al
+    # organizador. Ver report_payment_problem (payment_service).
+    problem_note: str | None = Field(default=None)
+    problem_reported_at: datetime | None = Field(default=None)
+
     # Etapa 6b-2: el pago es POR EVENTO, no por cuenta del organizador — un
     # plan dest/pro se compra para destacar un evento puntual (elegido al
     # momento de pagar), y solo ese evento se actualiza al aprobarse.

@@ -283,3 +283,55 @@ def test_settings_read_sender_from_env_and_treat_blank_as_unset(monkeypatch):
     blank = Settings(_env_file=None)
     assert blank.resend_from_email == "seSALE <onboarding@resend.dev>"
     assert blank.resend_reply_to is None
+
+
+# Aviso "Tuve un problema" de un pago de MercadoPago pendiente.
+
+
+def _payment_problem_kwargs(**overrides) -> dict:
+    kwargs = dict(
+        user_public_name="El Tinglado Bar",
+        user_email="organizador@sesale.com.ar",
+        plan_name="Destacado",
+        event_title="Show en vivo",
+        amount=3500,
+        subscription_id=uuid4(),
+        problem_note="Me rechazó la tarjeta",
+        admin_panel_url="https://sesale.com.ar",
+    )
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_send_payment_problem_notification_calls_resend(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "admin_email", "admin@sesale.com.ar")
+    sent = {}
+    monkeypatch.setattr(email_module.resend.Emails, "send", lambda payload: sent.update(payload))
+
+    email_module.send_payment_problem_notification_to_admin(**_payment_problem_kwargs())
+
+    assert sent["to"] == ["admin@sesale.com.ar"]
+    assert "Destacado" in sent["subject"]
+    assert "Me rechazó la tarjeta" in sent["text"]
+    assert "Show en vivo" in sent["text"]
+    assert "organizador@sesale.com.ar" in sent["text"]
+
+
+def test_payment_problem_notification_skips_when_no_api_key(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", None)
+
+    email_module.send_payment_problem_notification_to_admin(**_payment_problem_kwargs(problem_note=None))
+    # No debe lanzar excepción.
+
+
+def test_payment_problem_notification_swallows_resend_errors(monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+
+    def boom(payload):
+        raise RuntimeError("resend caído")
+
+    monkeypatch.setattr(email_module.resend.Emails, "send", boom)
+
+    email_module.send_payment_problem_notification_to_admin(**_payment_problem_kwargs(event_title=None))
+    # No debe propagar la excepción.

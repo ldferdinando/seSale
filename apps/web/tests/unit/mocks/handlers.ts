@@ -163,6 +163,8 @@ export function makeSubscription(overrides: Partial<Subscription> = {}): Subscri
     created_at: "2099-01-01T00:00:00Z",
     event_id: "11111111-1111-1111-1111-111111111111",
     event_title: "Noche de Rock Nacional",
+    problem_note: null,
+    problem_reported_at: null,
     ...overrides,
   };
 }
@@ -603,6 +605,17 @@ export const handlers = [
         transfer_note: (body.note as string | null) ?? null,
       }),
       { status: 201 },
+    );
+  }),
+  http.post(`${API_URL}/api/subscriptions/:id/payment-problem`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      makeSubscription({
+        id: params.id as string,
+        status: "pending_payment",
+        problem_note: (body.note as string | null) ?? null,
+        problem_reported_at: "2099-01-02T15:30:00Z",
+      }),
     );
   }),
   http.patch(`${API_URL}/api/admin/subscriptions/:id/review`, async ({ request }) => {

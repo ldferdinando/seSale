@@ -118,6 +118,8 @@ def _to_admin_subscription_read(sub: Subscription) -> AdminSubscriptionRead:
         created_at=sub.created_at,
         event_id=sub.event_id,
         event_title=sub.event.title if sub.event else None,
+        problem_note=sub.problem_note,
+        problem_reported_at=sub.problem_reported_at,
         user_id=sub.user_id,
         user_email=sub.user.email,
         user_public_name=sub.user.public_name,

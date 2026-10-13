@@ -1,20 +1,28 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.deps import get_current_user, get_session
-from app.core.email import send_transfer_notification_to_admin
+from app.core.email import send_payment_problem_notification_to_admin, send_transfer_notification_to_admin
 from app.core.limiter import limiter
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.schemas.subscription import (
     CheckoutRequest,
     CheckoutResponse,
+    PaymentProblemRequest,
     SubscriptionRead,
     TransferSubscriptionRequest,
 )
-from app.services.payment_service import create_checkout_preference, create_transfer_subscription
+from app.services.payment_service import (
+    OpenSubscriptionConflictError,
+    create_checkout_preference,
+    create_transfer_subscription,
+    report_payment_problem,
+)
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -38,6 +46,8 @@ def _to_subscription_read(subscription: Subscription) -> SubscriptionRead:
         created_at=subscription.created_at,
         event_id=subscription.event_id,
         event_title=subscription.event.title if subscription.event else None,
+        problem_note=subscription.problem_note,
+        problem_reported_at=subscription.problem_reported_at,
     )
 
 
@@ -55,6 +65,8 @@ def post_checkout(
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except OpenSubscriptionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -77,6 +89,8 @@ def post_transfer(
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except OpenSubscriptionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -86,6 +100,40 @@ def post_transfer(
         amount=subscription.amount_paid,
         subscription_id=subscription.id,
         transfer_note=subscription.transfer_note,
+        admin_panel_url=settings.frontend_url,
+    )
+
+    return _to_subscription_read(subscription)
+
+
+@router.post("/{subscription_id}/payment-problem", response_model=SubscriptionRead)
+@limiter.limit("3/minute")
+def post_payment_problem(
+    request: Request,
+    subscription_id: UUID,
+    payload: PaymentProblemRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SubscriptionRead:
+    """"Tuve un problema, avisanos" para un pago de MercadoPago pendiente —
+    mismo patrón que el aviso de transferencia (nota + mail al admin)."""
+    try:
+        subscription = report_payment_problem(
+            session, subscription_id=subscription_id, user=current_user, note=payload.note
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    send_payment_problem_notification_to_admin(
+        user_public_name=current_user.public_name,
+        user_email=current_user.email,
+        plan_name=subscription.plan.name,
+        event_title=subscription.event.title if subscription.event else None,
+        amount=subscription.amount_paid,
+        subscription_id=subscription.id,
+        problem_note=subscription.problem_note,
         admin_panel_url=settings.frontend_url,
     )
 

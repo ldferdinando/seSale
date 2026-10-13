@@ -2,13 +2,14 @@
 
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock } from "lucide-react";
+import { AlertCircle, Clock } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { selectResumablePayments } from "@/features/subscriptions/components/PendingPaymentCard";
 import { useMySubscriptions } from "@/features/subscriptions/hooks/useMySubscriptions";
 import type { Subscription } from "@/features/subscriptions/types";
 
@@ -70,6 +71,9 @@ export function MySubscriptionsSection({ enabled }: { enabled: boolean }) {
   // ambos se muestran (no son excluyentes como cuando era "un plan por cuenta").
   const activeSubscriptions = (subscriptions ?? []).filter((s) => s.status === "active");
   const pendingApprovals = (subscriptions ?? []).filter((s) => s.status === "pending_approval");
+  // Checkout de MercadoPago abandonado: las acciones (retomar, transferencia,
+  // avisar problema) viven en Mis eventos — acá solo se avisa y se linkea.
+  const pendingPayments = selectResumablePayments(subscriptions);
 
   return (
     <div className="flex flex-col gap-3">
@@ -89,11 +93,31 @@ export function MySubscriptionsSection({ enabled }: { enabled: boolean }) {
         </div>
       ))}
 
+      {pendingPayments.map((subscription) => (
+        <div
+          key={subscription.id}
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
+        >
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-ink-3">
+              {subscription.event_title
+                ? `Tu pago con MercadoPago para "${subscription.event_title}" quedó sin completar.`
+                : "Tu pago con MercadoPago quedó sin completar."}
+            </p>
+            <Link href="/mis-eventos" className="w-fit text-sm font-semibold text-primary">
+              Retomar el pago en Mis eventos →
+            </Link>
+          </div>
+        </div>
+      ))}
+
       {activeSubscriptions.map((subscription) => (
         <SubscriptionRow key={subscription.id} subscription={subscription} />
       ))}
 
-      {activeSubscriptions.length === 0 && pendingApprovals.length === 0 && (
+      {activeSubscriptions.length === 0 && pendingApprovals.length === 0 && pendingPayments.length === 0 && (
         <>
           <p className="text-sm text-muted-foreground">No tenés un plan activo todavía.</p>
           <Button asChild variant="outline" className="w-fit">

@@ -22,6 +22,9 @@ export interface Subscription {
   /** Etapa 6b-2: el plan se compra para un evento puntual, no para la cuenta. */
   event_id: string | null;
   event_title: string | null;
+  /** Aviso "Tuve un problema" de un pago de MercadoPago pendiente. */
+  problem_note: string | null;
+  problem_reported_at: string | null;
 }
 
 export interface AdminSubscription extends Subscription {

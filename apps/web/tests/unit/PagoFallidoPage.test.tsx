@@ -8,7 +8,7 @@ describe("PagoFallidoPage", () => {
     render(<PagoFallidoPage />);
 
     expect(screen.getByText("El pago no pudo procesarse")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Intentar nuevamente/i })).toHaveAttribute("href", "/planes");
+    expect(screen.getByRole("link", { name: /Intentar nuevamente/i })).toHaveAttribute("href", "/mis-eventos");
     expect(screen.getByRole("link", { name: /Contactar soporte/i })).toHaveAttribute(
       "href",
       expect.stringContaining("wa.me"),
