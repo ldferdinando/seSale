@@ -2,6 +2,12 @@ export type EventStatus = "pending" | "approved" | "rejected";
 export type EventPlan = "gratis" | "dest" | "pro";
 export type TicketType = "gratis" | "pago" | "anticipo";
 
+/** Cómo se muestra el precio de un evento pago ("pago", no "anticipo", que
+ * siempre usa price_at_door/price_advance numéricos). "fixed" = monto
+ * numérico (price_at_door), como siempre. "consultar"/"ver_descripcion" no
+ * cargan monto: se muestra un texto fijo en su lugar. */
+export type PriceMode = "fixed" | "consultar" | "ver_descripcion";
+
 export const MIN_EVENT_CATEGORIES = 1;
 export const MAX_EVENT_CATEGORIES = 3;
 
@@ -60,6 +66,7 @@ export interface Event {
   ticket_type: TicketType;
   price_at_door: number | null;
   price_advance: number | null;
+  price_mode: PriceMode;
   available_on_site: boolean;
   contact_whatsapp: string | null;
   contact_instagram: string | null;
@@ -147,6 +154,7 @@ export interface EventCreateInput {
   ticket_type: TicketType;
   price_at_door?: number;
   price_advance?: number;
+  price_mode?: PriceMode;
   available_on_site?: boolean;
   contact_whatsapp?: string;
   contact_instagram?: string;

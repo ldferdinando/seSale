@@ -375,4 +375,64 @@ describe("EventForm", () => {
     expect(await screen.findByLabelText(/Música en vivo/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Deportes/)).toBeInTheDocument();
   });
+
+  // Selector de modo de precio — solo aplica a ticket_type="pago".
+  describe("price_mode", () => {
+    it("shows the price_mode selector only for 'Pago', not for 'Gratis' nor 'Anticipo'", async () => {
+      const user = userEvent.setup();
+      renderWithClient();
+
+      expect(screen.queryByText("Monto fijo")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Pago" }));
+      expect(screen.getByText("Monto fijo")).toBeInTheDocument();
+      expect(screen.getByText("Consultar")).toBeInTheDocument();
+      expect(screen.getByText("Ver en descripción")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Anticipo" }));
+      expect(screen.queryByText("Monto fijo")).not.toBeInTheDocument();
+    });
+
+    it("hides the price input and sends price_mode='consultar' without price_at_door", async () => {
+      const user = userEvent.setup();
+      const onContinue = renderWithClient();
+
+      await fillRequiredFieldsExceptCategory(user);
+      await toggleCategory(user, "Música en vivo");
+      await user.click(screen.getByRole("button", { name: "Pago" }));
+      expect(screen.getByLabelText("Precio en puerta")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Consultar" }));
+      expect(screen.queryByLabelText("Precio en puerta")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+      expect(onContinue).toHaveBeenCalledTimes(1);
+      const [payload] = onContinue.mock.calls[0];
+      expect(payload).toMatchObject({
+        ticket_type: "pago",
+        price_mode: "consultar",
+        price_at_door: undefined,
+      });
+    });
+
+    it("resets price_mode to 'fixed' when switching away from 'Pago'", async () => {
+      const user = userEvent.setup();
+      const onContinue = renderWithClient();
+
+      await fillRequiredFieldsExceptCategory(user);
+      await toggleCategory(user, "Música en vivo");
+      await user.click(screen.getByRole("button", { name: "Pago" }));
+      await user.click(screen.getByRole("button", { name: "Ver en descripción" }));
+      await user.click(screen.getByRole("button", { name: "Anticipo" }));
+      await user.type(screen.getByLabelText("Precio en puerta"), "3000");
+      await user.type(screen.getByLabelText("Precio anticipo"), "2000");
+
+      await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+      expect(onContinue).toHaveBeenCalledTimes(1);
+      const [payload] = onContinue.mock.calls[0];
+      expect(payload).toMatchObject({ ticket_type: "anticipo", price_mode: "fixed" });
+    });
+  });
 });

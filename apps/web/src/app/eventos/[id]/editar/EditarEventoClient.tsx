@@ -95,6 +95,7 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     location_id: event.location_id ?? "",
     location_text: event.location_text ?? "",
     ticket_type: event.ticket_type,
+    price_mode: event.price_mode,
     price_at_door: event.price_at_door != null ? String(event.price_at_door) : "",
     price_advance: event.price_advance != null ? String(event.price_advance) : "",
     available_on_site: event.available_on_site,

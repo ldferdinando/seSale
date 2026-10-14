@@ -33,12 +33,31 @@ export function formatDayHours(opening: OpeningHours | null, day: Weekday): stri
   return `${hours.open} a ${hours.close} hs`;
 }
 
-/** "Hoy: 09:00 a 22:00 hs" / "Hoy: cerrado" / null si opening_hours es null. */
+/** "Hoy: 09:00 a 22:00 hs", o null si no hay dato para hoy — ya sea porque
+ * `opening_hours` es null/vacío (nunca se cargó ningún horario) o porque el
+ * día de hoy específico no tiene horario cargado (ej. el lugar cierra los
+ * domingos). En ambos casos queda en silencio: no hay texto "Hoy: cerrado",
+ * porque "no se cargó horario" no es lo mismo que "está cerrado ahora"
+ * (ver isOpenNow() para ese caso, que sí es un dato real). */
 export function formatTodayHours(opening: OpeningHours | null, now: Date = new Date()): string | null {
   if (!opening) return null;
   const today = currentWeekdayInArgentina(now);
   const hours = opening[today];
-  return hours ? `Hoy: ${hours.open} a ${hours.close} hs` : "Hoy: cerrado";
+  return hours ? `Hoy: ${hours.open} a ${hours.close} hs` : null;
+}
+
+/**
+ * ¿Hay al menos un día con horario cargado? `opening_hours` puede ser un
+ * objeto no-null con los 7 días en `null` (el lugar se configuró —
+ * eligió un tipo de gastronomía/espacio — pero no tildó ningún día en el
+ * form admin, ver LocationForm.tsx) — hay que distinguir ese caso de
+ * "tiene horario pero hoy está cerrado", porque "sin ningún día cargado"
+ * nunca debe mostrar "Cerrado" (bug real reportado: la lista semanal
+ * completa de la Ficha de Lugar mostraba "Cerrado" en los 7 días).
+ */
+export function hasAnyHoursLoaded(opening: OpeningHours | null): boolean {
+  if (!opening) return false;
+  return Object.values(opening).some((hours) => hours != null);
 }
 
 /**

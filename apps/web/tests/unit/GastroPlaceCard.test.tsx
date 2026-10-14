@@ -44,13 +44,41 @@ describe("GastroPlaceCard", () => {
     expect(screen.queryByTestId("gastro-today-hours")).not.toBeInTheDocument();
   });
 
-  it("does not show any hours line when opening_hours is null", () => {
+  // Bug reportado: un lugar que nunca cargó ningún horario (opening_hours
+  // con los 7 días en null, no `opening_hours: null`) mostraba "Cerrado" en
+  // vez de un chip neutro — "sin dato" no es lo mismo que "cerrado".
+  it("shows a neutral 'Horarios no disponibles' chip (not 'Cerrado') when no day has hours loaded at all", () => {
+    vi.setSystemTime(TUESDAY_ARGENTINA);
+    const place = makeGastroPlace({
+      opening_hours: {
+        lunes: null,
+        martes: null,
+        miercoles: null,
+        jueves: null,
+        viernes: null,
+        sabado: null,
+        domingo: null,
+      },
+    });
+
+    render(<GastroPlaceCard place={place} />);
+
+    expect(screen.queryByText("Cerrado")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Hoy:/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gastro-open-now")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gastro-today-hours")).not.toBeInTheDocument();
+    expect(screen.getByTestId("gastro-hours-unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Horarios no disponibles")).toBeInTheDocument();
+  });
+
+  it("shows the same neutral chip when opening_hours is null", () => {
     vi.setSystemTime(TUESDAY_ARGENTINA);
     const place = makeGastroPlace({ opening_hours: null });
 
     render(<GastroPlaceCard place={place} />);
 
     expect(screen.queryByText(/^Hoy:/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("gastro-hours-unavailable")).toBeInTheDocument();
   });
 
   // Etapa 10b-2: chip "Abierto ahora" cuando la hora actual cae dentro del

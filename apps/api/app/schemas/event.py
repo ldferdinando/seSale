@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 from datetime import date as _Date
 from datetime import time as _Time
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -13,6 +14,21 @@ from app.schemas.subscription import OrganizerSubscriptionRead
 
 MIN_CATEGORIES = 1
 MAX_CATEGORIES = 3
+
+# "fixed": price_at_door numérico (comportamiento de siempre). "consultar"/
+# "ver_descripcion": no se carga monto, price_at_door debe quedar None —
+# solo aplica a ticket_type="pago" (no a "gratis" ni a "anticipo", que
+# siempre usa montos numéricos). Ver _validate_price_mode.
+PriceMode = Literal["fixed", "consultar", "ver_descripcion"]
+
+
+def _validate_price_mode(ticket_type: TicketType, price_mode: str, price_at_door: int | None) -> None:
+    if price_mode == "fixed":
+        return
+    if ticket_type != TicketType.pago:
+        raise ValueError("price_mode solo aplica a eventos con ticket_type='pago'")
+    if price_at_door is not None:
+        raise ValueError("No se puede cargar un precio (price_at_door) con price_mode distinto de 'fixed'")
 
 
 def _validate_categories(value: list[str]) -> list[str]:
@@ -111,6 +127,7 @@ class EventRead(BaseModel):
     ticket_type: TicketType
     price_at_door: int | None
     price_advance: int | None
+    price_mode: PriceMode
     available_on_site: bool
     contact_whatsapp: str | None
     contact_instagram: str | None
@@ -241,6 +258,7 @@ class EventCreate(BaseModel):
     ticket_type: TicketType = TicketType.gratis
     price_at_door: int | None = Field(default=None, ge=0)
     price_advance: int | None = Field(default=None, ge=0)
+    price_mode: PriceMode = "fixed"
     available_on_site: bool = False
 
     contact_whatsapp: str | None = None
@@ -294,6 +312,11 @@ class EventCreate(BaseModel):
         _validate_event_span(self.date, self.time, self.date_end, self.time_end)
         return self
 
+    @model_validator(mode="after")
+    def validate_price_mode(self) -> "EventCreate":
+        _validate_price_mode(self.ticket_type, self.price_mode, self.price_at_door)
+        return self
+
 
 class EventUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=255, min_length=1)
@@ -317,6 +340,7 @@ class EventUpdate(BaseModel):
     ticket_type: TicketType | None = None
     price_at_door: int | None = Field(default=None, ge=0)
     price_advance: int | None = Field(default=None, ge=0)
+    price_mode: PriceMode | None = None
     available_on_site: bool | None = None
 
     contact_whatsapp: str | None = None
@@ -347,6 +371,19 @@ class EventUpdate(BaseModel):
     @model_validator(mode="after")
     def validate_location_choice(self) -> "EventUpdate":
         _validate_location_choice(self.location_id, self.location_data, self.location_text)
+        return self
+
+    @model_validator(mode="after")
+    def validate_price_mode(self) -> "EventUpdate":
+        # Solo valida lo que viene en ESTE payload — si `ticket_type` no se
+        # manda (se mantiene el que ya tiene el evento), la combinación
+        # contra el valor guardado en DB se revisa en event_service.update_event
+        # (necesita leer el Event actual, que esta clase no tiene).
+        if self.price_mode is not None and self.price_mode != "fixed":
+            if self.ticket_type is not None and self.ticket_type != TicketType.pago:
+                raise ValueError("price_mode solo aplica a eventos con ticket_type='pago'")
+            if self.price_at_door is not None:
+                raise ValueError("No se puede cargar un precio (price_at_door) con price_mode distinto de 'fixed'")
         return self
 
     @field_validator("date")

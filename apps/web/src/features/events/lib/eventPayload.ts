@@ -28,6 +28,7 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     location_latitude: payload.location_data?.latitude,
     location_longitude: payload.location_data?.longitude,
     ticket_type: payload.ticket_type,
+    price_mode: payload.price_mode ?? "fixed",
     price_at_door: payload.price_at_door != null ? String(payload.price_at_door) : "",
     price_advance: payload.price_advance != null ? String(payload.price_advance) : "",
     available_on_site: payload.available_on_site ?? false,

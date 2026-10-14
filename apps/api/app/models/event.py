@@ -97,6 +97,14 @@ class Event(SQLModel, table=True):
     ticket_type: TicketType = Field(default=TicketType.gratis)
     price_at_door: int | None = Field(default=None)
     price_advance: int | None = Field(default=None)
+    # "fixed" | "consultar" | "ver_descripcion" — solo tiene efecto con
+    # ticket_type="pago" (no aplica a "gratis" ni a "anticipo", que siempre
+    # tiene los dos montos numéricos de price_at_door/price_advance). Con
+    # "consultar"/"ver_descripcion" price_at_door queda en None — se valida
+    # en schemas/event.py (EventCreate/EventUpdate). Default "fixed" para
+    # que los eventos existentes (todos con price_at_door numérico) no
+    # cambien de comportamiento.
+    price_mode: str = Field(default="fixed")
 
     # Contacto
     contact_whatsapp: str | None = Field(default=None)

@@ -26,7 +26,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { EventCard } from "@/features/events/components/EventCard";
 import { sortEventsForAgenda } from "@/features/events/lib/sortEvents";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
-import { currentWeekdayInArgentina, formatTodayHours } from "@/features/gastro/lib/openingHours";
+import { currentWeekdayInArgentina, formatTodayHours, hasAnyHoursLoaded } from "@/features/gastro/lib/openingHours";
 import { useLocationEvents } from "@/features/gastro/hooks/useLocationEvents";
 import { GASTRO_TYPE_LABELS, WEEKDAYS, WEEKDAY_LABELS, type GastroPlace } from "@/features/gastro/types";
 import { GastroPlanBadge, OpenHoursChip } from "@/features/gastro/components/GastroPlaceCard";
@@ -209,12 +209,15 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
         )}
       </div>
 
-      {/* Horarios — completos por día si opening_hours viene estructurado;
-          si no, se muestra el texto libre `hours` como fallback. Arranca
+      {/* Horarios — completos por día si opening_hours viene estructurado
+          CON al menos un día cargado; si no (incluye el caso de un objeto
+          con los 7 días en null — el lugar se configuró sin tildar ningún
+          día, bug real reportado: mostraba "Cerrado" en los 7 renglones),
+          se muestra el texto libre `hours` como fallback. Arranca
           colapsado (solo estado + horario de hoy), igual criterio que
           togHorarioLd() en seSALE_v2.html; el bloque de 7 días existente
           se envuelve sin reimplementarlo. */}
-      {place.opening_hours ? (
+      {hasAnyHoursLoaded(place.opening_hours) ? (
         <div className="rounded-xl border border-border bg-card" data-testid="gastro-weekly-hours">
           <button
             type="button"
@@ -230,7 +233,9 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             </span>
             <span className="flex items-center gap-2">
               <OpenHoursChip place={place} />
-              <span className="text-xs font-semibold text-ink-4">{formatTodayHours(place.opening_hours)}</span>
+              {formatTodayHours(place.opening_hours) && (
+                <span className="text-xs font-semibold text-ink-4">{formatTodayHours(place.opening_hours)}</span>
+              )}
               <ChevronDown
                 className={cn("h-4 w-4 flex-shrink-0 text-ink-4 transition-transform", hoursExpanded && "rotate-180")}
                 aria-hidden
@@ -266,13 +271,22 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
             </div>
           </div>
         </div>
+      ) : place.hours ? (
+        <p className="flex items-start gap-1.5 text-sm text-ink-2">
+          <Clock className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
+          {place.hours}
+        </p>
       ) : (
-        place.hours && (
-          <p className="flex items-start gap-1.5 text-sm text-ink-2">
-            <Clock className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
-            {place.hours}
-          </p>
-        )
+        // Sin horarios estructurados (opening_hours sin ningún día cargado)
+        // ni texto libre: en vez de no mostrar nada, un recuadro neutro que
+        // avisa que falta el dato — no es lo mismo que "cerrado".
+        <div
+          className="flex items-center gap-1.5 rounded-xl border border-dashed border-border bg-card p-3 text-sm font-semibold text-ink-4"
+          data-testid="gastro-hours-unavailable-box"
+        >
+          <Clock className="h-3.5 w-3.5 flex-shrink-0 text-ink-5" aria-hidden />
+          Horarios no disponibles
+        </div>
       )}
 
       {reservarUrl && (

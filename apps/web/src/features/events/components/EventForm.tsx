@@ -44,7 +44,7 @@ import { OrganizerPicker } from "@/features/events/components/OrganizerPicker";
 import { TimePicker } from "@/features/events/components/TimePicker";
 import { useUpdateEvent } from "@/features/events/hooks/useUpdateEvent";
 import { eventFormSchema, type EventFormValues } from "@/features/events/schemas/event-schema";
-import type { Event, EventCreateInput, TicketType } from "@/features/events/types";
+import type { Event, EventCreateInput, PriceMode, TicketType } from "@/features/events/types";
 import { useActiveCity } from "@/hooks/useActiveCity";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,13 @@ const TICKET_TYPE_STYLES: { value: TicketType; label: string; icon: LucideIcon }
   { value: "gratis", label: "Gratis", icon: CheckCircle2 },
   { value: "pago", label: "Pago", icon: Banknote },
   { value: "anticipo", label: "Anticipo", icon: Tag },
+];
+
+// Solo aplica a ticket_type="pago" — ver _validate_price_mode en el backend.
+const PRICE_MODE_STYLES: { value: PriceMode; label: string; icon: LucideIcon }[] = [
+  { value: "fixed", label: "Monto fijo", icon: DollarSign },
+  { value: "consultar", label: "Consultar", icon: Info },
+  { value: "ver_descripcion", label: "Ver en descripción", icon: FileText },
 ];
 
 interface FieldErrorProps {
@@ -208,6 +215,7 @@ export function EventForm({
       location_address: "",
       location_text: "",
       ticket_type: "gratis",
+      price_mode: "fixed",
       price_at_door: "",
       price_advance: "",
       available_on_site: true,
@@ -221,6 +229,7 @@ export function EventForm({
   });
 
   const ticketType = watch("ticket_type");
+  const priceMode = watch("price_mode");
   const categories = watch("categories");
   const dateValue = watch("date");
   const dateEndValue = watch("date_end");
@@ -297,7 +306,16 @@ export function EventForm({
             },
           }),
       ticket_type: values.ticket_type,
-      price_at_door: values.price_at_door ? Number(values.price_at_door) : undefined,
+      price_mode: values.ticket_type === "pago" ? values.price_mode : "fixed",
+      // Con "Consultar"/"Ver en la descripción" no se manda monto — el
+      // backend rechaza price_at_door junto con un price_mode distinto de
+      // "fixed" (ver _validate_price_mode).
+      price_at_door:
+        values.ticket_type === "pago" && values.price_mode !== "fixed"
+          ? undefined
+          : values.price_at_door
+          ? Number(values.price_at_door)
+          : undefined,
       price_advance: values.price_advance ? Number(values.price_advance) : undefined,
       available_on_site: acquisition.onSite,
       contact_whatsapp: acquisition.whatsapp ? values.contact_whatsapp || undefined : undefined,
@@ -522,7 +540,15 @@ export function EventForm({
         <ToggleGrid
           options={TICKET_TYPE_STYLES}
           value={ticketType}
-          onChange={(value) => setValue("ticket_type", value, { shouldValidate: true })}
+          onChange={(value) => {
+            setValue("ticket_type", value, { shouldValidate: true });
+            // price_mode solo tiene sentido con "pago" — se resetea al
+            // cambiar a cualquier otro tipo para no mandar una combinación
+            // que el backend rechaza (ver _validate_price_mode).
+            if (value !== "pago") {
+              setValue("price_mode", "fixed", { shouldValidate: true });
+            }
+          }}
           columns={3}
         />
       </div>
@@ -534,12 +560,26 @@ export function EventForm({
             Información de entradas
           </p>
 
-          <div className="flex flex-col gap-1">
-            <FieldLabel icon={DollarSign} htmlFor="price_at_door">
-              Precio en puerta
-            </FieldLabel>
-            <Input id="price_at_door" type="number" min={0} {...register("price_at_door")} placeholder="Ej: 3000" />
-          </div>
+          {ticketType === "pago" && (
+            <div className="flex flex-col gap-1">
+              <FieldLabel icon={Ticket}>Cómo se muestra el precio</FieldLabel>
+              <ToggleGrid
+                options={PRICE_MODE_STYLES}
+                value={priceMode}
+                onChange={(value) => setValue("price_mode", value, { shouldValidate: true })}
+                columns={3}
+              />
+            </div>
+          )}
+
+          {(ticketType !== "pago" || priceMode === "fixed") && (
+            <div className="flex flex-col gap-1">
+              <FieldLabel icon={DollarSign} htmlFor="price_at_door">
+                Precio en puerta
+              </FieldLabel>
+              <Input id="price_at_door" type="number" min={0} {...register("price_at_door")} placeholder="Ej: 3000" />
+            </div>
+          )}
 
           {ticketType === "anticipo" && (
             <div className="flex flex-col gap-1">

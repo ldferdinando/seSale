@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isOpenNow } from "@/features/gastro/lib/openingHours";
+import { formatTodayHours, hasAnyHoursLoaded, isOpenNow } from "@/features/gastro/lib/openingHours";
 import type { OpeningHours } from "@/features/gastro/types";
 
 // 2026-08-18 es martes / 2026-08-17 es lunes en hora Argentina (UTC-3) —
@@ -54,5 +54,49 @@ describe("isOpenNow", () => {
 
   it("returns false when opening_hours is null", () => {
     expect(isOpenNow(null, TUESDAY_ARGENTINA_12H)).toBe(false);
+  });
+});
+
+describe("formatTodayHours", () => {
+  it("returns the range when today has hours loaded", () => {
+    expect(formatTodayHours(opening(), TUESDAY_ARGENTINA_12H)).toBe("Hoy: 09:00 a 22:00 hs");
+  });
+
+  it("returns null (not 'Hoy: cerrado') when opening_hours is null — no data was ever loaded", () => {
+    expect(formatTodayHours(null, TUESDAY_ARGENTINA_12H)).toBeNull();
+  });
+
+  it("returns null (not 'Hoy: cerrado') when opening_hours has no day loaded at all (every day null)", () => {
+    const noHoursLoaded = opening({ martes: null });
+    expect(formatTodayHours(noHoursLoaded, TUESDAY_ARGENTINA_12H)).toBeNull();
+  });
+
+  it("returns null (not 'Hoy: cerrado') when today specifically is empty but other days are loaded", () => {
+    // lunes: null en el fixture default, otros días sí tienen horario
+    expect(formatTodayHours(opening(), MONDAY_ARGENTINA_18H)).toBeNull();
+  });
+});
+
+describe("hasAnyHoursLoaded", () => {
+  it("returns false when opening_hours is null", () => {
+    expect(hasAnyHoursLoaded(null)).toBe(false);
+  });
+
+  it("returns false when opening_hours is a non-null object with every day null (configurado sin tildar ningún día)", () => {
+    expect(
+      hasAnyHoursLoaded({
+        lunes: null,
+        martes: null,
+        miercoles: null,
+        jueves: null,
+        viernes: null,
+        sabado: null,
+        domingo: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true when at least one day has hours loaded", () => {
+    expect(hasAnyHoursLoaded(opening())).toBe(true); // martes tiene horario en el fixture
   });
 });

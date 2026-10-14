@@ -717,4 +717,47 @@ describe("EventDetailView", () => {
       await waitFor(() => expect(screen.getByText("Tu evento volvió a estar activo.")).toBeInTheDocument());
     });
   });
+
+  describe("price_mode", () => {
+    it("shows the numeric amount when price_mode='fixed'", () => {
+      const event = makeEventDetail({ ticket_type: "pago", price_mode: "fixed", price_at_door: 3000 });
+      renderWithClient(event);
+
+      expect(screen.getByText("$3.000")).toBeInTheDocument();
+      expect(screen.queryByText("Consultar precio")).not.toBeInTheDocument();
+    });
+
+    it("shows 'Consultar precio' instead of any amount when price_mode='consultar'", () => {
+      const event = makeEventDetail({ ticket_type: "pago", price_mode: "consultar", price_at_door: null });
+      renderWithClient(event);
+
+      expect(screen.getByText("Consultar precio")).toBeInTheDocument();
+    });
+
+    it("shows 'Ver precios en la descripción' next to the description when price_mode='ver_descripcion'", () => {
+      const event = makeEventDetail({
+        ticket_type: "pago",
+        price_mode: "ver_descripcion",
+        price_at_door: null,
+        description: "Preventa $5000, en puerta $7000",
+      });
+      renderWithClient(event);
+
+      expect(screen.getAllByText("Ver precios en la descripción").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByTestId("price-mode-hint")).toBeInTheDocument();
+    });
+
+    it("does not apply price_mode text for ticket_type='anticipo' (always numeric)", () => {
+      const event = makeEventDetail({
+        ticket_type: "anticipo",
+        price_mode: "fixed",
+        price_at_door: 5000,
+        price_advance: 3500,
+      });
+      renderWithClient(event);
+
+      expect(screen.getByText("$5.000")).toBeInTheDocument();
+      expect(screen.getByText("Anticipo $3.500")).toBeInTheDocument();
+    });
+  });
 });

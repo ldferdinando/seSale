@@ -48,6 +48,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     ticket_type: "gratis",
     price_at_door: null,
     price_advance: null,
+    price_mode: "fixed",
     available_on_site: false,
     contact_whatsapp: null,
     contact_instagram: null,

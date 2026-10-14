@@ -48,6 +48,7 @@ import type { EventDetail } from "@/features/events/types";
 import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib/date-helpers";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 import { buildEventMapUrl, eventPlaceLabel } from "@/features/events/lib/eventLocation";
+import { priceModeLabel } from "@/features/events/lib/priceMode";
 
 /** "Recordarme este evento" (botón + panel WhatsApp/Email) — pendiente de
  * decisión de producto (no funcional, sin definir el caso sin sesión). */
@@ -288,7 +289,15 @@ export function EventDetailView({ event }: EventDetailViewProps) {
         </div>
 
         {event.description && (
-          <p className="text-sm leading-relaxed text-ink-2">{event.description}</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm leading-relaxed text-ink-2">{event.description}</p>
+            {event.ticket_type === "pago" && event.price_mode === "ver_descripcion" && (
+              <p className="flex items-center gap-1 text-xs font-semibold text-primary" data-testid="price-mode-hint">
+                <Ticket className="h-3 w-3 flex-shrink-0" aria-hidden />
+                {priceModeLabel(event.price_mode)}
+              </p>
+            )}
+          </div>
         )}
 
         {/* Etapa 10b-2: bloque "Lugar" separado del organizador (calcado de
@@ -395,15 +404,21 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             Entradas
           </p>
           <p className="text-sm font-bold text-foreground">{TICKET_TYPE_LABEL[event.ticket_type]}</p>
-          {event.ticket_type !== "gratis" && (
-            <div className="flex flex-wrap items-center gap-3">
-              {event.price_at_door != null && (
-                <span className="text-lg font-black text-foreground">${event.price_at_door.toLocaleString("es-AR")}</span>
-              )}
-              {event.price_advance != null && (
-                <Badge>Anticipo ${event.price_advance.toLocaleString("es-AR")}</Badge>
-              )}
-            </div>
+          {event.ticket_type === "pago" && event.price_mode !== "fixed" ? (
+            <p className="text-sm font-semibold text-ink-2">{priceModeLabel(event.price_mode)}</p>
+          ) : (
+            event.ticket_type !== "gratis" && (
+              <div className="flex flex-wrap items-center gap-3">
+                {event.price_at_door != null && (
+                  <span className="text-lg font-black text-foreground">
+                    ${event.price_at_door.toLocaleString("es-AR")}
+                  </span>
+                )}
+                {event.price_advance != null && (
+                  <Badge>Anticipo ${event.price_advance.toLocaleString("es-AR")}</Badge>
+                )}
+              </div>
+            )
           )}
         </div>
 

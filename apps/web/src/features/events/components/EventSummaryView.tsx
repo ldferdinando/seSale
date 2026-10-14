@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventPlanChooser } from "@/features/events/components/EventPlanChooser";
 import { useCategoryCatalog } from "@/features/events/hooks/useCategoryCatalog";
+import { priceModeLabel } from "@/features/events/lib/priceMode";
 import { TICKET_TYPE_OPTIONS, type Event, type EventCreateInput } from "@/features/events/types";
 import { useLocation } from "@/features/locations/hooks/useLocation";
 
@@ -98,8 +99,16 @@ export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryV
             <SummaryRow icon={Ticket} label="Tipo de entrada" value={ticketTypeLabel} />
             {payload.ticket_type !== "gratis" && (
               <div className="flex flex-wrap gap-4 pl-6 text-xs text-ink-4">
-                {payload.price_at_door !== undefined && <span>Puerta: ${formatPrice(payload.price_at_door)}</span>}
-                {payload.price_advance !== undefined && <span>Anticipo: ${formatPrice(payload.price_advance)}</span>}
+                {payload.ticket_type === "pago" && payload.price_mode && payload.price_mode !== "fixed" ? (
+                  <span>{priceModeLabel(payload.price_mode)}</span>
+                ) : (
+                  <>
+                    {payload.price_at_door !== undefined && <span>Puerta: ${formatPrice(payload.price_at_door)}</span>}
+                    {payload.price_advance !== undefined && (
+                      <span>Anticipo: ${formatPrice(payload.price_advance)}</span>
+                    )}
+                  </>
+                )}
               </div>
             )}
             {payload.ticket_type !== "gratis" && (

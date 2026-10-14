@@ -23,6 +23,55 @@ describe("GastroDetailView", () => {
     expect(screen.getAllByText("Cerrado").length).toBeGreaterThanOrEqual(1);
   });
 
+  // Bug reportado: un lugar configurado (opening_hours no es null) pero sin
+  // tildar ningún día — los 7 en null, ver emptyOpeningHours() en
+  // LocationForm.tsx — mostraba "Hoy: cerrado" junto al toggle Y "Cerrado"
+  // en los 7 renglones de la lista semanal. "Sin ningún día cargado" nunca
+  // debe mostrar "Cerrado": en vez del bloque de 7 días, un recuadro neutro
+  // "Horarios no disponibles" (no queda en blanco, ver pedido de la usuaria).
+  it("shows a neutral 'Horarios no disponibles' box instead of the weekly block when no day has hours loaded", () => {
+    const place = makeGastroPlace({
+      opening_hours: {
+        lunes: null,
+        martes: null,
+        miercoles: null,
+        jueves: null,
+        viernes: null,
+        sabado: null,
+        domingo: null,
+      },
+      hours: null,
+    });
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    expect(screen.queryByTestId("gastro-weekly-hours")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gastro-hours-toggle")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cerrado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hoy: cerrado")).not.toBeInTheDocument();
+    expect(screen.getByTestId("gastro-hours-unavailable-box")).toBeInTheDocument();
+    expect(screen.getByText("Horarios no disponibles")).toBeInTheDocument();
+  });
+
+  it("falls back to the free-text `hours` field when opening_hours has no day loaded but `hours` is set", () => {
+    const place = makeGastroPlace({
+      opening_hours: {
+        lunes: null,
+        martes: null,
+        miercoles: null,
+        jueves: null,
+        viernes: null,
+        sabado: null,
+        domingo: null,
+      },
+      hours: "Mar a dom de 20 a 02 hs",
+    });
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    expect(screen.queryByTestId("gastro-weekly-hours")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gastro-hours-unavailable-box")).not.toBeInTheDocument();
+    expect(screen.getByText("Mar a dom de 20 a 02 hs")).toBeInTheDocument();
+  });
+
   it("starts the weekly hours block collapsed and expands on toggle", async () => {
     const user = userEvent.setup();
     const place = makeGastroPlace();

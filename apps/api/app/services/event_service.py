@@ -359,6 +359,7 @@ def create_event(
     ticket_type: TicketType = TicketType.gratis,
     price_at_door: int | None = None,
     price_advance: int | None = None,
+    price_mode: str = "fixed",
     available_on_site: bool = False,
     contact_whatsapp: str | None = None,
     contact_instagram: str | None = None,
@@ -441,6 +442,7 @@ def create_event(
         ticket_type=ticket_type,
         price_at_door=price_at_door,
         price_advance=price_advance,
+        price_mode=price_mode,
         available_on_site=available_on_site,
         contact_whatsapp=contact_whatsapp,
         contact_instagram=contact_instagram,
@@ -595,6 +597,18 @@ def update_event(
     # payload (aunque venga junto a is_active) mantiene el comportamiento
     # existente: vuelve a pending.
     only_toggles_active = set(data.keys()) == {"is_active"}
+    # price_mode (Etapa "Modo de precio"): EventUpdate.validate_price_mode ya
+    # revisó la combinación dentro de ESTE payload; acá falta la combinación
+    # contra lo que ya tiene guardado el evento cuando el payload solo toca
+    # uno de los dos campos relacionados (ticket_type o price_mode).
+    effective_ticket_type = data.get("ticket_type", event.ticket_type)
+    effective_price_mode = data.get("price_mode", event.price_mode)
+    if effective_price_mode != "fixed":
+        if effective_ticket_type != TicketType.pago:
+            raise ValueError("price_mode solo aplica a eventos con ticket_type='pago'")
+        effective_price_at_door = data.get("price_at_door", event.price_at_door)
+        if effective_price_at_door is not None:
+            raise ValueError("No se puede cargar un precio (price_at_door) con price_mode distinto de 'fixed'")
     categories = data.pop("categories", None)
     if categories is not None:
         _validate_categories_active(session, categories)

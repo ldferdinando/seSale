@@ -43,6 +43,10 @@ export const eventFormSchema = z
     location_longitude: z.number().optional(),
     location_text: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
     ticket_type: z.enum(["gratis", "pago", "anticipo"]),
+    // Solo tiene efecto con ticket_type="pago" — "anticipo" siempre usa
+    // price_at_door/price_advance numéricos (preventa + puerta), no tiene
+    // sentido "Consultar"/"Ver en la descripción" para ese caso.
+    price_mode: z.enum(["fixed", "consultar", "ver_descripcion"]).default("fixed"),
     price_at_door: z.string().optional().or(z.literal("")),
     price_advance: z.string().optional().or(z.literal("")),
     available_on_site: z.boolean().optional(),
@@ -52,10 +56,17 @@ export const eventFormSchema = z
     contact_web: z.string().max(255).optional().or(z.literal("")),
     contact_email: z.string().email("Email inválido").optional().or(z.literal("")),
   })
-  .refine((data) => data.ticket_type === "gratis" || data.price_at_door || data.price_advance, {
-    message: "Indicá al menos un precio si la entrada no es gratis",
-    path: ["price_at_door"],
-  })
+  .refine(
+    (data) => {
+      // Con "pago" + Consultar/Ver en la descripción no se pide monto.
+      if (data.ticket_type === "pago" && data.price_mode !== "fixed") return true;
+      return data.ticket_type === "gratis" || data.price_at_door || data.price_advance;
+    },
+    {
+      message: "Indicá al menos un precio si la entrada no es gratis",
+      path: ["price_at_door"],
+    },
+  )
   .refine((data) => data.location_mode !== "preset" || Boolean(data.location_id), {
     message: "Elegí un lugar de la lista",
     path: ["location_id"],

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
-import { formatTodayHours, isOpenNow } from "@/features/gastro/lib/openingHours";
+import { formatTodayHours, hasAnyHoursLoaded, isOpenNow } from "@/features/gastro/lib/openingHours";
 import { GASTRO_TYPE_LABELS, type GastroPlace } from "@/features/gastro/types";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
@@ -68,8 +68,14 @@ function GastroTypeBadges({ types }: { types: string[] }) {
 }
 
 /** Etapa 10b-2: chip "Abierto ahora" (verde) / "Hoy: HH a HH hs" (gris) /
- * silencio — ver isOpenNow() y las reglas de la Parte 2 del pedido: nunca se
- * muestra "cerrado" en texto, el silencio ya comunica eso. Se exporta porque
+ * "Horarios no disponibles" (gris, más tenue) / silencio — ver isOpenNow()
+ * y las reglas de la Parte 2 del pedido: nunca se muestra "cerrado" en
+ * texto; el silencio solo se usa cuando el lugar SÍ tiene horario cargado
+ * para otros días pero hoy específicamente está vacío (ej. cierra los
+ * domingos) — ahí no hace falta un chip, no es información nueva. Cuando
+ * no hay NINGÚN día cargado (hasAnyHoursLoaded false) se muestra un chip
+ * neutro en vez de quedar en blanco, para que se note que falta el dato (y
+ * no que el lugar no tiene relevancia). Se exporta porque
  * GastroDetailView.tsx la reusa (etapa "Ficha de Lugar v2.2") en vez de
  * duplicar el cálculo de abierto/cerrado. */
 export function OpenHoursChip({ place }: { place: GastroPlace }) {
@@ -84,11 +90,22 @@ export function OpenHoursChip({ place }: { place: GastroPlace }) {
       </span>
     );
   }
-  if (todayHours && todayHours !== "Hoy: cerrado") {
+  if (todayHours) {
     return (
       <span className="flex items-center gap-1 text-[10px] font-semibold text-ink-4" data-testid="gastro-today-hours">
         <Clock className="h-2.5 w-2.5 flex-shrink-0" aria-hidden />
         {todayHours}
+      </span>
+    );
+  }
+  if (!hasAnyHoursLoaded(place.opening_hours)) {
+    return (
+      <span
+        className="flex items-center gap-1 text-[10px] font-semibold text-ink-5"
+        data-testid="gastro-hours-unavailable"
+      >
+        <Clock className="h-2.5 w-2.5 flex-shrink-0" aria-hidden />
+        Horarios no disponibles
       </span>
     );
   }

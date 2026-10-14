@@ -100,6 +100,7 @@ def post_event(
             ticket_type=payload.ticket_type,
             price_at_door=payload.price_at_door,
             price_advance=payload.price_advance,
+            price_mode=payload.price_mode,
             available_on_site=payload.available_on_site,
             contact_whatsapp=payload.contact_whatsapp,
             contact_instagram=payload.contact_instagram,

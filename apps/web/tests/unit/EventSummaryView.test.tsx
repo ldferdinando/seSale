@@ -160,4 +160,24 @@ describe("EventSummaryView", () => {
 
     openSpy.mockRestore();
   });
+
+  describe("price_mode", () => {
+    it("shows 'Puerta: $...' when price_mode is 'fixed' (default)", () => {
+      renderSummary();
+      expect(screen.getByText("Puerta: $3.000")).toBeInTheDocument();
+    });
+
+    it("shows 'Consultar precio' instead of any amount when price_mode='consultar'", () => {
+      renderSummary({ payload: { ...payload, price_mode: "consultar", price_at_door: undefined } });
+
+      expect(screen.getByText("Consultar precio")).toBeInTheDocument();
+      expect(screen.queryByText(/Puerta: \$/)).not.toBeInTheDocument();
+    });
+
+    it("shows 'Ver precios en la descripción' when price_mode='ver_descripcion'", () => {
+      renderSummary({ payload: { ...payload, price_mode: "ver_descripcion", price_at_door: undefined } });
+
+      expect(screen.getByText("Ver precios en la descripción")).toBeInTheDocument();
+    });
+  });
 });
