@@ -57,7 +57,7 @@ function addDaysIso(iso: string, days: number): string {
 const TICKET_TYPE_STYLES: { value: TicketType; label: string; icon: LucideIcon }[] = [
   { value: "gratis", label: "Gratis", icon: CheckCircle2 },
   { value: "pago", label: "Pago", icon: Banknote },
-  { value: "anticipo", label: "Anticipo", icon: Tag },
+  { value: "anticipo", label: "Entrada anticipada", icon: Tag },
 ];
 
 // Solo aplica a ticket_type="pago" — ver _validate_price_mode en el backend.
@@ -584,7 +584,7 @@ export function EventForm({
           {ticketType === "anticipo" && (
             <div className="flex flex-col gap-1">
               <FieldLabel icon={Tag} htmlFor="price_advance">
-                Precio anticipo
+                Precio entrada anticipada
               </FieldLabel>
               <Input id="price_advance" type="number" min={0} {...register("price_advance")} placeholder="Ej: 2000" />
             </div>

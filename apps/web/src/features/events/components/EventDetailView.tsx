@@ -10,7 +10,6 @@ import {
   Building2,
   Calendar,
   Clock,
-  DollarSign,
   Facebook as FacebookIcon,
   Flag,
   Globe,
@@ -32,7 +31,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ContactLinks, type ContactLinkItem } from "@/components/ContactLinks";
-import { Badge } from "@/components/ui/badge";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
@@ -49,6 +47,7 @@ import { formatEventDateRange, formatEventTime, toEventDateTimeISO } from "@/lib
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 import { buildEventMapUrl, eventPlaceLabel } from "@/features/events/lib/eventLocation";
 import { priceModeLabel } from "@/features/events/lib/priceMode";
+import { buildWhatsappContactUrl } from "@/lib/whatsapp";
 
 /** "Recordarme este evento" (botón + panel WhatsApp/Email) — pendiente de
  * decisión de producto (no funcional, sin definir el caso sin sesión). */
@@ -59,12 +58,6 @@ const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.M
 interface EventDetailViewProps {
   event: EventDetail;
 }
-
-const TICKET_TYPE_LABEL: Record<EventDetail["ticket_type"], string> = {
-  gratis: "Entrada gratuita",
-  pago: "Entrada paga",
-  anticipo: "Con anticipo",
-};
 
 /** Etapa 8c — nombre público del plan en el banner de vencimiento. Mismo
  * texto que ya usan EventCard.tsx/publishPlans.ts, declarado acá inline
@@ -143,7 +136,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   // Etapa 12a: 549 = código de Argentina (54) + 9 de móvil — el organizador
   // carga el número sin +54 ni 0 (ver placeholder/helper de EventForm).
   const whatsappHref = event.contact_whatsapp
-    ? `https://wa.me/549${event.contact_whatsapp.replace(/\D/g, "")}`
+    ? buildWhatsappContactUrl(`549${event.contact_whatsapp.replace(/\D/g, "")}`, "evento")
     : null;
   const instagramHref = event.contact_instagram
     ? `https://instagram.com/${event.contact_instagram.replace(/^@/, "")}`
@@ -398,36 +391,84 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           </div>
         )}
 
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+        {/* Etapa "Fix orden/etiquetas" — las 4 reglas de qué mostrar:
+            gratis → "Entrada gratuita"; pago + consultar/ver_descripcion →
+            solo ese texto; pago + monto fijo → el valor; anticipo → los dos
+            valores, sin ningún título tipo "Entrada paga"/"Con anticipo"
+            (ambiguo, ver a_revisar.md). Los medios de contacto
+            (contact_whatsapp/instagram/facebook/web/email) son del EVENTO
+            — "¿Dónde se consiguen?" en EventForm.tsx — no de la persona que
+            lo cargó, así que van acá adentro y no en el bloque de
+            "Usuario verificado". */}
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4" data-testid="event-tickets-card">
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-5">
             <Ticket className="h-3.5 w-3.5 text-primary" aria-hidden />
             Entradas
           </p>
-          <p className="text-sm font-bold text-foreground">{TICKET_TYPE_LABEL[event.ticket_type]}</p>
-          {event.ticket_type === "pago" && event.price_mode !== "fixed" ? (
-            <p className="text-sm font-semibold text-ink-2">{priceModeLabel(event.price_mode)}</p>
-          ) : (
-            event.ticket_type !== "gratis" && (
-              <div className="flex flex-wrap items-center gap-3">
-                {event.price_at_door != null && (
+
+          {event.ticket_type === "gratis" && (
+            <p className="text-sm font-bold text-foreground">Entrada gratuita</p>
+          )}
+
+          {event.ticket_type === "pago" && event.price_mode !== "fixed" && (
+            <p className="text-sm font-bold text-foreground">{priceModeLabel(event.price_mode)}</p>
+          )}
+
+          {((event.ticket_type === "pago" && event.price_mode === "fixed") || event.ticket_type === "anticipo") && (
+            <div className="flex flex-wrap items-center gap-4">
+              {event.price_at_door != null && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Precio en puerta</p>
                   <span className="text-lg font-black text-foreground">
                     ${event.price_at_door.toLocaleString("es-AR")}
                   </span>
-                )}
-                {event.price_advance != null && (
-                  <Badge>Anticipo ${event.price_advance.toLocaleString("es-AR")}</Badge>
-                )}
-              </div>
-            )
+                </div>
+              )}
+              {event.price_advance != null && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-ink-5">Precio entrada anticipada</p>
+                  <span className="text-lg font-black text-foreground">
+                    ${event.price_advance.toLocaleString("es-AR")}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Canal "En el lugar / mapa el día del evento" del form
+              (available_on_site) — se consigue in situ, no es un precio. */}
+          {event.available_on_site && (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-3" data-testid="on-site-ticket-hint">
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden />
+              También se consiguen en el lugar, el día del evento
+            </p>
+          )}
+
+          {hasContact && (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-5">¿Dónde conseguirlas?</p>
+              <ContactLinks items={contactItems} />
+            </div>
           )}
         </div>
 
-        {/* Canal de entradas "En el lugar / mapa el día del evento" del form
-            (available_on_site) — se paga en la puerta, de ahí el ícono $. */}
-        {event.available_on_site && (
-          <div className="flex items-center gap-2 rounded-xl bg-surface-5 p-3 text-sm font-semibold text-ink-2">
-            <DollarSign className="h-4 w-4 text-primary" aria-hidden data-testid="on-site-ticket-icon" />
-            Entradas en puerta
+        {/* Sello de verificación del organizador — nunca se muestra su
+            nombre/avatar en el detalle, solo este texto fijo. Va antes de
+            Compartir, calcando el orden del mock-up seSALE.html (revertido
+            de la decisión anterior de ponerlo después — ver a_revisar.md).
+            Los medios de contacto del evento NO van acá (ver tarjeta de
+            Entradas arriba): esto es solo la identidad del organizador. */}
+        {event.organizer.is_verified && (
+          <div
+            className="flex items-center gap-2 rounded-xl border border-border bg-card p-3.5"
+            data-testid="event-organizer-verified"
+          >
+            <ShieldCheck
+              className="h-4 w-4 flex-shrink-0 text-brand-green"
+              aria-hidden
+              data-testid="organizer-verified-icon"
+            />
+            <p className="text-sm font-bold text-foreground">Usuario verificado</p>
           </div>
         )}
 
@@ -454,30 +495,6 @@ export function EventDetailView({ event }: EventDetailViewProps) {
             Compartir
           </button>
         </div>
-
-        {/* Privacidad del organizador: nunca se muestra su nombre/avatar en
-            el detalle — solo el sello de verificación (texto fijo) y los
-            medios de contacto que cargó en el evento. Va debajo de
-            Compartir por decisión explícita de la usuaria (distinto de
-            seSALE.html, a propósito). */}
-        {(event.organizer.is_verified || hasContact) && (
-          <div
-            className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5"
-            data-testid="event-organizer-contact"
-          >
-            {event.organizer.is_verified && (
-              <p className="flex items-center gap-2 text-sm font-bold text-foreground">
-                <ShieldCheck
-                  className="h-4 w-4 flex-shrink-0 text-brand-green"
-                  aria-hidden
-                  data-testid="organizer-verified-icon"
-                />
-                Usuario verificado
-              </p>
-            )}
-            <ContactLinks items={contactItems} />
-          </div>
-        )}
 
         {canEdit && (
           <Link

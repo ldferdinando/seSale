@@ -389,7 +389,7 @@ describe("EventForm", () => {
       expect(screen.getByText("Consultar")).toBeInTheDocument();
       expect(screen.getByText("Ver en descripción")).toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: "Anticipo" }));
+      await user.click(screen.getByRole("button", { name: "Entrada anticipada" }));
       expect(screen.queryByText("Monto fijo")).not.toBeInTheDocument();
     });
 
@@ -424,9 +424,9 @@ describe("EventForm", () => {
       await toggleCategory(user, "Música en vivo");
       await user.click(screen.getByRole("button", { name: "Pago" }));
       await user.click(screen.getByRole("button", { name: "Ver en descripción" }));
-      await user.click(screen.getByRole("button", { name: "Anticipo" }));
+      await user.click(screen.getByRole("button", { name: "Entrada anticipada" }));
       await user.type(screen.getByLabelText("Precio en puerta"), "3000");
-      await user.type(screen.getByLabelText("Precio anticipo"), "2000");
+      await user.type(screen.getByLabelText("Precio entrada anticipada"), "2000");
 
       await user.click(screen.getByRole("button", { name: "Continuar" }));
 

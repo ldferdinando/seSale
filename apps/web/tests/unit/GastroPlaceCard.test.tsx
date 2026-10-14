@@ -222,6 +222,19 @@ describe("GastroPlaceCard", () => {
     expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
   });
 
+  it('"Reservar" message mentions seSALE', () => {
+    const openMock = vi.fn();
+    vi.stubGlobal("open", openMock);
+    const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: "5492984000001", name: "La Toscana" });
+    render(<GastroPlaceCard place={pro} />);
+
+    screen.getByTestId("gastro-reservar-button").click();
+
+    expect(openMock).toHaveBeenCalledTimes(1);
+    expect(decodeURIComponent(openMock.mock.calls[0][0])).toContain("seSALE");
+    openMock.mockRestore();
+  });
+
   // Etapa 9a — "Ver N evento(s)" navega al detalle del lugar (la card entera
   // ya es un Link a /lugares/{id}, ver a_revisar.md).
   it('shows "Ver N evento(s)" inside the link to /lugares/{id} when event_count > 0', () => {

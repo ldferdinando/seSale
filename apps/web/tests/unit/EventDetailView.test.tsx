@@ -92,18 +92,17 @@ describe("EventDetailView", () => {
         <EventDetailView event={makeEventDetail({ available_on_site: false })} />
       </QueryClientProvider>,
     );
-    expect(screen.queryByText("Entradas en puerta")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("on-site-ticket-hint")).not.toBeInTheDocument();
 
     rerender(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <EventDetailView event={makeEventDetail({ available_on_site: true })} />
       </QueryClientProvider>,
     );
-    // Canal "en el lugar": copy "Entradas en puerta" + ícono de $ (antes
-    // "Habrá lugar en la puerta el día del evento" con un pin de mapa).
-    expect(screen.getByText("Entradas en puerta")).toBeInTheDocument();
-    expect(screen.getByTestId("on-site-ticket-icon")).toHaveClass("lucide-dollar-sign");
-    expect(screen.queryByText(/Habrá lugar en la puerta/)).not.toBeInTheDocument();
+    // Canal "en el lugar" — texto aclarado (antes "Entradas en puerta" con
+    // un ícono de $ que se confundía con un precio).
+    expect(screen.getByText("También se consiguen en el lugar, el día del evento")).toBeInTheDocument();
+    expect(screen.getByTestId("on-site-ticket-hint")).toBeInTheDocument();
   });
 
   it("only renders contact links that have a value", () => {
@@ -123,14 +122,16 @@ describe("EventDetailView", () => {
   });
 
   // Etapa 12a — links de contacto: target="_blank" + prefijo 549 en WhatsApp.
-  it("WhatsApp link opens in a new tab with the 549 (Argentina) prefix", () => {
+  it("WhatsApp link opens in a new tab with the 549 (Argentina) prefix and a seSALE-mention message", () => {
     const event = makeEventDetail({ contact_whatsapp: "2984123456" });
 
     renderWithClient(event);
 
     const link = screen.getByTestId("ticket-whatsapp-link");
+    const href = link.getAttribute("href") ?? "";
     expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("href", "https://wa.me/5492984123456");
+    expect(href).toMatch(/^https:\/\/wa\.me\/5492984123456\?text=/);
+    expect(decodeURIComponent(href)).toContain("seSALE");
   });
 
   it("Instagram link opens in a new tab with the correct href", () => {
@@ -521,8 +522,11 @@ describe("EventDetailView", () => {
   });
 
   // Privacidad del organizador: el detalle nunca muestra su nombre/avatar,
-  // solo "Usuario verificado" + los medios de contacto del evento, debajo de
-  // Compartir y antes de "Reportar evento".
+  // solo el sello "Usuario verificado" (identidad del organizador, sin
+  // medios de contacto) antes de Compartir y de "Reportar evento". Los
+  // medios de contacto del evento (WhatsApp/Instagram/Facebook/web/email,
+  // "¿Dónde se consiguen?" en EventForm.tsx) van dentro de la tarjeta de
+  // Entradas — no son datos de la persona que cargó el evento.
   describe("organizer privacy block", () => {
     const ORGANIZER = {
       public_name: "Juana Pérez Producciones",
@@ -547,22 +551,23 @@ describe("EventDetailView", () => {
     it('shows the "Usuario verificado" seal when the organizer is verified', () => {
       renderWithClient(makeEventDetail({ organizer: ORGANIZER }));
 
-      const block = screen.getByTestId("event-organizer-contact");
+      const block = screen.getByTestId("event-organizer-verified");
       expect(within(block).getByText("Usuario verificado")).toBeInTheDocument();
       expect(within(block).getByTestId("organizer-verified-icon")).toBeInTheDocument();
     });
 
-    it("does not claim verification when the organizer is not verified", () => {
+    it("does not show the seal when the organizer is not verified, but still shows the event's contact channels", () => {
       renderWithClient(
         makeEventDetail({ organizer: { ...ORGANIZER, is_verified: false }, contact_whatsapp: "2984000000" }),
       );
 
+      expect(screen.queryByTestId("event-organizer-verified")).not.toBeInTheDocument();
       expect(screen.queryByText("Usuario verificado")).not.toBeInTheDocument();
-      // Los medios de contacto se siguen mostrando.
-      expect(within(screen.getByTestId("event-organizer-contact")).getByText("WhatsApp")).toBeInTheDocument();
+      // Los medios de contacto del evento se siguen mostrando, en Entradas.
+      expect(within(screen.getByTestId("event-tickets-card")).getByText("WhatsApp")).toBeInTheDocument();
     });
 
-    it("renders only the contact channels the organizer loaded", () => {
+    it("renders only the contact channels loaded on the event, inside the Entradas card", () => {
       renderWithClient(
         makeEventDetail({
           organizer: ORGANIZER,
@@ -574,7 +579,7 @@ describe("EventDetailView", () => {
         }),
       );
 
-      const block = screen.getByTestId("event-organizer-contact");
+      const block = screen.getByTestId("event-tickets-card");
       expect(within(block).getByText("WhatsApp")).toBeInTheDocument();
       expect(within(block).getByText("Instagram")).toBeInTheDocument();
       expect(within(block).getByText("Email")).toBeInTheDocument();
@@ -582,17 +587,17 @@ describe("EventDetailView", () => {
       expect(within(block).queryByText("Página web")).not.toBeInTheDocument();
     });
 
-    it("is placed below the Compartir button and before 'Reportar evento'", () => {
+    it("the verified seal is placed before the Compartir button and before 'Reportar evento'", () => {
       renderWithClient(makeEventDetail({ organizer: ORGANIZER, contact_whatsapp: "2984000000" }));
 
+      const block = screen.getByTestId("event-organizer-verified");
       const share = screen.getByRole("button", { name: /Compartir/ });
-      const block = screen.getByTestId("event-organizer-contact");
       const report = screen.getByRole("button", { name: /Reportar evento/ });
-      expect(share.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(block.compareDocumentPosition(share) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(block.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it("hides the block entirely when the organizer is unverified and has no contact channels", () => {
+    it("hides the verified seal when the organizer is unverified", () => {
       renderWithClient(
         makeEventDetail({
           organizer: { ...ORGANIZER, is_verified: false },
@@ -604,7 +609,7 @@ describe("EventDetailView", () => {
         }),
       );
 
-      expect(screen.queryByTestId("event-organizer-contact")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("event-organizer-verified")).not.toBeInTheDocument();
     });
   });
 
@@ -757,7 +762,15 @@ describe("EventDetailView", () => {
       renderWithClient(event);
 
       expect(screen.getByText("$5.000")).toBeInTheDocument();
-      expect(screen.getByText("Anticipo $3.500")).toBeInTheDocument();
+      expect(screen.getByText("$3.500")).toBeInTheDocument();
+      expect(screen.getByText("Precio en puerta")).toBeInTheDocument();
+      expect(screen.getByText("Precio entrada anticipada")).toBeInTheDocument();
+    });
+
+    it("shows the amount with no headline for ticket_type='gratis'", () => {
+      renderWithClient(makeEventDetail({ ticket_type: "gratis" }));
+
+      expect(screen.getByText("Entrada gratuita")).toBeInTheDocument();
     });
   });
 });

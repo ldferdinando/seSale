@@ -179,5 +179,11 @@ describe("EventSummaryView", () => {
 
       expect(screen.getByText("Ver precios en la descripción")).toBeInTheDocument();
     });
+
+    it("shows 'Entrada anticipada: $...' when the event has a price_advance", () => {
+      renderSummary({ payload: { ...payload, ticket_type: "anticipo", price_advance: 2000 } });
+
+      expect(screen.getByText("Entrada anticipada: $2.000")).toBeInTheDocument();
+    });
   });
 });

@@ -13,6 +13,16 @@ function renderWithQueryClient(ui: ReactElement) {
 }
 
 describe("GastroDetailView", () => {
+  it("WhatsApp contact link includes a message mentioning seSALE", () => {
+    const place = makeGastroPlace({ gastro_whatsapp: "5492984000001", plan: "dest" });
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    const link = screen.getByText("WhatsApp").closest("a");
+    const href = link?.getAttribute("href") ?? "";
+    expect(href).toMatch(/^https:\/\/wa\.me\/5492984000001\?text=/);
+    expect(decodeURIComponent(href)).toContain("seSALE");
+  });
+
   it("shows all 7 weekdays with today highlighted", () => {
     const place = makeGastroPlace();
     renderWithQueryClient(<GastroDetailView place={place} />);

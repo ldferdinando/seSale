@@ -33,6 +33,7 @@ import { GastroPlanBadge, OpenHoursChip } from "@/features/gastro/components/Gas
 import { ReportPlaceModal } from "@/features/gastro/components/ReportPlaceModal";
 import { cn } from "@/lib/utils";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
+import { buildWhatsappContactUrl } from "@/lib/whatsapp";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker").then((m) => m.MapPicker), { ssr: false });
 
@@ -54,7 +55,7 @@ function buildMapUrl(place: GastroPlace): string | null {
 function buildReservarUrl(place: GastroPlace): string | null {
   if (place.plan !== "pro" || !place.gastro_whatsapp) return null;
   const digits = place.gastro_whatsapp.replace(/\D/g, "");
-  const message = `Hola, quiero hacer una reserva en ${place.name}`;
+  const message = `Hola, quiero hacer una reserva en ${place.name}. Te vi en seSALE.`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
@@ -87,7 +88,7 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
   const showCover = place.plan === "pro";
 
   const whatsappHref = place.gastro_whatsapp
-    ? `https://wa.me/${place.gastro_whatsapp.replace(/\D/g, "")}`
+    ? buildWhatsappContactUrl(place.gastro_whatsapp.replace(/\D/g, ""), "lugar")
     : null;
   const instagramHref = place.gastro_instagram
     ? `https://instagram.com/${place.gastro_instagram.replace(/^@/, "")}`

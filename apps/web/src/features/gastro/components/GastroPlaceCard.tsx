@@ -165,7 +165,7 @@ function buildMapUrl(place: GastroPlace): string | null {
 function buildReservarUrl(place: GastroPlace): string | null {
   if (place.plan !== "pro" || !place.gastro_whatsapp) return null;
   const digits = place.gastro_whatsapp.replace(/\D/g, "");
-  const message = `Hola, quiero hacer una reserva en ${place.name}`;
+  const message = `Hola, quiero hacer una reserva en ${place.name}. Te vi en seSALE.`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 

@@ -105,7 +105,7 @@ export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryV
                   <>
                     {payload.price_at_door !== undefined && <span>Puerta: ${formatPrice(payload.price_at_door)}</span>}
                     {payload.price_advance !== undefined && (
-                      <span>Anticipo: ${formatPrice(payload.price_advance)}</span>
+                      <span>Entrada anticipada: ${formatPrice(payload.price_advance)}</span>
                     )}
                   </>
                 )}
