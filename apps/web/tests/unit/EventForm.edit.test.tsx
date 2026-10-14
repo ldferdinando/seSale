@@ -1,10 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import { EventForm } from "@/features/events/components/EventForm";
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
 import { renderWithActiveCity } from "./test-utils";
+import { server } from "./mocks/server";
+
+const API_URL = "http://localhost:8000";
 
 const initialValues: Partial<EventFormValues> = {
   title: "Show original",
@@ -59,5 +63,37 @@ describe("EventForm — modo edición", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  // Bug real: editar un evento que ya tenía price_at_door cargado y pasarlo
+  // a "Consultar"/"Ver en descripción" quedaba bloqueado por el backend
+  // (`No se puede cargar un precio... con price_mode distinto de 'fixed'`)
+  // porque el payload omitía price_at_door en vez de mandar `null` — el
+  // backend (`exclude_unset`) comparaba contra el precio viejo guardado en
+  // el evento. Ver a_revisar.md.
+  it("al cambiar a 'Consultar' un evento con precio ya cargado, manda price_at_door: null explícito", async () => {
+    const user = userEvent.setup();
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.put(`${API_URL}/api/events/:id`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ id: "11111111-1111-1111-1111-111111111111", ...capturedBody });
+      }),
+    );
+
+    renderWithActiveCity(
+      <EventForm
+        mode="edit"
+        eventId="11111111-1111-1111-1111-111111111111"
+        initialValues={{ ...initialValues, ticket_type: "pago", price_mode: "fixed", price_at_door: "3000" }}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Consultar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(capturedBody).not.toBeNull());
+    expect(capturedBody).toMatchObject({ price_mode: "consultar", price_at_door: null });
   });
 });

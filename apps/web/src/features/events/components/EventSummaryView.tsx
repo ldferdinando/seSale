@@ -43,8 +43,8 @@ function SummaryRow({ icon: Icon, label, value }: SummaryRowProps) {
   );
 }
 
-function formatPrice(value: number | undefined): string {
-  if (value === undefined) return "";
+function formatPrice(value: number | null | undefined): string {
+  if (value == null) return "";
   return new Intl.NumberFormat("es-AR").format(value);
 }
 

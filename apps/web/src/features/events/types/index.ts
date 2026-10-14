@@ -152,7 +152,11 @@ export interface EventCreateInput {
   location_data?: LocationDataInput;
   location_text?: string;
   ticket_type: TicketType;
-  price_at_door?: number;
+  // null = limpiar un precio ya guardado (solo tiene efecto en edición —
+  // ver EventForm.tsx onSubmit: el backend distingue "no viene en el
+  // payload" de "viene en null", y en una edición hace falta lo segundo
+  // para poder sacar un price_at_door ya cargado al cambiar price_mode).
+  price_at_door?: number | null;
   price_advance?: number;
   price_mode?: PriceMode;
   available_on_site?: boolean;

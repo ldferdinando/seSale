@@ -309,10 +309,18 @@ export function EventForm({
       price_mode: values.ticket_type === "pago" ? values.price_mode : "fixed",
       // Con "Consultar"/"Ver en la descripción" no se manda monto — el
       // backend rechaza price_at_door junto con un price_mode distinto de
-      // "fixed" (ver _validate_price_mode).
+      // "fixed" (ver _validate_price_mode). En una EDICIÓN hace falta mandar
+      // `null` explícito (no omitir el campo): el backend solo mira las
+      // claves presentes en el payload (`exclude_unset`) y, si no viene
+      // price_at_door, compara el price_mode nuevo contra el precio YA
+      // guardado en el evento — bug real: editar un evento con precio
+      // cargado y pasarlo a "Consultar"/"Ver en descripción" quedaba
+      // bloqueado porque el precio viejo seguía ahí (ver a_revisar.md).
       price_at_door:
         values.ticket_type === "pago" && values.price_mode !== "fixed"
-          ? undefined
+          ? mode === "edit"
+            ? null
+            : undefined
           : values.price_at_door
           ? Number(values.price_at_door)
           : undefined,
