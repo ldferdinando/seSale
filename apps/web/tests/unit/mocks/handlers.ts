@@ -216,10 +216,13 @@ export function makeAdminLocation(overrides: Partial<AdminLocation> = {}): Admin
     price_range: null,
     cover_img_url: null,
     plan: "gratis",
+    featured_banner_url: null,
     is_active: true,
     is_gastro: false,
-    featured_until: null,
     created_at: "2099-01-01T00:00:00Z",
+    configured_plan: "gratis",
+    featured_from: null,
+    featured_until: null,
     ...overrides,
   };
 }
@@ -328,6 +331,7 @@ export function makeGastroPlace(overrides: Partial<GastroPlace> = {}): GastroPla
     price_range: "$$",
     cover_img_url: null,
     plan: "dest",
+    featured_banner_url: null,
     is_verified: true,
     event_count: 2,
     ...overrides,
@@ -688,8 +692,16 @@ export const handlers = [
   }),
   http.patch(`${API_URL}/api/admin/gastro/:id/plan`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
+    const plan = body.plan as AdminLocation["plan"];
     return HttpResponse.json(
-      makeAdminLocation({ id: params.id as string, is_gastro: true, plan: body.plan as AdminLocation["plan"] }),
+      makeAdminLocation({
+        id: params.id as string,
+        is_gastro: true,
+        plan,
+        configured_plan: plan,
+        featured_from: (body.featured_from as string | null) ?? null,
+        featured_until: (body.featured_until as string | null) ?? null,
+      }),
     );
   }),
   http.post(`${API_URL}/api/admin/gastro/:id/cover`, () => {
@@ -697,6 +709,12 @@ export const handlers = [
   }),
   http.delete(`${API_URL}/api/admin/gastro/:id/cover`, () => {
     return HttpResponse.json({ cover_img_url: null });
+  }),
+  http.post(`${API_URL}/api/admin/gastro/:id/featured-banner`, () => {
+    return HttpResponse.json({ featured_banner_url: "https://storage.example.com/featured-banner.jpg" });
+  }),
+  http.delete(`${API_URL}/api/admin/gastro/:id/featured-banner`, () => {
+    return HttpResponse.json({ featured_banner_url: null });
   }),
 
   // ── Etapa 12a — categorías y tipos gastronómicos (catálogo dinámico) ────

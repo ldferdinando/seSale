@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GastroPlaceCard } from "@/features/gastro/components/GastroPlaceCard";
@@ -105,36 +105,41 @@ describe("GastroPlaceCard", () => {
     expect(screen.queryByText("Destacado Plus")).not.toBeInTheDocument();
   });
 
-  it("plan='pro' with cover_img_url shows the thumbnail image", () => {
-    const place = makeGastroPlace({ plan: "pro", cover_img_url: "/uploads/covers/1/cover.jpg" });
+  // Etapa "Lugares destacados temporales": plan="pro" pasa a usar el mismo
+  // patrón que EventCard (isPro) — imagen de fondo completa con
+  // featured_banner_url, no cover_img_url (esa sigue siendo la portada
+  // general, independiente del plan).
+  it("plan='pro' with featured_banner_url shows the background image", () => {
+    const place = makeGastroPlace({ plan: "pro", featured_banner_url: "/uploads/featured-banners/1/banner.jpg" });
 
     const { container } = render(<GastroPlaceCard place={place} />);
 
     const card = screen.getByTestId("gastro-place-card");
-    expect(card.className).toContain("border-l-[6px]");
+    expect(card.className).toContain("aspect-[1080/1350]");
     const img = container.querySelector("img");
-    expect(img).toHaveAttribute("src", expect.stringContaining("cover.jpg"));
+    expect(img).toHaveAttribute("src", expect.stringContaining("banner.jpg"));
   });
 
-  it("plan='pro' without cover_img_url shows a placeholder icon", () => {
-    const place = makeGastroPlace({ plan: "pro", cover_img_url: null });
+  it("plan='pro' without featured_banner_url shows a placeholder icon", () => {
+    const place = makeGastroPlace({ plan: "pro", featured_banner_url: null });
 
     const { container } = render(<GastroPlaceCard place={place} />);
 
     expect(container.querySelector("img")).not.toBeInTheDocument();
-    expect(screen.getByTestId("gastro-place-card").className).toContain("border-l-[6px]");
+    expect(screen.getByTestId("gastro-place-card").className).toContain("aspect-[1080/1350]");
   });
 
-  // Etapa 10b-2: la foto de Destacado Plus es clickeable y abre el
-  // ImageLightbox (ya existe desde la Etapa 8b) con la imagen completa.
-  it("plan='pro' photo opens the ImageLightbox on click", () => {
-    const place = makeGastroPlace({ plan: "pro", cover_img_url: "/uploads/covers/1/cover.jpg" });
+  // Etapa "Lugares destacados temporales": sin botones Reservar/Llegar en
+  // la card (viven en la ficha de detalle) — ver tests de "Reservar" más
+  // abajo, que confirman que ya no aparecen para plan="pro".
+  it("plan='pro' does not show cover_img_url (that field is the general photo, not the featured banner)", () => {
+    const place = makeGastroPlace({ plan: "pro", cover_img_url: "/uploads/covers/1/cover.jpg", featured_banner_url: null });
 
-    render(<GastroPlaceCard place={place} />);
+    const { container } = render(<GastroPlaceCard place={place} />);
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("gastro-photo-button"));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // Sin featured_banner_url, no hay <img> en absoluto (se muestra el
+    // placeholder) aunque cover_img_url esté cargado.
+    expect(container.querySelector("img")).not.toBeInTheDocument();
   });
 
   // Etapa 10b-2: plan='dest' no lleva foto lateral (exclusiva de Plus).
@@ -203,36 +208,19 @@ describe("GastroPlaceCard", () => {
     expect(screen.getByTestId("gastro-map-button")).toBeInTheDocument();
   });
 
-  // Etapa 10b-1: CTA "Reservar" — solo Destacado Plus con WhatsApp cargado.
-  it('shows a "Reservar" button only for plan pro with gastro_whatsapp', () => {
+  // Etapa "Lugares destacados temporales": el CTA "Reservar" se sacó de la
+  // card (ya no comparte layout con Destacado/Gratis, ver EventCard isPro)
+  // — sigue existiendo en la ficha de detalle (GastroDetailView.tsx).
+  it('does not show "Reservar" for plan pro (lives in the detail page instead)', () => {
     const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: "5492984000001" });
     render(<GastroPlaceCard place={pro} />);
-    expect(screen.getByTestId("gastro-reservar-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
   });
 
   it('does not show "Reservar" for plan dest', () => {
     const dest = makeGastroPlace({ plan: "dest", gastro_whatsapp: "5492984000001" });
     render(<GastroPlaceCard place={dest} />);
     expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
-  });
-
-  it('does not show "Reservar" for plan pro without gastro_whatsapp', () => {
-    const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: null });
-    render(<GastroPlaceCard place={pro} />);
-    expect(screen.queryByTestId("gastro-reservar-button")).not.toBeInTheDocument();
-  });
-
-  it('"Reservar" message mentions seSALE', () => {
-    const openMock = vi.fn();
-    vi.stubGlobal("open", openMock);
-    const pro = makeGastroPlace({ plan: "pro", gastro_whatsapp: "5492984000001", name: "La Toscana" });
-    render(<GastroPlaceCard place={pro} />);
-
-    screen.getByTestId("gastro-reservar-button").click();
-
-    expect(openMock).toHaveBeenCalledTimes(1);
-    expect(decodeURIComponent(openMock.mock.calls[0][0])).toContain("seSALE");
-    openMock.mockRestore();
   });
 
   // Etapa 9a — "Ver N evento(s)" navega al detalle del lugar (la card entera

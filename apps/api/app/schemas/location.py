@@ -1,8 +1,8 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 MAX_GASTRO_TYPES = 5
 
@@ -110,6 +110,14 @@ class LocationGastroRead(BaseModel):
     price_range: str | None
     cover_img_url: str | None
     plan: str
+    # `plan` acá ya es el plan VIGENTE (is_location_featured_now en
+    # location_service.py) — "gratis" si el plan pago configurado venció,
+    # aunque en la DB siga guardado "dest"/"pro". Ver LocationAdminRead.configured_plan
+    # para el valor crudo que edita el admin.
+    featured_banner_url: str | None
+    # Solo tiene imagen real cuando `plan == "pro"` — si el plan vigente es
+    # "gratis"/"dest" no se debe mostrar aunque el campo tenga un valor
+    # (puede quedar de un "pro" anterior ya vencido).
     is_verified: bool
     event_count: int
 
@@ -137,9 +145,17 @@ class LocationAdminRead(LocationGastroRead):
     is_active: bool
     is_gastro: bool
     is_public: bool
-    featured_until: datetime | None
     place_type: str | None
     created_at: datetime
+
+    configured_plan: str
+    # Valor crudo de Location.plan, tal cual lo cargó el admin — a
+    # diferencia de `plan` (heredado, ya filtrado por vigencia). El panel
+    # admin usa este campo + featured_until para mostrar "Destacado Plus
+    # (venció el DD/MM)" cuando configured_plan != "gratis" pero `plan`
+    # (vigente) ya volvió a "gratis".
+    featured_from: datetime | None
+    featured_until: datetime | None
 
 
 class LocationAdminCreate(BaseModel):
@@ -231,7 +247,14 @@ class LocationAdminUpdate(BaseModel):
 
 
 class LocationGastroPlanUpdate(BaseModel):
+    """PATCH /api/admin/gastro/{id}/plan. `featured_from`/`featured_until`
+    son opcionales: si no vienen y `plan` es "dest"/"pro", el servicio los
+    completa con hoy / hoy+30 días (mismo default que antes de poder
+    elegirlos). Si `plan` es "gratis", se ignoran y se limpian."""
+
     plan: str
+    featured_from: date | None = None
+    featured_until: date | None = None
 
     @field_validator("plan")
     @classmethod
@@ -239,3 +262,13 @@ class LocationGastroPlanUpdate(BaseModel):
         if value not in {"gratis", "dest", "pro"}:
             raise ValueError("plan debe ser 'gratis', 'dest' o 'pro'")
         return value
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "LocationGastroPlanUpdate":
+        if (
+            self.featured_from is not None
+            and self.featured_until is not None
+            and self.featured_until < self.featured_from
+        ):
+            raise ValueError("featured_until no puede ser anterior a featured_from")
+        return self

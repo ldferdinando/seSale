@@ -79,10 +79,12 @@ from app.services.location_service import (
     create_admin_location,
     delete_admin_location,
     delete_gastro_cover,
+    delete_location_featured_banner,
     list_admin_locations,
     set_gastro_plan,
     update_admin_location,
     upload_gastro_cover,
+    upload_location_featured_banner,
     verify_location,
 )
 from app.services.payment_service import (
@@ -614,9 +616,51 @@ def patch_admin_gastro_plan(
     session: Session = Depends(get_session),
 ) -> LocationAdminRead:
     try:
-        return set_gastro_plan(session, location_id, payload.plan)
+        return set_gastro_plan(
+            session,
+            location_id,
+            payload.plan,
+            featured_from=payload.featured_from,
+            featured_until=payload.featured_until,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/gastro/{location_id}/featured-banner")
+def post_admin_gastro_featured_banner(
+    location_id: UUID,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+) -> dict[str, str | None]:
+    content = file.file.read()
+    try:
+        banner_url = upload_location_featured_banner(
+            session,
+            location_id,
+            file_content=content,
+            filename=file.filename or "featured-banner",
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except InvalidFlyerFileError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return {"featured_banner_url": banner_url}
+
+
+@router.delete("/gastro/{location_id}/featured-banner")
+def delete_admin_gastro_featured_banner(
+    location_id: UUID,
+    session: Session = Depends(get_session),
+) -> dict[str, str | None]:
+    try:
+        delete_location_featured_banner(session, location_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"featured_banner_url": None}
 
 
 @router.post("/gastro/{location_id}/cover")

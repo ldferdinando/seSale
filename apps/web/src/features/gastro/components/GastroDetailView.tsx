@@ -80,11 +80,14 @@ export function GastroDetailView({ place }: GastroDetailViewProps) {
 
   const style = GASTRO_TYPE_STYLES[place.gastro_types[0]] ?? DEFAULT_GASTRO_TYPE_STYLE;
   const Icon = style.icon;
-  const coverUrl = resolveMediaUrl(place.cover_img_url);
+  // Etapa "Lugares destacados temporales": la imagen ampliable de la ficha
+  // es el banner exclusivo de Destacado Plus (featured_banner_url), no
+  // cover_img_url (portada general, cualquier plan — GastroPlaceCard.tsx
+  // pro usa el mismo criterio desde que se migró al patrón de EventCard).
+  const coverUrl = resolveMediaUrl(place.featured_banner_url);
   const today = currentWeekdayInArgentina();
-  // La imagen/logo ampliable (tap para ver en grande, ImageLightbox) es
-  // exclusiva del plan Destacado Plus — mismo criterio que GastroPlaceCard.tsx
-  // (la foto al costado de la card solo aparece para plan==="pro").
+  // La imagen ampliable (tap para ver en grande, ImageLightbox) es
+  // exclusiva del plan Destacado Plus — mismo criterio que GastroPlaceCard.tsx.
   const showCover = place.plan === "pro";
 
   const whatsappHref = place.gastro_whatsapp

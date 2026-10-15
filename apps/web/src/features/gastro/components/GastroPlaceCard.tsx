@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Bike, Building2, Calendar, CalendarCheck, Clock, Crown, MapPin, MessageCircle, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,7 +5,6 @@ import type { MouseEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ImageLightbox } from "@/components/ImageLightbox";
 import { DEFAULT_GASTRO_TYPE_STYLE, GASTRO_TYPE_STYLES } from "@/features/gastro/lib/gastroTypeStyles";
 import { formatTodayHours, hasAnyHoursLoaded, isOpenNow } from "@/features/gastro/lib/openingHours";
 import { GASTRO_TYPE_LABELS, type GastroPlace } from "@/features/gastro/types";
@@ -222,10 +220,8 @@ interface GastroPlaceCardProps {
 export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
   const style = GASTRO_TYPE_STYLES[place.gastro_types[0]] ?? DEFAULT_GASTRO_TYPE_STYLE;
   const Icon = style.icon;
-  const coverUrl = resolveMediaUrl(place.cover_img_url);
   const mapUrl = buildMapUrl(place);
   const reservarUrl = buildReservarUrl(place);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const nameRow = (
     <p className="flex min-w-0 items-center gap-1 truncate text-sm font-bold text-foreground">
@@ -247,75 +243,80 @@ export function GastroPlaceCard({ place }: GastroPlaceCardProps) {
     </p>
   );
 
-  // ── DESTACADO PLUS — foto/logo al costado (72×72, seSALE.html
-  // `.lc-plus-img`), clickeable para ampliar en el lightbox. Sin foto
-  // cargada: placeholder del mismo tamaño. ─────────────────────────────
+  // ── DESTACADO PLUS — Etapa "Lugares destacados temporales": mismo
+  // patrón que EventCard (isPro) — imagen de fondo completa
+  // (featured_banner_url, distinto de cover_img_url) con los datos del
+  // lugar solapados en un panel translúcido abajo. Sin botones Reservar/
+  // Llegar acá (viven en la ficha de detalle, GastroDetailView.tsx) — igual
+  // que seSALE.html (`rLugCard`, `.evi-plus` sin acciones en la card). ────
   if (place.plan === "pro") {
+    const bannerUrl = resolveMediaUrl(place.featured_banner_url);
+    const openNow = isOpenNow(place.opening_hours);
+    const todayHours = formatTodayHours(place.opening_hours);
     return (
-      <>
-        <Link href={`/lugares/${place.id}`} data-testid="gastro-place-card-link">
-          <Card
-            data-testid="gastro-place-card"
-            className="overflow-hidden border-[1.75px] border-l-[6px] border-[#E91E8C99] border-l-brand-pink sesale-evi-plus-bg transition-colors hover:border-primary/40"
-          >
-            <CardContent className="flex flex-col gap-2.5 p-3">
-              <div className="flex items-start gap-3">
-                {coverUrl ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setLightboxOpen(true);
-                    }}
-                    data-testid="gastro-photo-button"
-                    className="relative h-[72px] w-[72px] flex-shrink-0 overflow-hidden rounded-xl"
-                  >
-                    {/* P0-4 — miniatura de 72px: next/image pide una versión
-                        chica en vez de la portada completa. */}
-                    <Image
-                      src={coverUrl}
-                      alt=""
-                      fill
-                      sizes="72px"
-                      unoptimized={!isOptimizableMediaUrl(coverUrl)}
-                      className="object-cover"
+      <Link href={`/lugares/${place.id}`} data-testid="gastro-place-card-link">
+        <Card
+          data-testid="gastro-place-card"
+          className="relative aspect-[1080/1350] overflow-hidden rounded-2xl border-2 border-brand-pink p-0 transition-colors"
+        >
+          <CardContent className="relative h-full w-full p-0">
+            {bannerUrl ? (
+              <Image
+                src={bannerUrl}
+                alt=""
+                fill
+                sizes="(max-width: 672px) 100vw, 672px"
+                unoptimized={!isOptimizableMediaUrl(bannerUrl)}
+                className="object-cover"
+              />
+            ) : (
+              <div className="sesale-evi-plus-bg absolute inset-0 flex items-center justify-center">
+                <Building2 className="h-12 w-12 text-ink-5" aria-hidden />
+              </div>
+            )}
+            <div className="sesale-plus-scrim absolute inset-0" aria-hidden />
+            <div className="sesale-plus-panel absolute inset-x-2.5 bottom-2.5 flex items-start gap-3.5 rounded-xl p-3.5">
+              <div className="flex min-w-[40px] flex-col items-center justify-center text-center">
+                <Icon className="h-7 w-7" style={{ color: style.color }} aria-hidden />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className="truncate text-xs font-extrabold uppercase tracking-[0.6px]"
+                  style={{ color: style.color }}
+                >
+                  {GASTRO_TYPE_LABELS[place.gastro_types[0]] ?? place.gastro_types[0]}
+                </p>
+                <p
+                  className="flex min-w-0 items-center gap-1.5 truncate text-[17px] font-extrabold text-white"
+                  style={{ textShadow: "0 2px 10px rgba(0,0,0,.6)" }}
+                >
+                  <span className="truncate">{place.name}</span>
+                  {place.is_verified && (
+                    <ShieldCheck
+                      className="h-4 w-4 flex-shrink-0 text-brand-green"
+                      aria-label="Verificado"
+                      data-testid="gastro-verified-icon"
                     />
-                  </button>
-                ) : (
-                  <div className="flex h-[72px] w-[72px] flex-shrink-0 items-center justify-center rounded-xl bg-surface-2">
-                    <Building2 className="h-6 w-6 text-ink-4" aria-hidden />
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <p className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide" style={{ color: style.color }}>
-                    <Icon className="h-3 w-3" aria-hidden />
-                    {GASTRO_TYPE_LABELS[place.gastro_types[0]] ?? place.gastro_types[0]}
+                  )}
+                </p>
+                <p className="mt-1 flex items-center gap-2 truncate text-sm text-[#e8e8e8]">
+                  <span className="flex min-w-0 items-center gap-1 truncate">
+                    <MapPin className="h-3 w-3 flex-shrink-0 text-[#ff6fa5]" aria-hidden />
+                    <span className="truncate">{place.address}</span>
+                  </span>
+                </p>
+                {(openNow || todayHours) && (
+                  <p className="mt-1 flex items-center gap-1 truncate text-xs font-bold text-[#ff6fa5]">
+                    <Clock className="h-3 w-3 flex-shrink-0" aria-hidden />
+                    {openNow ? "Abierto ahora" : todayHours}
                   </p>
-                  {nameRow}
-                </div>
+                )}
               </div>
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-4">
-                <span className="flex min-w-0 items-center gap-1 truncate">
-                  <MapPin className="h-3 w-3 flex-shrink-0 text-primary" aria-hidden />
-                  {place.address}
-                </span>
-                <OpenHoursChip place={place} />
-              </div>
-
-              <GastroTypeBadges types={place.gastro_types} />
-              <GastroBadgesRow place={place} />
-              <GastroEventCountLink place={place} />
-              <CardFooterActions reservarUrl={reservarUrl} mapUrl={mapUrl} />
-            </CardContent>
-          </Card>
-        </Link>
-        {lightboxOpen && coverUrl && (
-          <ImageLightbox src={coverUrl} alt={place.name} onClose={() => setLightboxOpen(false)} />
-        )}
-      </>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
     );
   }
 

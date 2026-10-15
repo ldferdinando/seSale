@@ -76,23 +76,49 @@ async def test_get_gastro_filters_by_type_or(client: AsyncClient, session: Sessi
     assert names == {"Solo bar", "Bar y cerveceria"}
 
 
-async def test_get_gastro_order_pro_and_dest_grouped_then_gratis_by_name(
+async def test_get_gastro_order_pro_before_dest_before_gratis_by_name(
     client: AsyncClient, session: Session, city: City
 ):
-    """Etapa 11c: pro y dest van en el mismo grupo (Grupo A, destacados),
-    ordenados alfabéticamente entre sí — no dest antes que pro. Grupo B
-    (gratis) siempre después, también por name ASC. Un lugar dest aparece
-    antes que uno gratis aunque el gratis tenga un nombre anterior en el
-    alfabeto."""
+    """Etapa "Lugares destacados temporales": a diferencia de la Etapa 11c
+    (pro y dest mezclados en un solo grupo), ahora pro va siempre antes que
+    dest como grupos separados, cada uno alfabético por name — un "A dest"
+    sigue apareciendo después de cualquier pro, aunque alfabéticamente
+    vaya primero."""
     _make_gastro_location(session, city=city, name="Z gratis", plan="gratis")
     _make_gastro_location(session, city=city, name="A gratis", plan="gratis")
+    _make_gastro_location(session, city=city, name="A dest", plan="dest")
     _make_gastro_location(session, city=city, name="Z dest", plan="dest")
     _make_gastro_location(session, city=city, name="B pro", plan="pro")
 
     response = await client.get("/api/gastro", params={"city_id": str(city.id)})
 
     names = [p["name"] for p in response.json()]
-    assert names == ["B pro", "Z dest", "A gratis", "Z gratis"]
+    assert names == ["B pro", "A dest", "Z dest", "A gratis", "Z gratis"]
+
+
+async def test_get_gastro_order_expired_plan_counts_as_gratis(
+    client: AsyncClient, session: Session, city: City
+):
+    """Un lugar con plan pago configurado pero featured_until vencido se
+    trata como "el resto" para el orden (y para la marca visual) — no como
+    destacado, aunque en la DB siga guardado plan="pro"/"dest"."""
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+    tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
+    _make_gastro_location(session, city=city, name="A gratis", plan="gratis")
+    _make_gastro_location(
+        session, city=city, name="Pro vencido", plan="pro", featured_until=yesterday
+    )
+    _make_gastro_location(
+        session, city=city, name="Dest vigente", plan="dest", featured_until=tomorrow
+    )
+
+    response = await client.get("/api/gastro", params={"city_id": str(city.id)})
+
+    data = response.json()
+    names = [p["name"] for p in data]
+    assert names == ["Dest vigente", "A gratis", "Pro vencido"]
+    expired = next(p for p in data if p["name"] == "Pro vencido")
+    assert expired["plan"] == "gratis"
 
 
 async def test_get_gastro_place_detail_not_gastro_returns_404(
@@ -316,6 +342,132 @@ async def test_patch_admin_gastro_plan_gratis_clears_featured_until(
     body = response.json()
     assert body["plan"] == "gratis"
     assert body["featured_until"] is None
+
+
+async def test_patch_admin_gastro_plan_pro_with_explicit_dates(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    location = _make_gastro_location(session, city=city)
+    from_date = date.today()
+    until_date = from_date + timedelta(days=15)
+
+    response = await client.patch(
+        f"/api/admin/gastro/{location.id}/plan",
+        json={"plan": "pro", "featured_from": from_date.isoformat(), "featured_until": until_date.isoformat()},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plan"] == "pro"
+    assert body["featured_from"][:10] == from_date.isoformat()
+    assert body["featured_until"][:10] == until_date.isoformat()
+
+
+async def test_patch_admin_gastro_plan_until_before_from_returns_422(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    location = _make_gastro_location(session, city=city)
+    from_date = date.today()
+    until_date = from_date - timedelta(days=1)
+
+    response = await client.patch(
+        f"/api/admin/gastro/{location.id}/plan",
+        json={"plan": "pro", "featured_from": from_date.isoformat(), "featured_until": until_date.isoformat()},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_patch_admin_gastro_plan_dest_to_pro_then_dest_clears_banner(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str], tmp_path
+):
+    """El banner solo tiene sentido en plan "pro" — al bajar a "dest" se
+    borra junto con el archivo en storage."""
+    location = _make_gastro_location(session, city=city, plan="pro")
+    buf = io.BytesIO()
+    Image.new("RGB", (16, 20), "blue").save(buf, format="JPEG")
+    with patch("app.core.storage._FEATURED_BANNER_UPLOADS_DIR", tmp_path):
+        upload_response = await client.post(
+            f"/api/admin/gastro/{location.id}/featured-banner",
+            files={"file": ("banner.jpg", buf.getvalue(), "image/jpeg")},
+            headers=admin_token_headers,
+        )
+        assert upload_response.status_code == 200
+        session.refresh(location)
+        assert location.featured_banner_url is not None
+
+        response = await client.patch(
+            f"/api/admin/gastro/{location.id}/plan", json={"plan": "dest"}, headers=admin_token_headers
+        )
+
+    assert response.status_code == 200
+    assert response.json()["featured_banner_url"] is None
+    session.refresh(location)
+    assert location.featured_banner_url is None
+
+
+# ── Banner de Destacado Plus ────────────────────────────────────────────────
+
+
+async def test_post_admin_gastro_featured_banner_requires_pro_plan(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str]
+):
+    location = _make_gastro_location(session, city=city, plan="dest")
+    buf = io.BytesIO()
+    Image.new("RGB", (16, 20), "blue").save(buf, format="JPEG")
+
+    response = await client.post(
+        f"/api/admin/gastro/{location.id}/featured-banner",
+        files={"file": ("banner.jpg", buf.getvalue(), "image/jpeg")},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_post_admin_gastro_featured_banner_valid_file_updates_url(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str], tmp_path
+):
+    location = _make_gastro_location(session, city=city, plan="pro")
+    buf = io.BytesIO()
+    Image.new("RGB", (16, 20), "blue").save(buf, format="JPEG")
+
+    with patch("app.core.storage._FEATURED_BANNER_UPLOADS_DIR", tmp_path):
+        response = await client.post(
+            f"/api/admin/gastro/{location.id}/featured-banner",
+            files={"file": ("banner.jpg", buf.getvalue(), "image/jpeg")},
+            headers=admin_token_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["featured_banner_url"] is not None
+    session.refresh(location)
+    assert location.featured_banner_url is not None
+
+
+async def test_delete_admin_gastro_featured_banner_clears_url(
+    client: AsyncClient, session: Session, city: City, admin_token_headers: dict[str, str], tmp_path
+):
+    location = _make_gastro_location(session, city=city, plan="pro")
+    buf = io.BytesIO()
+    Image.new("RGB", (16, 20), "blue").save(buf, format="JPEG")
+    with patch("app.core.storage._FEATURED_BANNER_UPLOADS_DIR", tmp_path):
+        await client.post(
+            f"/api/admin/gastro/{location.id}/featured-banner",
+            files={"file": ("banner.jpg", buf.getvalue(), "image/jpeg")},
+            headers=admin_token_headers,
+        )
+
+        response = await client.delete(
+            f"/api/admin/gastro/{location.id}/featured-banner", headers=admin_token_headers
+        )
+
+    assert response.status_code == 200
+    assert response.json()["featured_banner_url"] is None
+    session.refresh(location)
+    assert location.featured_banner_url is None
 
 
 # ── PATCH verify ──────────────────────────────────────────────────────────

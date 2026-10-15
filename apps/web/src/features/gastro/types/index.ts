@@ -53,6 +53,12 @@ export interface GastroPlace {
   price_range: PriceRange | null;
   cover_img_url: string | null;
   plan: GastroPlan;
+  // Ya viene filtrado por vigencia desde el backend (is_location_featured_now):
+  // "gratis" si el plan pago configurado venció, aunque en el admin siga
+  // cargado "dest"/"pro" — ver AdminLocation.configured_plan.
+  featured_banner_url: string | null;
+  // Imagen exclusiva de plan "pro" (Destacado Plus) — null en cualquier
+  // otro plan, aunque haya quedado cargada de un "pro" anterior ya vencido.
   is_verified: boolean;
   event_count: number;
 }

@@ -57,6 +57,22 @@ class Location(SQLModel, table=True):
     # vencimiento (plan gratis, o plan activo sin fecha porque el admin lo
     # activó manualmente).
 
+    # Etapa "Lugares destacados temporales" — vigencia explícita del plan
+    # (antes solo existía featured_until). "Vigente" se calcula en vivo
+    # (is_location_featured_now en location_service.py), sin cron, mismo
+    # patrón que payment_service.get_current_plan_price(): el admin fija
+    # estas fechas, y plan/featured_until se siguen guardando igual que
+    # antes (ver set_gastro_plan) — nada los limpia automáticamente al
+    # vencer, simplemente dejan de contar como destacado en las lecturas.
+    featured_from: datetime | None = Field(default=None)
+    # Desde cuándo está vigente el plan pago actual. None = nunca se fijó
+    # (lugares con featured_until ya cargado antes de este campo existir).
+
+    featured_banner_url: str | None = Field(default=None, max_length=500)
+    # Imagen/banner exclusivo del plan "pro" (Destacado Plus) — distinto de
+    # cover_img_url (foto general del lugar, cualquier plan). Solo tiene
+    # sentido si plan == "pro"; se borra al bajar de plan (ver set_gastro_plan).
+
     # ── Horarios estructurados ───────────────────────────────────────────
 
     opening_hours: dict | None = Field(

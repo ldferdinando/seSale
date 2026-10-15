@@ -4,12 +4,14 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { MediaUpload } from "@/components/MediaUpload";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCities } from "@/features/auth/hooks/useCities";
+import { LocationFeaturedModal } from "@/features/admin/components/LocationFeaturedModal";
 import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
 import {
   WEEKDAYS,
@@ -113,6 +115,7 @@ export function LocationForm({ location, onSaved, onCancel }: LocationFormProps)
   const [isVerified, setIsVerified] = useState(location?.is_verified ?? false);
   const [isPublic, setIsPublic] = useState(location?.is_public ?? true);
   const [isActive, setIsActive] = useState(location?.is_active ?? true);
+  const [editingFeatured, setEditingFeatured] = useState(false);
 
   const mutation = location ? updateLocation : createLocation;
   const selectedCity = (cities ?? []).find((c) => c.id === cityId);
@@ -443,6 +446,20 @@ export function LocationForm({ location, onSaved, onCancel }: LocationFormProps)
         )}
       </div>
 
+      {location && location.is_gastro && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-sm font-medium text-foreground">Destacado</span>
+            {location.configured_plan === "pro" && <Badge variant="pro">Destacado Plus</Badge>}
+            {location.configured_plan === "dest" && <Badge>Destacado</Badge>}
+            {location.configured_plan === "gratis" && <span className="text-xs text-ink-4">Ninguno</span>}
+          </div>
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditingFeatured(true)}>
+            {location.configured_plan === "gratis" ? "Destacar" : "Editar"}
+          </Button>
+        </div>
+      )}
+
       {mutation.isError && (
         <p role="alert" className="text-sm text-destructive">
           {mutation.error instanceof ApiError ? mutation.error.message : "No pudimos guardar el lugar."}
@@ -457,6 +474,10 @@ export function LocationForm({ location, onSaved, onCancel }: LocationFormProps)
           {mutation.isPending ? "Guardando..." : "Guardar"}
         </Button>
       </div>
+
+      {editingFeatured && location && (
+        <LocationFeaturedModal location={location} onClose={() => setEditingFeatured(false)} />
+      )}
     </form>
   );
 }

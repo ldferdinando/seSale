@@ -35,10 +35,16 @@ export interface AdminLocation extends Location {
   price_range: PriceRange | null;
   cover_img_url: string | null;
   plan: GastroPlan;
+  featured_banner_url: string | null;
   is_active: boolean;
   is_gastro: boolean;
-  featured_until: string | null;
   created_at: string;
+
+  /** Valor crudo de Location.plan (no filtrado por vigencia, a diferencia
+   * de `plan`) — lo que efectivamente editó el admin. */
+  configured_plan: GastroPlan;
+  featured_from: string | null;
+  featured_until: string | null;
 }
 
 export interface LocationFilters {

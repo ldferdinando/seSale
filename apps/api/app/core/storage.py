@@ -36,6 +36,7 @@ MAX_BANNER_SIZE_BYTES = 2 * 1024 * 1024  # 2MB
 _UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "flyers"
 _BANNER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "banners"
 _COVER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "covers"
+_FEATURED_BANNER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "featured-banners"
 
 
 # P0-4 — redimensionado al subir. Solo se achica (nunca se agranda) y se
@@ -44,6 +45,7 @@ _COVER_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" /
 FLYER_MAX_WIDTH = 1080  # flyer 4:5 → 1080×1350, "como Instagram"
 COVER_MAX_WIDTH = 1280  # portada gastro 16:9 → 1280×720
 BANNER_MAX_WIDTH = 1440  # banner wide (~3.9:1) a 2× DPR del container de 672px
+FEATURED_BANNER_MAX_WIDTH = 1080  # Location.featured_banner_url (plan "pro") — mismo 4:5 que el flyer de eventos
 WEBP_QUALITY = 82
 # Tope de píxeles decodificados (≈ 50 MP): un archivo de 5MB puede
 # declarar dimensiones absurdas (decompression bomb).
@@ -352,6 +354,89 @@ def _delete_cover_from_supabase(cover_img_url: str, location_id: UUID) -> None:
 
 def _delete_cover_from_local_disk(location_id: UUID) -> None:
     location_dir = _COVER_UPLOADS_DIR / str(location_id)
+    if not location_dir.exists():
+        return
+    for f in location_dir.iterdir():
+        if f.is_file():
+            f.unlink()
+    try:
+        location_dir.rmdir()
+    except OSError:
+        pass
+
+
+def upload_featured_banner(
+    file_content: bytes,
+    filename: str,
+    content_type: str,
+    location_id: UUID,
+    previous_url: str | None = None,
+) -> str:
+    """Sube el banner exclusivo del plan "pro" de un lugar
+    (Location.featured_banner_url) — Etapa "Lugares destacados temporales".
+    Mismo patrón que upload_cover, pero en su propia carpeta/path dentro del
+    mismo bucket de Supabase (`SUPABASE_COVER_BUCKET`): es otra imagen del
+    mismo Location, no justifica credenciales ni bucket propios. Formatos y
+    tamaño iguales al flyer de eventos (JPG/PNG/WEBP, máx. 5MB).
+
+    Si el lugar ya tenía banner, el caller pasa su URL en `previous_url` y
+    se borra recién después de procesar con éxito la imagen nueva.
+    """
+    validate_flyer_file(content_type, len(file_content))
+    optimized = optimize_image(file_content, FEATURED_BANNER_MAX_WIDTH)
+    object_name = _versioned_object_name(location_id, ".webp")
+    if previous_url:
+        delete_featured_banner(previous_url, location_id)
+
+    if _supabase_configured():
+        return _upload_featured_banner_to_supabase(optimized, object_name, "image/webp", location_id)
+    return _upload_featured_banner_to_local_disk(optimized, object_name, location_id)
+
+
+def _upload_featured_banner_to_supabase(
+    file_content: bytes, object_name: str, content_type: str, location_id: UUID
+) -> str:
+    from supabase import create_client  # import diferido — opcional en dev sin Supabase
+
+    client = create_client(settings.supabase_url, settings.supabase_service_key)
+    bucket = client.storage.from_(settings.supabase_cover_bucket)
+    path = f"featured/{location_id}/{object_name}"
+    bucket.upload(path, file_content, {"content-type": content_type, "upsert": "true"})
+    return bucket.get_public_url(path)
+
+
+def _upload_featured_banner_to_local_disk(file_content: bytes, object_name: str, location_id: UUID) -> str:
+    location_dir = _FEATURED_BANNER_UPLOADS_DIR / str(location_id)
+    location_dir.mkdir(parents=True, exist_ok=True)
+    for old_file in location_dir.iterdir():
+        if old_file.is_file():
+            old_file.unlink()
+    (location_dir / object_name).write_bytes(file_content)
+    # Ruta relativa a propósito — misma razón que _upload_to_local_disk (ver
+    # arriba): la resuelve el frontend contra NEXT_PUBLIC_API_URL.
+    return f"/uploads/featured-banners/{location_id}/{object_name}"
+
+
+def delete_featured_banner(banner_url: str, location_id: UUID) -> None:
+    """Elimina el banner de Destacado Plus existente del storage
+    correspondiente (Supabase o disco local)."""
+    if _supabase_configured():
+        _delete_featured_banner_from_supabase(banner_url, location_id)
+    else:
+        _delete_featured_banner_from_local_disk(location_id)
+
+
+def _delete_featured_banner_from_supabase(banner_url: str, location_id: UUID) -> None:
+    from supabase import create_client
+
+    client = create_client(settings.supabase_url, settings.supabase_service_key)
+    bucket = client.storage.from_(settings.supabase_cover_bucket)
+    filename = banner_url.rstrip("/").split("/")[-1]
+    bucket.remove([f"featured/{location_id}/{filename}"])
+
+
+def _delete_featured_banner_from_local_disk(location_id: UUID) -> None:
+    location_dir = _FEATURED_BANNER_UPLOADS_DIR / str(location_id)
     if not location_dir.exists():
         return
     for f in location_dir.iterdir():

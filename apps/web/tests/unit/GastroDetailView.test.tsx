@@ -110,19 +110,35 @@ describe("GastroDetailView", () => {
   });
 
   it("shows the enlargeable cover image only for plan pro", () => {
-    const pro = makeGastroPlace({ plan: "pro", cover_img_url: "/covers/foo.jpg" });
+    const pro = makeGastroPlace({ plan: "pro", featured_banner_url: "/featured-banners/foo.jpg" });
     const { unmount } = renderWithQueryClient(<GastroDetailView place={pro} />);
     expect(screen.getByTestId("gastro-cover")).toBeInTheDocument();
     unmount();
 
-    const dest = makeGastroPlace({ plan: "dest", cover_img_url: "/covers/foo.jpg" });
+    const dest = makeGastroPlace({ plan: "dest", featured_banner_url: "/featured-banners/foo.jpg" });
     renderWithQueryClient(<GastroDetailView place={dest} />);
     expect(screen.queryByTestId("gastro-cover")).not.toBeInTheDocument();
   });
 
+  // Etapa "Lugares destacados temporales": la imagen de la ficha es
+  // featured_banner_url (exclusivo de pro), no cover_img_url (portada
+  // general, cualquier plan) — confirma que no se confunden los dos campos.
+  it("uses featured_banner_url, not cover_img_url, as the enlargeable image", () => {
+    const place = makeGastroPlace({
+      plan: "pro",
+      featured_banner_url: null,
+      cover_img_url: "/covers/foo.jpg",
+    });
+    renderWithQueryClient(<GastroDetailView place={place} />);
+
+    const cover = screen.getByTestId("gastro-cover");
+    expect(cover).toBeDisabled();
+    expect(cover.querySelector("img")).not.toBeInTheDocument();
+  });
+
   it("opens the lightbox when tapping the cover image on plan pro", async () => {
     const user = userEvent.setup();
-    const place = makeGastroPlace({ plan: "pro", cover_img_url: "/covers/foo.jpg" });
+    const place = makeGastroPlace({ plan: "pro", featured_banner_url: "/featured-banners/foo.jpg" });
     renderWithQueryClient(<GastroDetailView place={place} />);
 
     await user.click(screen.getByTestId("gastro-cover"));

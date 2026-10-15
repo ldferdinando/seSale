@@ -198,4 +198,30 @@ describe("LocationForm (panel unificado de Lugares)", () => {
       await screen.findByText("La foto de portada se sube después de guardar el lugar con un tipo de Gastronomía."),
     ).toBeInTheDocument();
   });
+
+  // Bug reportado: al editar un lugar no se veía ninguna forma de marcarlo
+  // como Destacado/Destacado Plus — el control solo vivía en la fila de la
+  // lista (AdminLocationsPanel), que desaparece al abrir el formulario.
+  it("shows a 'Destacado' control while editing a place with types, opening the featured modal", async () => {
+    const user = userEvent.setup();
+    renderForm(makeAdminLocation({ gastro_types: ["bar"], is_gastro: true, configured_plan: "gratis" }));
+
+    const button = await screen.findByRole("button", { name: "Destacar" });
+    await user.click(button);
+
+    expect(await screen.findByRole("dialog", { name: /Destacado de/ })).toBeInTheDocument();
+  });
+
+  it("does not show the 'Destacado' control for a place without any type", async () => {
+    renderForm(makeAdminLocation({ gastro_types: [], is_gastro: false }));
+
+    await screen.findByLabelText("Nombre *");
+    expect(screen.queryByRole("button", { name: "Destacar" })).not.toBeInTheDocument();
+  });
+
+  it("does not show the 'Destacado' control when creating a new place", () => {
+    renderForm(undefined);
+
+    expect(screen.queryByText("Destacado")).not.toBeInTheDocument();
+  });
 });

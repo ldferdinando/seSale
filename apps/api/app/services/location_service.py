@@ -1,10 +1,11 @@
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, case, delete, func
+from sqlalchemy import and_, case, delete, func, or_
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from app.core.storage import delete_cover, upload_cover
+from app.core.storage import delete_cover, delete_featured_banner, upload_cover, upload_featured_banner
 from app.core.timezone import argentina_today
 from app.models.city import City
 from app.models.event import Event, EventStatus
@@ -135,19 +136,56 @@ def _event_counts(session: Session, location_ids: list[UUID]) -> dict[UUID, int]
 
 _GASTRO_LOAD_OPTIONS = (selectinload(Location.city), selectinload(Location.gastro_types))
 
-# Etapa 11c: dos grupos, no tres — Grupo A (destacados: pro Y dest,
-# mezclados) primero, Grupo B (gratis) después. A diferencia de eventos,
-# gastronomía no distingue pro de dest en el orden (ambos valen 0) — dentro
-# de cada grupo, alfabético por nombre. Aplica tanto al listado público
-# (list_public_gastro_places) como al panel admin (list_admin_gastro_places)
-# — comparten esta misma constante a propósito, para que el admin vea el
-# mismo agrupamiento que el público.
-_GASTRO_ORDER_RANK = case(
-    (Location.plan == "pro", 0),
-    (Location.plan == "dest", 0),
-    (Location.plan == "gratis", 1),
-    else_=2,
-)
+
+def is_location_featured_now(location: Location, *, now: datetime | None = None) -> str | None:
+    """Plan vigente de un Location en este instante: "pro"/"dest" si el plan
+    guardado es uno de esos Y (no tiene featured_until, o todavía no venció);
+    None en cualquier otro caso (plan "gratis", o pago pero vencido).
+
+    Se calcula en vivo, sin cron — mismo patrón que
+    payment_service.get_current_plan_price(): nada persiste el vencimiento,
+    simplemente deja de contar en cada lectura a partir de `featured_until`.
+    """
+    if location.plan not in ("pro", "dest"):
+        return None
+    moment = now or datetime.now(timezone.utc)
+    until = location.featured_until
+    if until is not None:
+        # `featured_until` es una columna DateTime sin timezone (igual que
+        # el resto de columnas de fecha del proyecto, ver migración 0014):
+        # lo que vuelve de la DB es naive, aunque se guardó en UTC. Se
+        # normaliza acá en vez de cambiar el tipo de columna.
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        if until < moment:
+            return None
+    return location.plan
+
+
+def _featured_order_rank(now: datetime):
+    """Orden de "destacados" — Etapa "Lugares destacados temporales": Plus
+    (pro) vigente primero, Destacado (dest) vigente después, el resto al
+    final; alfabético por nombre dentro de cada grupo (ver callers). Ya no
+    mezcla pro+dest en un solo grupo (reemplaza el criterio de Etapa 11c,
+    que no distinguía entre sí) y, a diferencia de esa etapa, un plan pago
+    vencido (featured_until < hoy) cuenta como "el resto", no como
+    destacado. Aplica tanto al listado público (list_public_gastro_places)
+    como al panel admin (list_admin_locations) — comparten el mismo
+    criterio a propósito.
+
+    `now` se compara naive (sin tzinfo): featured_until es una columna
+    DateTime sin timezone (ver is_location_featured_now) — lo que se
+    guardó siempre fue UTC, así que comparar el valor naive equivalente da
+    el mismo resultado sin que el driver de DB tenga que reconciliar
+    aware/naive."""
+    now_naive = now.replace(tzinfo=None) if now.tzinfo is not None else now
+    vigente_pro = and_(
+        Location.plan == "pro", or_(Location.featured_until.is_(None), Location.featured_until >= now_naive)
+    )
+    vigente_dest = and_(
+        Location.plan == "dest", or_(Location.featured_until.is_(None), Location.featured_until >= now_naive)
+    )
+    return case((vigente_pro, 0), (vigente_dest, 1), else_=2)
 
 
 def _gastro_event_counts(session: Session, location_ids: list[UUID]) -> dict[UUID, int]:
@@ -190,7 +228,8 @@ def _to_gastro_read(location: Location, event_count: int) -> LocationGastroRead:
         has_reservations=location.has_reservations,
         price_range=location.price_range,
         cover_img_url=location.cover_img_url,
-        plan=location.plan,
+        plan=is_location_featured_now(location) or "gratis",
+        featured_banner_url=location.featured_banner_url,
         is_verified=location.is_verified,
         event_count=event_count,
     )
@@ -251,7 +290,7 @@ def list_public_gastro_places(
         stmt = stmt.where(Location.has_reservations == has_reservations)
     if price_range is not None:
         stmt = stmt.where(Location.price_range == price_range)
-    stmt = stmt.order_by(_GASTRO_ORDER_RANK, Location.name.asc())
+    stmt = stmt.order_by(_featured_order_rank(datetime.now(timezone.utc)), Location.name.asc())
 
     locations = list(session.exec(stmt).all())
     counts = _gastro_event_counts(session, [loc.id for loc in locations])
@@ -281,9 +320,11 @@ def _to_admin_read(location: Location, event_count: int) -> LocationAdminRead:
         is_active=location.is_active,
         is_gastro=location.is_gastro,
         is_public=location.is_public,
-        featured_until=location.featured_until,
         place_type=location.place_type,
         created_at=location.created_at,
+        configured_plan=location.plan,
+        featured_from=location.featured_from,
+        featured_until=location.featured_until,
     )
 
 
@@ -316,8 +357,12 @@ def _apply_gastro_type_rules(session: Session, location: Location, gastro_types:
     groups = _gastro_type_groups(session, gastro_types)
     location.is_gastro = bool(gastro_types)
     if not location.is_gastro:
+        if location.featured_banner_url:
+            delete_featured_banner(location.featured_banner_url, location.id)
+            location.featured_banner_url = None
         location.plan = "gratis"
         location.featured_until = None
+        location.featured_from = None
         location.opening_hours = None
     if "gastro" not in groups:
         location.price_range = None
@@ -365,7 +410,11 @@ def list_admin_locations(
             .where(LocationGastroType.location_id == Location.id, GastroTypeCatalog.grupo == grupo)
         )
         stmt = stmt.where(grupo_type.exists())
-    stmt = stmt.order_by(_GASTRO_ORDER_RANK, Location.name.asc()).offset(offset).limit(limit)
+    stmt = (
+        stmt.order_by(_featured_order_rank(datetime.now(timezone.utc)), Location.name.asc())
+        .offset(offset)
+        .limit(limit)
+    )
 
     locations = list(session.exec(stmt).all())
     counts = _event_counts(session, [loc.id for loc in locations])
@@ -465,21 +514,81 @@ def delete_admin_location(session: Session, location_id: UUID) -> None:
     session.commit()
 
 
-def set_gastro_plan(session: Session, location_id: UUID, plan: str) -> LocationAdminRead:
-    from datetime import datetime, timedelta, timezone
+def _date_to_utc_datetime(value: date) -> datetime:
+    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
 
+
+def set_gastro_plan(
+    session: Session,
+    location_id: UUID,
+    plan: str,
+    *,
+    featured_from: date | None = None,
+    featured_until: date | None = None,
+) -> LocationAdminRead:
+    """Cambia el plan de visibilidad de un lugar (cualquier grupo con algún
+    tipo de catálogo asignado — is_gastro=True, no solo "gastro" en sentido
+    estricto: ver a_revisar.md). Al pasar a "dest"/"pro" sin fechas
+    explícitas, default a hoy / hoy+30 días (mismo default que antes de
+    poder elegirlas desde el admin). El banner (`featured_banner_url`) solo
+    tiene sentido en "pro": al bajar a "dest"/"gratis" se borra."""
     location = session.get(Location, location_id)
     if location is None or not location.is_gastro:
         raise LookupError("Lugar gastronómico no encontrado")
 
     location.plan = plan
-    location.featured_until = (
-        datetime.now(timezone.utc) + timedelta(days=30) if plan in ("dest", "pro") else None
-    )
+    if plan in ("dest", "pro"):
+        from_date = featured_from or datetime.now(timezone.utc).date()
+        until_date = featured_until or (from_date + timedelta(days=30))
+        location.featured_from = _date_to_utc_datetime(from_date)
+        location.featured_until = _date_to_utc_datetime(until_date)
+    else:
+        location.featured_from = None
+        location.featured_until = None
+
+    if plan != "pro" and location.featured_banner_url:
+        delete_featured_banner(location.featured_banner_url, location.id)
+        location.featured_banner_url = None
+
     session.add(location)
     session.commit()
     session.refresh(location)
     return _admin_read(session, location)
+
+
+def upload_location_featured_banner(
+    session: Session,
+    location_id: UUID,
+    *,
+    file_content: bytes,
+    filename: str,
+    content_type: str,
+) -> str:
+    location = session.get(Location, location_id)
+    if location is None:
+        raise LookupError("Lugar no encontrado")
+    if location.plan != "pro":
+        raise ValueError("El banner de Destacado Plus solo se puede subir si el plan es 'pro'")
+
+    banner_url = upload_featured_banner(
+        file_content, filename, content_type, location.id, previous_url=location.featured_banner_url
+    )
+    location.featured_banner_url = banner_url
+    session.add(location)
+    session.commit()
+    return banner_url
+
+
+def delete_location_featured_banner(session: Session, location_id: UUID) -> None:
+    location = session.get(Location, location_id)
+    if location is None:
+        raise LookupError("Lugar no encontrado")
+
+    if location.featured_banner_url:
+        delete_featured_banner(location.featured_banner_url, location.id)
+        location.featured_banner_url = None
+        session.add(location)
+        session.commit()
 
 
 def _get_gastro_group_location(session: Session, location_id: UUID) -> Location:

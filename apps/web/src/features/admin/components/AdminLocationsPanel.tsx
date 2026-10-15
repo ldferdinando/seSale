@@ -11,21 +11,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCities } from "@/features/auth/hooks/useCities";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { LocationForm } from "@/features/admin/components/LocationForm";
-import { useSetGastroPlan } from "@/features/gastro/hooks/useAdminGastro";
+import { LocationFeaturedModal } from "@/features/admin/components/LocationFeaturedModal";
 import { useGastroTypeCatalog } from "@/features/gastro/hooks/useGastroTypeCatalog";
-import { GASTRO_TYPE_LABELS, type GastroPlan } from "@/features/gastro/types";
+import { GASTRO_TYPE_LABELS } from "@/features/gastro/types";
 import { useAdminLocations } from "@/features/locations/hooks/useAdminLocations";
 import { useDeleteAdminLocation } from "@/features/locations/hooks/useDeleteAdminLocation";
 import { useUpdateAdminLocation } from "@/features/locations/hooks/useUpdateAdminLocation";
 import { useVerifyAdminLocation } from "@/features/locations/hooks/useVerifyAdminLocation";
 import type { AdminLocation, AdminLocationGrupoFilter } from "@/features/locations/types";
 import { ApiError } from "@/lib/api-client";
-
-const PLAN_OPTIONS: { value: GastroPlan; label: string }[] = [
-  { value: "gratis", label: "Gratis" },
-  { value: "dest", label: "Destacado" },
-  { value: "pro", label: "Destacado Plus" },
-];
 
 const GRUPO_FILTER_OPTIONS: { value: AdminLocationGrupoFilter; label: string }[] = [
   { value: "gastro", label: "Gastronomía" },
@@ -42,10 +36,15 @@ interface LocationRowProps {
 function LocationRow({ location, typeNames, onEdit }: LocationRowProps) {
   const verify = useVerifyAdminLocation();
   const update = useUpdateAdminLocation(location.id);
-  const setPlan = useSetGastroPlan();
   const deleteLocation = useDeleteAdminLocation();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editingFeatured, setEditingFeatured] = useState(false);
+
+  const isExpired =
+    location.configured_plan !== "gratis" &&
+    location.featured_until !== null &&
+    new Date(location.featured_until) < new Date();
 
   async function handleDelete() {
     setDeleteError(null);
@@ -66,8 +65,12 @@ function LocationRow({ location, typeNames, onEdit }: LocationRowProps) {
           <p className="text-xs text-ink-5">{location.city_name}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-1">
-          {location.is_gastro && location.plan === "pro" && <Badge variant="pro">Destacado Plus</Badge>}
-          {location.is_gastro && location.plan === "dest" && <Badge>Destacado</Badge>}
+          {location.is_gastro && location.configured_plan === "pro" && (
+            <Badge variant="pro">Destacado Plus{isExpired && " (vencido)"}</Badge>
+          )}
+          {location.is_gastro && location.configured_plan === "dest" && (
+            <Badge>Destacado{isExpired && " (vencido)"}</Badge>
+          )}
           {location.is_verified && <Badge>Verificado</Badge>}
           {location.is_public ? <Badge variant="pro">Público</Badge> : <Badge variant="muted">Privado</Badge>}
           {!location.is_active && <Badge variant="muted">Inactivo</Badge>}
@@ -122,21 +125,9 @@ function LocationRow({ location, typeNames, onEdit }: LocationRowProps) {
         )}
         {/* El plan solo aplica a lugares que aparecen en Gastronomía/Espacios. */}
         {location.is_gastro && (
-          <Select
-            value={location.plan}
-            onValueChange={(value) => setPlan.mutate({ id: location.id, plan: value as GastroPlan })}
-          >
-            <SelectTrigger aria-label={`Plan de ${location.name}`} className="h-8 w-36 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PLAN_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditingFeatured(true)}>
+            Destacado
+          </Button>
         )}
         <Button
           type="button"
@@ -161,6 +152,10 @@ function LocationRow({ location, typeNames, onEdit }: LocationRowProps) {
           onConfirm={handleDelete}
           onClose={() => setConfirmingDelete(false)}
         />
+      )}
+
+      {editingFeatured && (
+        <LocationFeaturedModal location={location} onClose={() => setEditingFeatured(false)} />
       )}
     </div>
   );

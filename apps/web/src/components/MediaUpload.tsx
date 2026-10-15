@@ -7,7 +7,12 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { deleteEventFlyer, uploadEventFlyer } from "@/features/events/services/events-api";
-import { deleteGastroCover, uploadGastroCover } from "@/features/gastro/services/gastro-api";
+import {
+  deleteGastroCover,
+  deleteGastroFeaturedBanner,
+  uploadGastroCover,
+  uploadGastroFeaturedBanner,
+} from "@/features/gastro/services/gastro-api";
 import { ApiError } from "@/lib/api-client";
 import { isOptimizableMediaUrl, resolveMediaUrl } from "@/lib/media";
 
@@ -15,7 +20,7 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.webp";
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
-export type MediaUploadType = "flyer" | "cover";
+export type MediaUploadType = "flyer" | "cover" | "featured-banner";
 
 /** Config por tipo — Etapa 8e: FlyerUpload.tsx (Etapa 8b) generalizado a
  * MediaUpload.tsx para no duplicar código entre el flyer de eventos y la
@@ -32,6 +37,8 @@ const MEDIA_CONFIG: Record<
     aspectClassName: string;
     /** `sizes` de next/image para la preview de la imagen ya subida. */
     imageSizes: string;
+    successMessage: string;
+    deleteConfirmTitle: string;
     upload: (id: string, file: File) => Promise<{ url: string | null }>;
     remove: (id: string) => Promise<{ url: string | null }>;
   }
@@ -42,6 +49,8 @@ const MEDIA_CONFIG: Record<
     imageAlt: "Flyer del evento",
     aspectClassName: "aspect-[1080/1350] w-full max-w-[280px]",
     imageSizes: "280px",
+    successMessage: "Flyer subido correctamente.",
+    deleteConfirmTitle: "¿Eliminar el flyer?",
     upload: async (id, file) => {
       const res = await uploadEventFlyer(id, file);
       return { url: res.flyer_url };
@@ -57,6 +66,8 @@ const MEDIA_CONFIG: Record<
     imageAlt: "Foto de portada del lugar",
     aspectClassName: "aspect-[16/9] w-full",
     imageSizes: "(max-width: 672px) 100vw, 672px",
+    successMessage: "Portada subida correctamente.",
+    deleteConfirmTitle: "¿Eliminar la portada?",
     upload: async (id, file) => {
       const res = await uploadGastroCover(id, file);
       return { url: res.cover_img_url };
@@ -64,6 +75,23 @@ const MEDIA_CONFIG: Record<
     remove: async (id) => {
       const res = await deleteGastroCover(id);
       return { url: res.cover_img_url };
+    },
+  },
+  "featured-banner": {
+    label: "Banner de Destacado Plus",
+    dropZoneLabel: "Subir banner (JPG, PNG o WEBP, máx. 5MB)",
+    imageAlt: "Banner de Destacado Plus del lugar",
+    aspectClassName: "aspect-[1080/1350] w-full max-w-[280px]",
+    imageSizes: "280px",
+    successMessage: "Banner subido correctamente.",
+    deleteConfirmTitle: "¿Eliminar el banner?",
+    upload: async (id, file) => {
+      const res = await uploadGastroFeaturedBanner(id, file);
+      return { url: res.featured_banner_url };
+    },
+    remove: async (id) => {
+      const res = await deleteGastroFeaturedBanner(id);
+      return { url: res.featured_banner_url };
     },
   },
 };
@@ -133,7 +161,7 @@ export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDel
     setUploadError(null);
     try {
       const { url } = await config.upload(entityId, selectedFile);
-      setSuccessMessage(type === "cover" ? "Portada subida correctamente." : "Flyer subido correctamente.");
+      setSuccessMessage(config.successMessage);
       setSelectedFile(null);
       setPreviewUrl(null);
       if (url) onUploadSuccess(url);
@@ -290,7 +318,7 @@ export function MediaUpload({ type, entityId, currentUrl, onUploadSuccess, onDel
 
       {confirmingDelete && (
         <ConfirmDialog
-          title={type === "cover" ? "¿Eliminar la portada?" : "¿Eliminar el flyer?"}
+          title={config.deleteConfirmTitle}
           description="Esta acción borra la imagen. Vas a poder subir otra cuando quieras."
           confirmLabel="Sí, eliminar"
           isConfirming={isDeleting}

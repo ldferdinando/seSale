@@ -72,10 +72,12 @@ describe("AdminLocationsPanel", () => {
     expect(capturedBody).toMatchObject({ name: "Bar Nuevo", address: "Calle Falsa 123" });
   });
 
-  it("shows type chips, plan badge and plan selector for places with types", async () => {
+  it("shows type chips, plan badge and a 'Destacado' button for places with types", async () => {
     server.use(
       http.get(`${API_URL}/api/admin/locations`, () =>
-        HttpResponse.json([makeAdminLocation({ is_gastro: true, plan: "pro", gastro_types: ["bar", "club"] })]),
+        HttpResponse.json([
+          makeAdminLocation({ is_gastro: true, plan: "pro", configured_plan: "pro", gastro_types: ["bar", "club"] }),
+        ]),
       ),
     );
 
@@ -85,10 +87,10 @@ describe("AdminLocationsPanel", () => {
     expect(await within(row).findByText("Bares")).toBeInTheDocument();
     expect(within(row).getByText("Clubes")).toBeInTheDocument();
     expect(within(row).getAllByText("Destacado Plus").length).toBeGreaterThanOrEqual(1);
-    expect(within(row).getByRole("combobox", { name: "Plan de El Tinglado Bar" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Destacado" })).toBeInTheDocument();
   });
 
-  it("marks places without types as event-only and hides the plan selector", async () => {
+  it("marks places without types as event-only and hides the 'Destacado' button", async () => {
     server.use(
       http.get(`${API_URL}/api/admin/locations`, () => HttpResponse.json([makeAdminLocation()])),
     );
@@ -96,7 +98,7 @@ describe("AdminLocationsPanel", () => {
     renderWithClient();
 
     expect(await screen.findByText("Sin tipo · solo eventos")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: /Plan de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Destacado" })).not.toBeInTheDocument();
   });
 
   it("shows an inactive badge and toggles is_active via PUT", async () => {

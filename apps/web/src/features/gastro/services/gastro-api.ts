@@ -38,8 +38,16 @@ export async function fetchGastroPlace(id: string): Promise<GastroPlace> {
 // vive en features/locations/services (panel unificado de Lugares). Acá
 // quedan solo el plan y la portada, específicos de Gastronomía/Espacios.
 
-export async function setGastroPlan(id: string, plan: GastroPlan): Promise<AdminLocation> {
-  return apiPatch<AdminLocation>(`/api/admin/gastro/${id}/plan`, { plan });
+export interface SetGastroPlanInput {
+  plan: GastroPlan;
+  /** ISO "YYYY-MM-DD". Si no vienen y `plan` es "dest"/"pro", el backend
+   * completa hoy / hoy+30 días (mismo default que antes de poder elegirlas). */
+  featured_from?: string | null;
+  featured_until?: string | null;
+}
+
+export async function setGastroPlan(id: string, input: SetGastroPlanInput): Promise<AdminLocation> {
+  return apiPatch<AdminLocation>(`/api/admin/gastro/${id}/plan`, input);
 }
 
 export interface GastroCoverResponse {
@@ -52,6 +60,18 @@ export async function uploadGastroCover(id: string, file: File): Promise<GastroC
 
 export async function deleteGastroCover(id: string): Promise<GastroCoverResponse> {
   return apiDelete<GastroCoverResponse>(`/api/admin/gastro/${id}/cover`);
+}
+
+export interface GastroFeaturedBannerResponse {
+  featured_banner_url: string | null;
+}
+
+export async function uploadGastroFeaturedBanner(id: string, file: File): Promise<GastroFeaturedBannerResponse> {
+  return apiPostFile<GastroFeaturedBannerResponse>(`/api/admin/gastro/${id}/featured-banner`, file);
+}
+
+export async function deleteGastroFeaturedBanner(id: string): Promise<GastroFeaturedBannerResponse> {
+  return apiDelete<GastroFeaturedBannerResponse>(`/api/admin/gastro/${id}/featured-banner`);
 }
 
 // ── Etapa 12a — ABM de tipos gastronómicos (admin) ──────────────────────────
