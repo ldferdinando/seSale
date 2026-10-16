@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ClientErrorListener } from "@/components/ClientErrorListener";
 import { AppShell } from "@/components/layout/AppShell";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={inter.variable}>
       <body className="flex min-h-screen flex-col pb-[70px]">
+        <ClientErrorListener />
         <QueryProvider>
           <ThemeProvider>
             <AuthProvider>
