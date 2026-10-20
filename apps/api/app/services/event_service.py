@@ -15,7 +15,7 @@ from app.models.location import Location
 from app.models.moment import EventMoment
 from app.models.plan import PlanType
 from app.models.user import User
-from app.schemas.event import EventUpdate
+from app.schemas.event import EventCreate, EventUpdate
 from app.schemas.location import LocationCreate
 from app.services.category_catalog_service import get_active_category_keys
 from app.services.location_service import create_location_from_event_data, get_location_or_404
@@ -461,6 +461,97 @@ def create_event(
     return event
 
 
+def duplicate_event(session: Session, event_id: UUID, current_user: User, payload: EventCreate) -> Event:
+    """Duplica un evento para una nueva fecha/función/día (ej. otra función
+    de una obra de teatro, otro día de un festival) en vez de cargarlo de
+    cero — feature "Duplicar evento" (ver a_revisar.md).
+
+    El organizador de la copia es SIEMPRE el del evento original (duplicar
+    no cambia de dueño, aunque quien duplique sea un admin) y el plan nace
+    "gratis" como cualquier alta nueva — reutiliza `create_event` entero
+    para eso, solo fuerza `organizer_id`/`is_admin`/`plan` a sus defaults.
+
+    Vínculo de instancias: el ORIGINAL NUNCA se escribe (ver a_revisar.md —
+    primera versión de esta feature sí lo hacía, asignándole un
+    `instance_group_id` nuevo a sí mismo, y eso salió como bug: "duplicar"
+    no puede tener ningún efecto secundario sobre el evento que se
+    duplica). En su lugar, la "clave de grupo" de un evento sin
+    `instance_group_id` propio es su propio `id` — nunca se persiste esa
+    igualdad, se calcula al leer (ver `resolve_presentation_group_ids`,
+    usado por `get_events_for_organizer`/`list_admin_events`). La copia
+    nueva sí guarda esa clave en su columna `instance_group_id` (soporta
+    duplicar una copia: si el original ya tenía `instance_group_id`, la
+    cadena entera sigue apuntando a la raíz)."""
+    original = _get_live_event(session, event_id)
+
+    is_owner = original.organizer_id == current_user.id
+    is_admin = current_user.role == "admin"
+    if not is_owner and not is_admin:
+        raise PermissionError("No tenés permiso para duplicar este evento")
+
+    group_key = original.instance_group_id or original.id
+
+    new_event = create_event(
+        session,
+        user_id=original.organizer_id,
+        title=payload.title,
+        description=payload.description,
+        event_date=payload.date,
+        event_time=payload.time,
+        time_end=payload.time_end,
+        date_end=payload.date_end,
+        categories=payload.categories,
+        location_id=payload.location_id,
+        location_data=payload.location_data,
+        location_text=payload.location_text,
+        ticket_type=payload.ticket_type,
+        price_at_door=payload.price_at_door,
+        price_advance=payload.price_advance,
+        price_mode=payload.price_mode,
+        available_on_site=payload.available_on_site,
+        contact_whatsapp=payload.contact_whatsapp,
+        contact_instagram=payload.contact_instagram,
+        contact_facebook=payload.contact_facebook,
+        contact_web=payload.contact_web,
+        contact_email=payload.contact_email,
+        city_id=payload.city_id,
+    )
+
+    new_event.instance_group_id = group_key
+    session.add(new_event)
+    session.commit()
+    session.refresh(new_event)
+    return new_event
+
+
+def resolve_presentation_group_ids(session: Session, events: list[Event]) -> dict[UUID, UUID | None]:
+    """Para cada evento, la clave de grupo a EXPONER en la respuesta (nunca
+    se escribe en la base, ver `duplicate_event`): si `instance_group_id`
+    ya está en la columna, esa; si no, y algún otro evento lo señala como
+    su grupo (es la raíz de una cadena de duplicados), su propio `id`; si
+    nadie lo señala, `None` (nunca fue duplicado).
+
+    Una sola query extra para resolver TODO el lote (no una por fila):
+    busca, entre los ids de los eventos sin `instance_group_id` propio,
+    cuáles aparecen como `instance_group_id` de algún otro evento."""
+    candidate_ids = {event.id for event in events if event.instance_group_id is None}
+    roots_with_duplicates: set[UUID] = set()
+    if candidate_ids:
+        roots_with_duplicates = set(
+            session.exec(
+                select(Event.instance_group_id)
+                .where(Event.instance_group_id.in_(candidate_ids))
+                .distinct()
+            ).all()
+        )
+    return {
+        event.id: event.instance_group_id
+        if event.instance_group_id is not None
+        else (event.id if event.id in roots_with_duplicates else None)
+        for event in events
+    }
+
+
 def _get_live_event(session: Session, event_id: UUID) -> Event:
     """Evento no eliminado, o LookupError (404). Un evento con `deleted_at`
     no se puede editar, volver a eliminar ni gestionar su flyer."""
@@ -785,6 +876,7 @@ def list_admin_events(
     date_from: date | None = None,
     date_to: date | None = None,
     organizer_id: UUID | None = None,
+    instance_group_id: UUID | None = None,
     include_deleted: bool = False,
     limit: int = 50,
     offset: int = 0,
@@ -794,7 +886,11 @@ def list_admin_events(
 
     `organizer_id` (Etapa 9b) — filtra los eventos de un organizador
     puntual, usado por el link "Ver eventos del usuario" del panel admin
-    de usuarios."""
+    de usuarios.
+
+    `instance_group_id` (feature "Duplicar evento") — trae todas las
+    instancias de un mismo grupo (eventos duplicados entre sí), sin importar
+    el resto de los filtros/paginación activos — usado por InstanceBadge."""
     stmt = select(Event).options(
         selectinload(Event.location),
         selectinload(Event.organizer),
@@ -811,6 +907,12 @@ def list_admin_events(
         stmt = stmt.where(Event.city_id == city_id)
     if organizer_id is not None:
         stmt = stmt.where(Event.organizer_id == organizer_id)
+    if instance_group_id is not None:
+        # La raíz de un grupo (el evento que nunca se duplicó antes) no
+        # tiene `instance_group_id` propio — ver resolve_presentation_group_ids.
+        # Su "clave de grupo" es su propio id, así que el filtro tiene que
+        # matchear por cualquiera de las dos columnas.
+        stmt = stmt.where(or_(Event.instance_group_id == instance_group_id, Event.id == instance_group_id))
     if category is not None:
         cat_subq = select(EventCategory.event_id).where(
             EventCategory.event_id == Event.id, EventCategory.category == category

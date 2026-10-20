@@ -128,6 +128,8 @@ export function makeAdminEvent(overrides: Partial<AdminEvent> = {}): AdminEvent 
     is_active: true,
     deleted_at: null,
     organizer_subscription: null,
+    instance_group_id: null,
+    created_at: "2024-03-01T00:00:00Z",
     ...overrides,
   };
 }

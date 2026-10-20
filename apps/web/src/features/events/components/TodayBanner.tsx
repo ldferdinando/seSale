@@ -25,7 +25,13 @@ export function TodayBanner({ onClick }: TodayBannerProps) {
   const { activeCity } = useActiveCity();
 
   const { data } = useEvents(
-    isNight ? { dateFrom: today, dateTo: today, moment: "nocturno" } : { dateFrom: today, dateTo: today },
+    {
+      cityId: activeCity?.id,
+      dateFrom: today,
+      dateTo: today,
+      ...(isNight ? { moment: "nocturno" as const } : {}),
+    },
+    { enabled: activeCity !== null },
   );
   const count = data?.length ?? 0;
 

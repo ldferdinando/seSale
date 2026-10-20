@@ -184,10 +184,20 @@ export interface EventFeaturedUpdateInput {
   featured_until?: string | null;
 }
 
+/**
+ * Evento visto por su propio organizador ("Mis eventos") — agrega
+ * `instance_group_id`/`created_at`, que nunca van en `Event` (vista
+ * pública) — feature "Duplicar evento".
+ */
+export interface OrganizerEvent extends Event {
+  instance_group_id: string | null;
+  created_at: string;
+}
+
 export interface EventsByStatus {
-  pending: Event[];
-  approved: Event[];
-  rejected: Event[];
+  pending: OrganizerEvent[];
+  approved: OrganizerEvent[];
+  rejected: OrganizerEvent[];
 }
 
 export interface AdminEvent extends Event {
@@ -196,6 +206,9 @@ export interface AdminEvent extends Event {
   /** Borrado lógico (migración 0036) — solo llega con `include_deleted`. */
   deleted_at: string | null;
   organizer_subscription: OrganizerSubscriptionStatus | null;
+  /** Feature "Duplicar evento" — nunca en `Event` (vista pública). */
+  instance_group_id: string | null;
+  created_at: string;
 }
 
 export interface AdminEventFilters {
@@ -207,6 +220,9 @@ export interface AdminEventFilters {
   date_from?: string;
   date_to?: string;
   organizer_id?: string;
+  /** Trae todas las instancias de este grupo (eventos duplicados entre sí),
+   * sin importar el resto de los filtros — usado por InstanceBadge. */
+  instance_group_id?: string;
   /** Mostrar también los eventos eliminados (por defecto se ocultan). */
   include_deleted?: boolean;
 }

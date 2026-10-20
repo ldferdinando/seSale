@@ -161,6 +161,11 @@ interface EventFormProps {
    * evento ya pasó (date<=hoy) y quien edita es el organizador dueño, no un
    * admin (el admin siempre puede editar sin restricción). */
   disabledReason?: string;
+  /** Feature "Duplicar evento": el organizador de la copia siempre es el
+   * del evento original (nunca se reasigna, ni siquiera por un admin), así
+   * que el selector de organizador no tiene efecto — se oculta para no
+   * confundir a quien lo use pensando que puede cambiarlo. */
+  hideOrganizerPicker?: boolean;
 }
 
 export function EventForm({
@@ -170,6 +175,7 @@ export function EventForm({
   onSuccess,
   onContinue,
   disabledReason,
+  hideOrganizerPicker,
 }: EventFormProps) {
   const updateEvent = useUpdateEvent(eventId ?? "");
   const { data: currentUser } = useCurrentUser();
@@ -359,7 +365,7 @@ export function EventForm({
         </p>
       )}
       <fieldset disabled={Boolean(disabledReason)} className="flex flex-col gap-5 disabled:opacity-60">
-      {mode === "create" && currentUser?.role === "admin" && (
+      {mode === "create" && currentUser?.role === "admin" && !hideOrganizerPicker && (
         <OrganizerPicker value={organizerId} onChange={setOrganizerId} />
       )}
 

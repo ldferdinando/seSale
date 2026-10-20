@@ -1,5 +1,5 @@
 import type { EventFormValues } from "@/features/events/schemas/event-schema";
-import type { EventCreateInput } from "@/features/events/types";
+import type { Event, EventCreateInput } from "@/features/events/types";
 
 /**
  * Convierte el payload que se manda a la API de vuelta a valores de
@@ -35,5 +35,46 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     contact_instagram: payload.contact_instagram ?? "",
     contact_web: payload.contact_web ?? "",
     contact_email: payload.contact_email ?? "",
+  };
+}
+
+/**
+ * Feature "Duplicar evento" — precarga el formulario de alta (modo
+ * "create") con los datos de un evento ya publicado, para no tener que
+ * cargarlo todo de nuevo. Mapeo análogo al de EditarEventoClient.tsx, con
+ * dos diferencias deliberadas:
+ *
+ * - Fecha y hora (date/time/time_end/date_end) quedan VACÍAS a propósito,
+ *   no con los valores del original: el Zod schema del formulario exige
+ *   los cuatro campos (y que la fecha no sea pasada), así que es imposible
+ *   seguir el flujo de alta sin elegir una fecha nueva — evita publicar sin
+ *   querer una instancia nueva con la misma fecha que la que se duplicó.
+ * - No se precarga ningún flyer: la copia nace sin flyer (no se duplica el
+ *   archivo de Storage), el organizador sube uno nuevo si el plan que
+ *   elija para esta instancia lo permite.
+ */
+export function duplicateEventToFormValues(event: Event): Partial<EventFormValues> {
+  return {
+    title: event.title,
+    description: event.description ?? "",
+    date: "",
+    time: "",
+    time_end: "",
+    date_end: "",
+    categories: event.categories,
+    city_id: event.city_id,
+    location_mode: event.location_text ? "text" : "preset",
+    location_id: event.location_id ?? "",
+    location_text: event.location_text ?? "",
+    ticket_type: event.ticket_type,
+    price_mode: event.price_mode,
+    price_at_door: event.price_at_door != null ? String(event.price_at_door) : "",
+    price_advance: event.price_advance != null ? String(event.price_advance) : "",
+    available_on_site: event.available_on_site,
+    contact_whatsapp: event.contact_whatsapp ?? "",
+    contact_instagram: event.contact_instagram ?? "",
+    contact_facebook: event.contact_facebook ?? "",
+    contact_web: event.contact_web ?? "",
+    contact_email: event.contact_email ?? "",
   };
 }

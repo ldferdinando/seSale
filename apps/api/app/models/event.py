@@ -123,6 +123,15 @@ class Event(SQLModel, table=True):
     # _check_flyer_permission_and_plan en event_service.py).
     flyer_url: str | None = Field(default=None)
 
+    # Vínculo liviano entre instancias duplicadas del mismo espectáculo/
+    # festival (ej. distintas funciones de una obra, distintos días de un
+    # festival) — feature "Duplicar evento". Nullable, sin backfill: solo lo
+    # tienen los eventos creados por duplicación (y el evento original que
+    # se duplicó, al que se le asigna en ese momento). El número de
+    # instancia ("Instancia N") no se guarda — se calcula por orden de
+    # created_at dentro del mismo grupo (ver services/event_service.py).
+    instance_group_id: UUID | None = Field(default=None, index=True)
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

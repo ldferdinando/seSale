@@ -12,6 +12,7 @@ import { closeCheckoutWindow, goToCheckout, openCheckoutWindow } from "@/feature
 import { formatPlanPrice } from "@/features/plans/lib/plan-price";
 import type { Plan } from "@/features/plans/types";
 import { useCreateEvent } from "@/features/events/hooks/useCreateEvent";
+import { useDuplicateEvent } from "@/features/events/hooks/useDuplicateEvent";
 import { EVENT_PLAN_COPY } from "@/features/events/lib/publishPlans";
 import type { Event, EventCreateInput, EventPlan } from "@/features/events/types";
 import { ApiError } from "@/lib/api-client";
@@ -20,6 +21,9 @@ const PLAN_ORDER: EventPlan[] = ["gratis", "dest", "pro"];
 
 interface EventPlanChooserProps {
   payload: EventCreateInput;
+  /** Feature "Duplicar evento": si viene, publicar llama a
+   * POST /api/events/{id}/duplicate en vez de POST /api/events. */
+  duplicateFromEventId?: string;
   onPublished: (event: Event) => void;
 }
 
@@ -31,10 +35,11 @@ interface EventPlanChooserProps {
  * flujo de pago que ya existe en /planes (checkout de MercadoPago o aviso
  * de transferencia) — ver ARCHITECTURE.md, flujo de pago de plan.
  */
-export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps) {
+export function EventPlanChooser({ payload, duplicateFromEventId, onPublished }: EventPlanChooserProps) {
   const router = useRouter();
   const { data: plans, isLoading: isLoadingPlans } = usePlans();
   const createEvent = useCreateEvent();
+  const duplicateEvent = useDuplicateEvent(duplicateFromEventId ?? "");
   const checkout = useCheckout();
   const [createdEvent, setCreatedEvent] = useState<Event | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -46,7 +51,9 @@ export function EventPlanChooser({ payload, onPublished }: EventPlanChooserProps
 
   async function ensureEventCreated(): Promise<Event> {
     if (createdEvent) return createdEvent;
-    const event = await createEvent.mutateAsync({ ...payload, plan: "gratis" });
+    const event = duplicateFromEventId
+      ? await duplicateEvent.mutateAsync({ ...payload, plan: "gratis" })
+      : await createEvent.mutateAsync({ ...payload, plan: "gratis" });
     setCreatedEvent(event);
     return event;
   }

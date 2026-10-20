@@ -50,11 +50,15 @@ function formatPrice(value: number | null | undefined): string {
 
 interface EventSummaryViewProps {
   payload: EventCreateInput;
+  /** Feature "Duplicar evento": id del evento original, si este alta es
+   * una copia — se pasa a EventPlanChooser para que publique contra el
+   * endpoint de duplicar en vez del de alta normal. */
+  duplicateFromEventId?: string;
   onBack: () => void;
   onPublished: (event: Event) => void;
 }
 
-export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryViewProps) {
+export function EventSummaryView({ payload, duplicateFromEventId, onBack, onPublished }: EventSummaryViewProps) {
   const { data: pickedLocation } = useLocation(payload.location_id);
   const { categories } = useCategoryCatalog();
   const locationName = payload.location_id ? (pickedLocation?.name ?? "...") : (payload.location_data?.name || payload.location_data?.address || "");
@@ -140,7 +144,7 @@ export function EventSummaryView({ payload, onBack, onPublished }: EventSummaryV
         </CardContent>
       </Card>
 
-      <EventPlanChooser payload={payload} onPublished={onPublished} />
+      <EventPlanChooser payload={payload} duplicateFromEventId={duplicateFromEventId} onPublished={onPublished} />
 
       <Button type="button" variant="ghost" onClick={onBack} className="flex items-center gap-2 self-start">
         <Pencil className="h-3.5 w-3.5" aria-hidden />

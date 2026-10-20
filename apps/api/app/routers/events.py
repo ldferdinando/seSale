@@ -8,7 +8,7 @@ from app.core.deps import get_current_user, get_current_user_optional, get_sessi
 from app.core.expiry import run_expire_overdue_ad_items_task, run_expire_overdue_subscriptions_task
 from app.core.limiter import limiter
 from app.core.storage import InvalidFlyerFileError
-from app.models.event import EventStatus
+from app.models.event import Event, EventStatus
 from app.models.user import User
 from app.schemas.event import (
     EventCreate,
@@ -20,6 +20,7 @@ from app.schemas.event import (
     EventStatusUpdate,
     EventUpdate,
     FlyerUploadResponse,
+    OrganizerEventRead,
     OrganizerPublicRead,
 )
 from app.schemas.subscription import OrganizerSubscriptionRead
@@ -27,9 +28,11 @@ from app.services.event_service import (
     create_event,
     delete_event,
     delete_event_flyer,
+    duplicate_event,
     get_event_detail,
     get_events_for_organizer,
     list_public_events,
+    resolve_presentation_group_ids,
     update_event,
     update_event_featured,
     update_event_plan,
@@ -126,10 +129,23 @@ def get_my_events(
     current_user: User = Depends(get_current_user),
 ) -> EventsByStatus:
     grouped = get_events_for_organizer(session, current_user.id)
+    all_events = [*grouped[EventStatus.pending], *grouped[EventStatus.approved], *grouped[EventStatus.rejected]]
+    # Feature "Duplicar evento": la clave de grupo de la raíz (el evento que
+    # nunca se modifica al duplicarse) se calcula al leer, nunca se guarda
+    # — ver resolve_presentation_group_ids/duplicate_event.
+    group_ids = resolve_presentation_group_ids(session, all_events)
+
+    def to_organizer_read(event: Event) -> OrganizerEventRead:
+        return OrganizerEventRead(
+            **EventRead.model_validate(event).model_dump(),
+            instance_group_id=group_ids[event.id],
+            created_at=event.created_at,
+        )
+
     return EventsByStatus(
-        pending=grouped[EventStatus.pending],
-        approved=grouped[EventStatus.approved],
-        rejected=grouped[EventStatus.rejected],
+        pending=[to_organizer_read(e) for e in grouped[EventStatus.pending]],
+        approved=[to_organizer_read(e) for e in grouped[EventStatus.approved]],
+        rejected=[to_organizer_read(e) for e in grouped[EventStatus.rejected]],
     )
 
 
@@ -180,6 +196,30 @@ def get_event(
         ),
         organizer_subscription=organizer_subscription,
     )
+
+
+@router.post("/{event_id}/duplicate", response_model=EventRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+def post_duplicate_event(
+    request: Request,
+    event_id: UUID,
+    payload: EventCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> EventRead:
+    """Duplica un evento para una nueva fecha/instancia — feature "Duplicar
+    evento". Solo el organizador dueño del evento original o un admin
+    (mismo guard que editar). El `payload` son los datos editados de la
+    copia (fecha/hora obligatoriamente nuevas, el resto precargado del
+    original pero editable) — ver EventForm/PublishFlow en el frontend."""
+    try:
+        return duplicate_event(session, event_id, current_user, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.put("/{event_id}", response_model=EventRead)

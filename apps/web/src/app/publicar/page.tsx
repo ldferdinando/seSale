@@ -3,7 +3,15 @@ import Link from "next/link";
 
 import { PublishFlow } from "@/features/events/components/PublishFlow";
 
-export default function PublicarEventoPage() {
+interface PublicarEventoPageProps {
+  // Feature "Duplicar evento": `?duplicar=<id>` precarga el formulario con
+  // los datos del evento original — ver MyEventsView/AdminEventsPanel.
+  searchParams: Promise<{ duplicar?: string }>;
+}
+
+export default async function PublicarEventoPage({ searchParams }: PublicarEventoPageProps) {
+  const { duplicar } = await searchParams;
+
   return (
     <main className="container mx-auto flex max-w-2xl flex-col gap-6 py-6">
       <header className="flex flex-col gap-4">
@@ -12,14 +20,16 @@ export default function PublicarEventoPage() {
           <span className="text-sm font-medium">Volver</span>
         </Link>
         <div className="flex flex-col gap-1 px-1">
-          <h1 className="text-2xl font-black tracking-tight">Publicar evento</h1>
+          <h1 className="text-2xl font-black tracking-tight">{duplicar ? "Duplicar evento" : "Publicar evento"}</h1>
           <p className="text-sm text-ink-4">
-            Tu evento queda pendiente de aprobación antes de aparecer en la agenda.
+            {duplicar
+              ? "Revisá los datos, elegí la nueva fecha y hora, y editá lo que haga falta."
+              : "Tu evento queda pendiente de aprobación antes de aparecer en la agenda."}
           </p>
         </div>
       </header>
 
-      <PublishFlow />
+      <PublishFlow duplicateFromEventId={duplicar} />
     </main>
   );
 }

@@ -68,7 +68,7 @@ from app.services.city_service import (
     list_all_cities_with_active_event_counts,
     update_city_sort_order,
 )
-from app.services.event_service import list_admin_events
+from app.services.event_service import list_admin_events, resolve_presentation_group_ids
 from app.services.gastro_type_catalog_service import (
     create_gastro_type,
     list_admin_gastro_types,
@@ -154,6 +154,10 @@ def get_admin_events(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     organizer_id: UUID | None = Query(default=None),
+    # Etapa "Duplicar evento": permite al panel traer las otras instancias
+    # de un grupo (eventos duplicados entre sí) sin depender de que estén en
+    # la página/filtros actuales — ver InstanceBadge en el frontend.
+    instance_group_id: UUID | None = Query(default=None),
     include_deleted: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -169,17 +173,24 @@ def get_admin_events(
         date_from=date_from,
         date_to=date_to,
         organizer_id=organizer_id,
+        instance_group_id=instance_group_id,
         include_deleted=include_deleted,
         limit=limit,
         offset=offset,
     )
     latest_subscriptions = get_latest_subscriptions_by_event(session, [event.id for event in events])
+    # Feature "Duplicar evento": la clave de grupo de la raíz (el evento que
+    # nunca se modifica al duplicarse) se calcula al leer, nunca se guarda
+    # — ver resolve_presentation_group_ids/duplicate_event.
+    group_ids = resolve_presentation_group_ids(session, events)
     return [
         AdminEventRead(
             **EventRead.model_validate(event).model_dump(),
             organizer_public_name=event.organizer.public_name,
             deleted_at=event.deleted_at,
             organizer_subscription=_to_organizer_subscription_read(latest_subscriptions.get(event.id)),
+            instance_group_id=group_ids[event.id],
+            created_at=event.created_at,
         )
         for event in events
     ]

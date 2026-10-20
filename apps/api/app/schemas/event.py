@@ -219,6 +219,27 @@ class AdminEventRead(EventRead):
     # Estado de pago más reciente del organizador — Etapa 6b-1, para decidir
     # si aprobar el evento sabiendo si ya avisó/confirmó el pago del plan.
     organizer_subscription: OrganizerSubscriptionRead | None = None
+    # Feature "Duplicar evento" — nunca en EventRead (no se expone en la
+    # vista pública). `created_at` viaja junto para poder calcular
+    # "Instancia N" del lado del frontend (orden dentro del mismo grupo).
+    # No es un passthrough directo de la columna: para el evento "raíz" de
+    # un grupo (el que nunca se modifica al duplicarse) el router lo
+    # completa con su propio id si detecta que algún otro evento lo
+    # referencia — ver resolve_presentation_group_ids/duplicate_event.
+    instance_group_id: UUID | None = None
+    created_at: datetime
+
+
+class OrganizerEventRead(EventRead):
+    """EventRead + lo que necesita el organizador dueño para ver sus propios
+    eventos agrupados ("Mis eventos", GET /api/events/mine) — mismo motivo
+    que AdminEventRead: instance_group_id/created_at nunca van en la vista
+    pública (EventRead), pero el organizador sí necesita saber si su evento
+    tiene instancias duplicadas. `instance_group_id` acá tampoco es un
+    passthrough directo — ver el comentario en AdminEventRead."""
+
+    instance_group_id: UUID | None = None
+    created_at: datetime
 
 
 class EventCreate(BaseModel):
@@ -443,9 +464,9 @@ class EventPlanUpdate(BaseModel):
 
 
 class EventsByStatus(BaseModel):
-    pending: list[EventRead]
-    approved: list[EventRead]
-    rejected: list[EventRead]
+    pending: list[OrganizerEventRead]
+    approved: list[OrganizerEventRead]
+    rejected: list[OrganizerEventRead]
 
 
 class FlyerUploadResponse(BaseModel):

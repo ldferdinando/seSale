@@ -62,6 +62,13 @@ export async function createEvent(input: EventCreateInput): Promise<Event> {
   return apiPost<Event>("/api/events", toUtcPayload(input));
 }
 
+/** Feature "Duplicar evento" — crea una copia nueva (nueva fecha/hora,
+ * resto de los datos editables) vinculada al evento `eventId` vía
+ * `instance_group_id`. Ver POST /api/events/{id}/duplicate. */
+export async function duplicateEvent(eventId: string, input: EventCreateInput): Promise<Event> {
+  return apiPost<Event>(`/api/events/${eventId}/duplicate`, toUtcPayload(input));
+}
+
 export async function fetchMyEvents(): Promise<EventsByStatus> {
   return apiGet<EventsByStatus>("/api/events/mine");
 }
@@ -123,6 +130,7 @@ export async function fetchAdminEvents(filters: AdminEventFilters): Promise<Admi
     date_from: filters.date_from,
     date_to: filters.date_to,
     organizer_id: filters.organizer_id,
+    instance_group_id: filters.instance_group_id,
     include_deleted: filters.include_deleted ? "true" : undefined,
   });
 }

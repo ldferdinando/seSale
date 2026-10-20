@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -9,9 +9,10 @@ import { Tabs } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { useAuthStatus } from "@/features/auth/hooks/useAuthStatus";
 import { EventCard } from "@/features/events/components/EventCard";
+import { InstanceBadge } from "@/features/events/components/InstanceBadge";
 import { useDeleteEvent } from "@/features/events/hooks/useDeleteEvent";
 import { useMyEvents } from "@/features/events/hooks/useMyEvents";
-import type { Event, EventStatus } from "@/features/events/types";
+import type { Event, EventStatus, OrganizerEvent } from "@/features/events/types";
 import {
   PendingPaymentCard,
   selectResumablePayments,
@@ -31,6 +32,11 @@ export function MyEventsView() {
   const isLoadingUser = authStatus === "loading";
   const [status, setStatus] = useState<EventStatus>("pending");
   const { data, isLoading, isError } = useMyEvents(Boolean(currentUser));
+  // Feature "Duplicar evento" — GET /mine trae TODOS los eventos del
+  // organizador (sin paginar), así que agrupar por instance_group_id para
+  // el indicador "Instancia N" se puede calcular enteramente acá, sin pedir
+  // nada más al backend.
+  const allMyEvents: OrganizerEvent[] = data ? [...data.pending, ...data.approved, ...data.rejected] : [];
   // Pagos de MercadoPago interrumpidos (ventana cerrada): se muestran arriba
   // de las pestañas para que se vean sin importar en qué estado de
   // moderación esté el evento.
@@ -117,19 +123,37 @@ export function MyEventsView() {
         <div className="flex flex-col gap-3">
           {data[status].map((event) => (
             <div key={event.id} className="flex flex-col gap-1.5">
+              <InstanceBadge
+                currentEventId={event.id}
+                instances={
+                  event.instance_group_id
+                    ? allMyEvents.filter((e) => e.instance_group_id === event.instance_group_id)
+                    : []
+                }
+                getHref={(eventId) => `/eventos/${eventId}`}
+              />
               <EventCard event={event} />
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteMessage(null);
-                  setEventToDelete(event);
-                }}
-                aria-label={`Eliminar ${event.title}`}
-                className="flex w-fit items-center gap-1.5 self-end rounded-full px-3 py-1 text-xs font-bold text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                Eliminar
-              </button>
+              <div className="flex justify-end gap-2">
+                <Link
+                  href={`/publicar?duplicar=${event.id}`}
+                  className="flex w-fit items-center gap-1.5 self-end rounded-full px-3 py-1 text-xs font-bold text-ink-3"
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                  Duplicar
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteMessage(null);
+                    setEventToDelete(event);
+                  }}
+                  aria-label={`Eliminar ${event.title}`}
+                  className="flex w-fit items-center gap-1.5 self-end rounded-full px-3 py-1 text-xs font-bold text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  Eliminar
+                </button>
+              </div>
             </div>
           ))}
         </div>

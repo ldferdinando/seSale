@@ -2,7 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
+import { Check, Copy, Eye, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { type AdminTableColumn, ResponsiveAdminTable } from "@/features/admin/components/ResponsiveAdminTable";
 import { useCities } from "@/features/auth/hooks/useCities";
+import { InstanceBadge } from "@/features/events/components/InstanceBadge";
 import {
   isRelevantOrganizerSubscription,
   OrganizerSubscriptionBadge,
 } from "@/features/events/components/OrganizerSubscriptionBadge";
-import { useAdminEvents } from "@/features/events/hooks/useAdminEvents";
+import { useAdminEvents, useEventInstanceSiblings } from "@/features/events/hooks/useAdminEvents";
 import { useDeleteEvent } from "@/features/events/hooks/useDeleteEvent";
 import { useUpdateEventPlan } from "@/features/events/hooks/useUpdateEventPlan";
 import { useUpdateEventStatus } from "@/features/events/hooks/useUpdateEventStatus";
@@ -57,6 +58,12 @@ function StatusBadge({ status }: { status: EventStatus }) {
  * admin-responsive-1.
  */
 function EventTitleCell({ event }: { event: AdminEvent }) {
+  // Feature "Duplicar evento": las otras instancias del grupo se piden
+  // aparte (el listado admin está paginado/filtrado, puede no traerlas) —
+  // ver useEventInstanceSiblings. Solo dispara la query si el evento
+  // pertenece a un grupo.
+  const { data: siblings } = useEventInstanceSiblings(event.instance_group_id);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <p className="text-sm font-bold text-foreground">{event.title}</p>
@@ -71,6 +78,9 @@ function EventTitleCell({ event }: { event: AdminEvent }) {
         </Badge>
       ) : (
         !event.is_active && <Badge variant="muted">Dado de baja</Badge>
+      )}
+      {siblings && (
+        <InstanceBadge currentEventId={event.id} instances={siblings} getHref={(eventId) => `/eventos/${eventId}`} />
       )}
     </div>
   );
@@ -168,6 +178,19 @@ function EventRowActions({ event }: { event: AdminEvent }) {
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
           Editar
+        </Link>
+      )}
+
+      {/* Feature "Duplicar evento" — el admin puede duplicar cualquier
+          evento, no solo los propios. El organizador de la copia sigue
+          siendo el del evento original. */}
+      {!event.deleted_at && (
+        <Link
+          href={`/publicar?duplicar=${event.id}`}
+          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink-2"
+        >
+          <Copy className="h-3.5 w-3.5" aria-hidden />
+          Duplicar
         </Link>
       )}
 
