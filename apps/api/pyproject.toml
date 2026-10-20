@@ -4,11 +4,17 @@ version = "0.1.0"
 description = "seSALE — backend FastAPI"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "fastapi==0.111.*",
+    "fastapi==0.116.*",
     "sqlmodel==0.0.19",
     "alembic>=1.13,<1.14",
     "pydantic>=2,<3",
     "pydantic-settings>=2,<3",
+    # `EmailStr` (schemas/user.py) lo requiere en runtime. Antes llegaba
+    # transitivo de fastapi==0.111.* sin estar declarado acá — al bumpear a
+    # 0.116.* dejó de resolverse solo y la app rompía al importar
+    # schemas/user.py. Declarado explícito para no depender de nuevo de un
+    # efecto colateral de la versión de fastapi.
+    "email-validator>=2,<3",
     "python-jose[cryptography]>=3,<4",
     "passlib[bcrypt]>=1.7,<1.8",
     "bcrypt>=4.0,<4.1",

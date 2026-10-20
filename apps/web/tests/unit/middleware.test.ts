@@ -150,3 +150,35 @@ describe("middleware — protección de rutas autenticadas (Etapa 9e)", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 });
+
+describe("middleware — header secreto en /api (mitigación X-Forwarded-For)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("no agrega el header si PROXY_SHARED_SECRET no está configurado", () => {
+    vi.stubEnv("PROXY_SHARED_SECRET", "");
+
+    const response = middleware(makeRequest("/api/events"));
+
+    expect(response.headers.get("x-middleware-override-headers")).toBeNull();
+  });
+
+  it("agrega x-sesale-proxy-secret a las requests /api/* cuando está configurado", () => {
+    vi.stubEnv("PROXY_SHARED_SECRET", "test-secret-value");
+
+    const response = middleware(makeRequest("/api/events"));
+
+    const overridden = response.headers.get("x-middleware-override-headers");
+    expect(overridden).toContain("x-sesale-proxy-secret");
+    expect(response.headers.get("x-middleware-request-x-sesale-proxy-secret")).toBe("test-secret-value");
+  });
+
+  it("no agrega el header a rutas que no son /api", () => {
+    vi.stubEnv("PROXY_SHARED_SECRET", "test-secret-value");
+
+    const response = middleware(makeRequest("/eventos/123"));
+
+    expect(response.headers.get("x-middleware-override-headers")).toBeNull();
+  });
+});

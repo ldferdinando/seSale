@@ -68,6 +68,16 @@ class Settings(BaseSettings):
     # Railway una vez creado el primer admin.
     disable_setup_endpoint: bool = False
 
+    # Auditoría post-lanzamiento — mitigación de X-Forwarded-For spoofing
+    # (ver core/deps.py, get_client_ip). Vacío = sin cambios de comportamiento
+    # (sigue confiando en X-Forwarded-For sin más, como hasta ahora). Con un
+    # valor configurado, solo se confía en X-Forwarded-For cuando la request
+    # trae el header x-sesale-proxy-secret con este mismo valor (lo setea el
+    # middleware de Next.js — apps/web/src/middleware.ts — antes de la
+    # rewrite /api/* a este backend). Debe coincidir byte a byte con
+    # PROXY_SHARED_SECRET en el entorno del frontend.
+    proxy_shared_secret: str | None = None
+
     # `.env.example` deja RESEND_FROM_EMAIL/RESEND_REPLY_TO vacíos: un string
     # vacío en el entorno se trata como "no configurado" (default / sin reply-to).
     @field_validator("resend_from_email", mode="before")

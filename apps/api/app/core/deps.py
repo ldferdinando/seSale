@@ -86,14 +86,40 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+_UNTRUSTED_FORWARDED_FOR_SENTINEL = "untrusted-direct-access"
+
+
 def get_client_ip(request: Request) -> str | None:
     """IP real del cliente — usa X-Forwarded-For si está presente (Railway
     corre detrás de un proxy en producción), si no cae a request.client.host.
 
-    Se usa tanto para auditoría (Report.ip_address) como key_func del rate
-    limit del endpoint de reportes.
+    Se usa tanto para auditoría (Report.ip_address) como key_func de varios
+    rate limits (auth, setup, reportes, gastro, webhooks, client-errors).
+
+    Auditoría post-lanzamiento: quien le pega directo al dominio
+    `*.up.railway.app` (en vez de pasar por el rewrite de Vercel) puede
+    mandar un X-Forwarded-For falso y saltear el rate limit por IP — Railway
+    no publica IPs fijas de proxy para poder validar el hop por ese lado
+    (ver a_revisar.md). Si `settings.proxy_shared_secret` está configurado,
+    solo se confía en X-Forwarded-For cuando la request trae el header
+    `x-sesale-proxy-secret` con ese mismo valor (lo agrega el middleware de
+    Next.js antes de la rewrite /api/*, ver apps/web/src/middleware.ts) — sin
+    ese valor configurado, el comportamiento es el de siempre (sin cambios).
+
+    Importante: cuando el secreto no matchea, NO cae a `request.client.host`
+    — el Procfile corre uvicorn con `--proxy-headers
+    --forwarded-allow-ips='*'`, que ya reescribe `request.client` tomando el
+    primer valor de X-Forwarded-For (el mismo que acá se rechaza) ANTES de
+    que este código corra, así que `request.client.host` está igual de
+    envenenado que el header. En vez de confiar en ese valor, se devuelve un
+    sentinel fijo: cualquiera que le pegue directo a Railway sin el header
+    secreto cae en el mismo balde de rate limit, en vez de uno nuevo por
+    cada IP falsa que invente — ver a_revisar.md para el análisis completo
+    (la mitigación de fondo requeriría además sacar esos flags del Procfile).
     """
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
+        if settings.proxy_shared_secret and request.headers.get("x-sesale-proxy-secret") != settings.proxy_shared_secret:
+            return _UNTRUSTED_FORWARDED_FOR_SENTINEL
         return forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else None

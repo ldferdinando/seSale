@@ -41,12 +41,43 @@ function requiresAuth(pathname: string): boolean {
   return AUTH_REQUIRED_PATHS.some((p) => pathname.startsWith(p)) || EDITAR_EVENTO_PATTERN.test(pathname);
 }
 
+// Auditoría post-lanzamiento — mitigación de X-Forwarded-For spoofing: quien
+// le pega directo al dominio de Railway (en vez de pasar por esta rewrite de
+// Vercel) puede mandar un X-Forwarded-For falso y saltear el rate limit por
+// IP del backend (ver apps/api/app/core/deps.py, get_client_ip). Si
+// PROXY_SHARED_SECRET está seteado en el entorno del frontend, se agrega acá
+// — antes de que next.config.js reenvíe /api/:path* al backend — un header
+// que solo este middleware puede poner. El backend solo confía en
+// X-Forwarded-For cuando ese header coincide, así que una request directa a
+// Railway (sin pasar por este middleware) nunca puede traerlo.
+//
+// Variable de servidor (no NEXT_PUBLIC_): el middleware corre en el Edge
+// Runtime de Next, que sí tiene acceso a process.env de variables no
+// públicas en runtime (a diferencia del bundle de cliente) — si se usara
+// NEXT_PUBLIC_, el valor quedaría expuesto en el JS del browser y cualquiera
+// podría leerlo y falsificar el header.
+const PROXY_SECRET_HEADER = "x-sesale-proxy-secret";
+
+function withProxySecretHeader(request: NextRequest): NextResponse {
+  const secret = process.env.PROXY_SHARED_SECRET;
+  if (!secret) {
+    return NextResponse.next();
+  }
+  const headers = new Headers(request.headers);
+  headers.set(PROXY_SECRET_HEADER, secret);
+  return NextResponse.next({ request: { headers } });
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true";
 
   if (isMaintenanceMode && !ALWAYS_ALLOWED.some((p) => pathname.startsWith(p))) {
     return NextResponse.rewrite(new URL("/proximamente", request.url));
+  }
+
+  if (pathname.startsWith("/api")) {
+    return withProxySecretHeader(request);
   }
 
   if (requiresAuth(pathname) && !request.cookies.get(HAS_SESSION_COOKIE_NAME)) {
