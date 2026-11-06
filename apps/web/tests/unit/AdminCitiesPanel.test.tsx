@@ -82,4 +82,45 @@ describe("AdminCitiesPanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Desactivá o reasigná los eventos/);
     expect(screen.getByText(/General Roca/)).toBeInTheDocument();
   });
+
+  it("opens the create-city form and submits POST /api/admin/cities", async () => {
+    server.use(http.get(`${API_URL}/api/admin/cities`, () => HttpResponse.json([makeAdminCity()])));
+    let posted: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_URL}/api/admin/cities`, async ({ request }) => {
+        posted = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          makeAdminCity({ name: "Chos Malal", province: "Neuquén", is_active: true, sort_order: 10 }),
+          { status: 201 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: /Nueva ciudad/ }));
+    await user.type(screen.getByLabelText("Nombre *"), "Chos Malal");
+    await user.type(screen.getByLabelText("Provincia *"), "Neuquén");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(posted).toMatchObject({ name: "Chos Malal", province: "Neuquén" }));
+  });
+
+  it("shows a 409 error inline when creating a duplicate city", async () => {
+    server.use(http.get(`${API_URL}/api/admin/cities`, () => HttpResponse.json([makeAdminCity()])));
+    server.use(
+      http.post(`${API_URL}/api/admin/cities`, () =>
+        HttpResponse.json({ detail: "Ya existe una ciudad 'General Roca' en 'Río Negro'" }, { status: 409 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: /Nueva ciudad/ }));
+    await user.type(screen.getByLabelText("Nombre *"), "General Roca");
+    await user.type(screen.getByLabelText("Provincia *"), "Río Negro");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Ya existe una ciudad/);
+  });
 });

@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from app.core.timezone import argentina_today
 from app.models.city import City
 from app.models.event import Event, EventStatus
+from app.schemas.city import CityCreate
 from app.services.ad_service import ensure_base_ad_slots_for_city, ensure_category_ad_slots
 
 
@@ -71,6 +72,59 @@ def toggle_city_active(session: Session, city_id: UUID) -> City:
     active_category_keys = [c.key for c in list_categories(session, only_active=True)]
     for key in active_category_keys:
         ensure_category_ad_slots(session, key, [city.id])
+
+    return city
+
+
+def create_city(session: Session, data: CityCreate) -> City:
+    """Alta de ciudad desde el panel admin. `sort_order`: si no se manda,
+    máximo actual + 1 (aparece al final del listado). Nace `is_active=True`
+    (el admin la crea a propósito, para usarla de inmediato). Rechaza
+    duplicados por `name`+`province` (case-insensitive) para evitar altas
+    repetidas por error — no hay constraint de unicidad en la DB todavía,
+    así que la validación es solo a nivel de aplicación."""
+    existing = session.exec(
+        select(City).where(
+            func.lower(City.name) == data.name.strip().lower(),
+            func.lower(City.province) == data.province.strip().lower(),
+        )
+    ).first()
+    if existing is not None:
+        raise ValueError(f"Ya existe una ciudad '{data.name}' en '{data.province}'")
+
+    if data.sort_order is not None:
+        sort_order = data.sort_order
+    else:
+        max_sort_order = session.exec(select(func.max(City.sort_order))).one()
+        sort_order = (max_sort_order or 0) + 1
+
+    city = City(
+        name=data.name.strip(),
+        province=data.province.strip(),
+        emoji=data.emoji,
+        latitude=data.latitude,
+        longitude=data.longitude,
+        is_active=True,
+        sort_order=sort_order,
+    )
+    session.add(city)
+    session.commit()
+    session.refresh(city)
+
+    # Mismos slots base que al activar una ciudad existente (toggle_city_active) —
+    # la ciudad nace activa, así que necesita estar lista para banners desde el alta.
+    from app.services.category_catalog_service import list_categories
+
+    ensure_base_ad_slots_for_city(session, city.id)
+    active_category_keys = [c.key for c in list_categories(session, only_active=True)]
+    for key in active_category_keys:
+        ensure_category_ad_slots(session, key, [city.id])
+
+    # ensure_base_ad_slots_for_city/ensure_category_ad_slots comitean y
+    # expiran los atributos de `city` en memoria — hace falta refrescarlo
+    # antes de devolverlo para que el `model_dump()` del router no los
+    # encuentre vacíos.
+    session.refresh(city)
 
     return city
 

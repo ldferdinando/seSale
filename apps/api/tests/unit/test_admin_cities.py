@@ -103,3 +103,80 @@ async def test_patch_admin_city_sort_order_negative_returns_422(
     )
 
     assert response.status_code == 422
+
+
+async def test_post_admin_city_success_creates_active_city_with_default_sort_order(
+    client: AsyncClient, city: City, admin_token_headers: dict[str, str]
+):
+    payload = {
+        "name": "San Martín de los Andes",
+        "province": "Neuquén",
+        "emoji": "🏔️",
+        "latitude": -40.1583,
+        "longitude": -71.3519,
+    }
+
+    response = await client.post("/api/admin/cities", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["name"] == payload["name"]
+    assert body["province"] == payload["province"]
+    assert body["is_active"] is True
+    assert body["sort_order"] == city.sort_order + 1
+    assert body["active_events_count"] == 0
+
+
+async def test_post_admin_city_with_explicit_sort_order_uses_it(
+    client: AsyncClient, admin_token_headers: dict[str, str]
+):
+    payload = {"name": "Chos Malal", "province": "Neuquén", "sort_order": 7}
+
+    response = await client.post("/api/admin/cities", json=payload, headers=admin_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["sort_order"] == 7
+
+
+async def test_post_admin_city_empty_name_returns_422(client: AsyncClient, admin_token_headers: dict[str, str]):
+    response = await client.post(
+        "/api/admin/cities", json={"name": "", "province": "Neuquén"}, headers=admin_token_headers
+    )
+
+    assert response.status_code == 422
+
+
+async def test_post_admin_city_invalid_latitude_returns_422(client: AsyncClient, admin_token_headers: dict[str, str]):
+    response = await client.post(
+        "/api/admin/cities",
+        json={"name": "Zapala", "province": "Neuquén", "latitude": 200},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_post_admin_city_duplicate_name_and_province_returns_409(
+    client: AsyncClient, city: City, admin_token_headers: dict[str, str]
+):
+    response = await client.post(
+        "/api/admin/cities",
+        json={"name": city.name.upper(), "province": city.province},
+        headers=admin_token_headers,
+    )
+
+    assert response.status_code == 409
+
+
+async def test_post_admin_city_by_user_returns_403(client: AsyncClient, user_token_headers: dict[str, str]):
+    response = await client.post(
+        "/api/admin/cities", json={"name": "Junín", "province": "Neuquén"}, headers=user_token_headers
+    )
+
+    assert response.status_code == 403
+
+
+async def test_post_admin_city_without_auth_returns_401(client: AsyncClient):
+    response = await client.post("/api/admin/cities", json={"name": "Junín", "province": "Neuquén"})
+
+    assert response.status_code == 401

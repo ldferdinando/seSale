@@ -6,3 +6,14 @@ import type { City } from "@/features/auth/types";
 export interface AdminCity extends City {
   active_events_count: number;
 }
+
+/** POST /api/admin/cities. `sort_order` es opcional: si no se manda, el
+ * backend le asigna el máximo actual + 1. */
+export interface CityCreateInput {
+  name: string;
+  province: string;
+  emoji?: string;
+  latitude?: number;
+  longitude?: number;
+  sort_order?: number;
+}

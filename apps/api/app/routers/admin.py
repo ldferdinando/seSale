@@ -26,7 +26,7 @@ from app.schemas.ad_slot import (
     AdSlotUpdate,
 )
 from app.schemas.category_catalog import CategoryAdminRead, CategoryCreate, CategoryUpdate
-from app.schemas.city import CityAdminRead, CitySortOrderUpdate
+from app.schemas.city import CityAdminRead, CityCreate, CitySortOrderUpdate
 from app.schemas.event import AdminEventRead, EventRead
 from app.schemas.gastro_type_catalog import GastroTypeAdminRead, GastroTypeCreate, GastroTypeUpdate
 from app.schemas.location import (
@@ -65,6 +65,7 @@ from app.services.category_catalog_service import (
 )
 from app.services.city_service import (
     count_active_future_events,
+    create_city,
     list_all_cities_with_active_event_counts,
     update_city_sort_order,
 )
@@ -462,6 +463,18 @@ def get_admin_cities(session: Session = Depends(get_session)) -> list[CityAdminR
         CityAdminRead(**city.model_dump(), active_events_count=count)
         for city, count in list_all_cities_with_active_event_counts(session)
     ]
+
+
+@router.post("/cities", response_model=CityAdminRead, status_code=status.HTTP_201_CREATED)
+def post_admin_city(
+    payload: CityCreate,
+    session: Session = Depends(get_session),
+) -> CityAdminRead:
+    try:
+        city = create_city(session, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return CityAdminRead(**city.model_dump(), active_events_count=0)
 
 
 @router.patch("/cities/{city_id}/sort-order", response_model=CityAdminRead)
