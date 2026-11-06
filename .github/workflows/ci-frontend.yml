@@ -48,8 +48,13 @@ jobs:
 
       # Bloqueante: dependencias de producción (lo que se deploya). Se
       # reactivó al actualizar next 16.2.12→16.3.8 — ver a_revisar.md.
+      # Mismo gate que `npm audit --omit=dev --audit-level=high`, pero
+      # ignora los advisory IDs de scripts/check-audit-allowlist.js (falsos
+      # positivos confirmados y documentados en a_revisar.md — hoy,
+      # GHSA-mrhx-c7xc-m3w5 de zod). Cualquier otra vulnerabilidad alta o
+      # crítica sigue bloqueando el merge igual que antes.
       - name: Run npm audit — producción (falla con vulnerabilidades altas/críticas)
-        run: npm audit --omit=dev --audit-level=high
+        run: node scripts/check-audit-allowlist.js
 
       # Informativo: dependencias de desarrollo (vitest, tailwindcss) — no se
       # deployan. Quedan hallazgos sin fix compatible (vitest 5 es mayor,
