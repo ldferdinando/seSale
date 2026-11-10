@@ -66,6 +66,7 @@ from app.services.category_catalog_service import (
 from app.services.city_service import (
     count_active_future_events,
     create_city,
+    delete_city,
     list_all_cities_with_active_event_counts,
     update_city_sort_order,
 )
@@ -490,6 +491,20 @@ def patch_admin_city_sort_order(
 
     count = count_active_future_events(session, city.id)
     return CityAdminRead(**city.model_dump(), active_events_count=count)
+
+
+@router.delete("/cities/{city_id}")
+def delete_admin_city(
+    city_id: UUID,
+    session: Session = Depends(get_session),
+) -> dict[str, str]:
+    try:
+        delete_city(session, city_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return {"detail": "Ciudad eliminada"}
 
 
 # ── Etapa 8d — banners (ad-slots / ad-items) ──────────────────────────────

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
@@ -122,5 +122,69 @@ describe("AdminCitiesPanel", () => {
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Ya existe una ciudad/);
+  });
+
+  it("asks for confirmation before deleting a city, then calls DELETE", async () => {
+    server.use(http.get(`${API_URL}/api/admin/cities`, () => HttpResponse.json([makeAdminCity()])));
+    let deleted = false;
+    server.use(
+      http.delete(`${API_URL}/api/admin/cities/:id`, () => {
+        deleted = true;
+        return HttpResponse.json({ detail: "Ciudad eliminada" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Eliminar ciudad" });
+    expect(dialog).toHaveTextContent(/General Roca/);
+    expect(deleted).toBe(false);
+
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+
+    await waitFor(() => expect(deleted).toBe(true));
+  });
+
+  it("closes the confirmation dialog on cancel without deleting", async () => {
+    server.use(http.get(`${API_URL}/api/admin/cities`, () => HttpResponse.json([makeAdminCity()])));
+    let deleted = false;
+    server.use(
+      http.delete(`${API_URL}/api/admin/cities/:id`, () => {
+        deleted = true;
+        return HttpResponse.json({ detail: "Ciudad eliminada" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+    const dialog = await screen.findByRole("dialog", { name: "Eliminar ciudad" });
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(deleted).toBe(false);
+  });
+
+  it("shows a 409 error inline when deleting a city with dependents", async () => {
+    server.use(http.get(`${API_URL}/api/admin/cities`, () => HttpResponse.json([makeAdminCity()])));
+    server.use(
+      http.delete(`${API_URL}/api/admin/cities/:id`, () =>
+        HttpResponse.json(
+          { detail: "Esta ciudad tiene 1 evento(s) asociado(s). No se puede eliminar." },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithClient();
+
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+    const dialog = await screen.findByRole("dialog", { name: "Eliminar ciudad" });
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/No se puede eliminar/);
+    expect(screen.getAllByText(/General Roca/).length).toBeGreaterThan(0);
   });
 });

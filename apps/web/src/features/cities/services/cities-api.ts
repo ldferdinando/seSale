@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import type { AdminCity, CityCreateInput } from "@/features/cities/types";
 
 export async function fetchAdminCities(): Promise<AdminCity[]> {
@@ -15,4 +15,8 @@ export async function toggleCity(cityId: string): Promise<AdminCity> {
 
 export async function updateCitySortOrder(cityId: string, sortOrder: number): Promise<AdminCity> {
   return apiPatch<AdminCity>(`/api/admin/cities/${cityId}/sort-order`, { sort_order: sortOrder });
+}
+
+export async function deleteCity(cityId: string): Promise<void> {
+  return apiDelete<void>(`/api/admin/cities/${cityId}`);
 }

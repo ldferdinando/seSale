@@ -5,6 +5,7 @@ import pytest
 
 from app.models import City, Event, EventStatus, Location
 from app.services.city_service import (
+    delete_city,
     list_active_cities,
     list_all_cities_with_active_event_counts,
     toggle_city_active,
@@ -230,3 +231,113 @@ def test_toggle_city_active_enabling_is_idempotent_for_ad_slots(session, city):
     ).one()
 
     assert count_after_first == count_after_second
+
+
+# Bug real en prod: activar una ciudad devolvía 500 porque una excepción al
+# crear los ad slots (datos inconsistentes heredados) no estaba contenida.
+# `_ensure_ad_slots_safely` la atrapa y loguea en vez de dejarla propagar.
+
+
+def test_toggle_city_active_enabling_survives_ad_slot_provisioning_failure(session, city, monkeypatch):
+    import app.services.city_service as city_service
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("datos inconsistentes")
+
+    monkeypatch.setattr(city_service, "ensure_base_ad_slots_for_city", _boom)
+
+    city.is_active = False
+    session.add(city)
+    session.commit()
+
+    updated = toggle_city_active(session, city.id)
+
+    assert updated.is_active is True
+
+
+# delete_city
+
+
+def test_delete_city_without_dependents_removes_it(session, city):
+    city_id = city.id
+
+    delete_city(session, city_id)
+
+    assert session.get(City, city_id) is None
+
+
+def test_delete_city_removes_its_ad_slots(session, city):
+    from app.models.ad_slot import AdSlot
+    from sqlmodel import select
+
+    toggle_city_active(session, city.id)  # deactivate
+    toggle_city_active(session, city.id)  # reactivate, creates ad slots
+    assert session.exec(select(AdSlot).where(AdSlot.city_id == city.id)).first() is not None
+
+    delete_city(session, city.id)
+
+    assert session.exec(select(AdSlot).where(AdSlot.city_id == city.id)).first() is None
+
+
+def test_delete_city_with_events_raises_value_error(session, city, organizer, location):
+    event = Event(
+        city_id=city.id,
+        organizer_id=organizer.id,
+        location_id=location.id,
+        title="Evento",
+        date=date(2999, 1, 1),
+        time=time(21, 0),
+        time_end=time(23, 0),
+        status=EventStatus.approved,
+        is_active=True,
+    )
+    session.add(event)
+    session.commit()
+
+    with pytest.raises(ValueError):
+        delete_city(session, city.id)
+
+    assert session.get(City, city.id) is not None
+
+
+def test_delete_city_with_locations_raises_value_error(session, city, location):
+    with pytest.raises(ValueError):
+        delete_city(session, city.id)
+
+    assert session.get(City, city.id) is not None
+
+
+def test_delete_city_with_users_raises_value_error(session, city, organizer):
+    with pytest.raises(ValueError):
+        delete_city(session, city.id)
+
+    assert session.get(City, city.id) is not None
+
+
+def test_delete_city_nonexistent_raises_lookup_error(session):
+    with pytest.raises(LookupError):
+        delete_city(session, uuid4())
+
+
+def test_delete_city_with_ad_items_raises_value_error(session, city, organizer, admin):
+    from app.models.ad_item import AdItem
+    from app.models.ad_slot import AdSlot
+
+    slot = AdSlot(city_id=city.id, section="eventos", slot_position=0)
+    session.add(slot)
+    session.commit()
+    session.refresh(slot)
+
+    ad_item = AdItem(
+        slot_id=slot.id,
+        user_id=organizer.id,
+        img_url="https://example.com/banner.webp",
+        created_by=admin.id,
+    )
+    session.add(ad_item)
+    session.commit()
+
+    with pytest.raises(ValueError):
+        delete_city(session, city.id)
+
+    assert session.get(City, city.id) is not None

@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/features/admin/components/ConfirmDialog";
 import { useAdminCities } from "@/features/cities/hooks/useAdminCities";
 import { useCreateCity } from "@/features/cities/hooks/useCreateCity";
+import { useDeleteCity } from "@/features/cities/hooks/useDeleteCity";
 import { useToggleCity } from "@/features/cities/hooks/useToggleCity";
 import { useUpdateCitySortOrder } from "@/features/cities/hooks/useUpdateCitySortOrder";
 import type { AdminCity } from "@/features/cities/types";
@@ -107,8 +109,11 @@ function CityForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => 
 function CityRow({ city }: { city: AdminCity }) {
   const toggle = useToggleCity();
   const updateSortOrder = useUpdateCitySortOrder();
+  const deleteCity = useDeleteCity();
   const [sortOrderInput, setSortOrderInput] = useState(String(city.sort_order));
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleToggle() {
     setToggleError(null);
@@ -118,6 +123,16 @@ function CityRow({ city }: { city: AdminCity }) {
       setToggleError(
         err instanceof ApiError ? err.message : "No pudimos actualizar el estado de la ciudad.",
       );
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteError(null);
+    try {
+      await deleteCity.mutateAsync(city.id);
+      setConfirmingDelete(false);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "No pudimos eliminar la ciudad.");
     }
   }
 
@@ -178,12 +193,38 @@ function CityRow({ city }: { city: AdminCity }) {
           {city.active_events_count} evento{city.active_events_count === 1 ? "" : "s"} activo
           {city.active_events_count === 1 ? "" : "s"}
         </Badge>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={() => setConfirmingDelete(true)}
+        >
+          Eliminar
+        </Button>
       </div>
 
       {toggleError && (
         <p role="alert" className="text-xs text-destructive">
           {toggleError}
         </p>
+      )}
+
+      {deleteError && (
+        <p role="alert" className="text-xs text-destructive">
+          {deleteError}
+        </p>
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Eliminar ciudad"
+          description={`¿Seguro que querés eliminar "${city.name}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          isConfirming={deleteCity.isPending}
+          onConfirm={handleDelete}
+          onClose={() => setConfirmingDelete(false)}
+        />
       )}
     </div>
   );

@@ -180,3 +180,69 @@ async def test_post_admin_city_without_auth_returns_401(client: AsyncClient):
     response = await client.post("/api/admin/cities", json={"name": "Junín", "province": "Neuquén"})
 
     assert response.status_code == 401
+
+
+# DELETE /api/admin/cities/{city_id}
+
+
+async def test_delete_admin_city_without_dependents_succeeds(
+    client: AsyncClient, session: Session, admin_token_headers: dict[str, str]
+):
+    extra = City(name="Ciudad a Borrar", province="Río Negro")
+    session.add(extra)
+    session.commit()
+
+    response = await client.delete(f"/api/admin/cities/{extra.id}", headers=admin_token_headers)
+
+    assert response.status_code == 200
+    assert session.get(City, extra.id) is None
+
+
+async def test_delete_admin_city_with_events_returns_409(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    admin_token_headers: dict[str, str],
+):
+    event = Event(
+        city_id=city.id,
+        organizer_id=organizer.id,
+        location_id=location.id,
+        title="Evento",
+        date=date(2999, 1, 1),
+        time=time(21, 0),
+        time_end=time(23, 0),
+        status=EventStatus.approved,
+        is_active=True,
+    )
+    session.add(event)
+    session.commit()
+
+    response = await client.delete(f"/api/admin/cities/{city.id}", headers=admin_token_headers)
+
+    assert response.status_code == 409
+    assert session.get(City, city.id) is not None
+
+
+async def test_delete_admin_city_by_user_returns_403(
+    client: AsyncClient, city: City, user_token_headers: dict[str, str]
+):
+    response = await client.delete(f"/api/admin/cities/{city.id}", headers=user_token_headers)
+
+    assert response.status_code == 403
+
+
+async def test_delete_admin_city_without_auth_returns_401(client: AsyncClient, city: City):
+    response = await client.delete(f"/api/admin/cities/{city.id}")
+
+    assert response.status_code == 401
+
+
+async def test_delete_admin_city_nonexistent_returns_404(client: AsyncClient, admin_token_headers: dict[str, str]):
+    response = await client.delete(
+        "/api/admin/cities/00000000-0000-0000-0000-000000000000", headers=admin_token_headers
+    )
+
+    assert response.status_code == 404
