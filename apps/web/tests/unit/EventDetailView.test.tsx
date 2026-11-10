@@ -773,4 +773,22 @@ describe("EventDetailView", () => {
       expect(screen.getByText("Entrada gratuita")).toBeInTheDocument();
     });
   });
+
+  describe("info_url", () => {
+    it("shows the 'Más información' link when info_url is set, opening in a new tab", () => {
+      renderWithClient(makeEventDetail({ info_url: "https://miweb.com/cronograma" }));
+
+      const link = screen.getByTestId("event-info-url-link");
+      expect(link).toHaveAttribute("href", "https://miweb.com/cronograma");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      expect(screen.getByText("Más información")).toBeInTheDocument();
+    });
+
+    it("does not show the link when info_url is null", () => {
+      renderWithClient(makeEventDetail({ info_url: null }));
+
+      expect(screen.queryByTestId("event-info-url-link")).not.toBeInTheDocument();
+    });
+  });
 });

@@ -73,6 +73,10 @@ export interface Event {
   contact_facebook: string | null; // Etapa 12a
   contact_web: string | null;
   contact_email: string | null;
+  // Link externo opcional con el cronograma/actividades completo, cuando
+  // el organizador ya lo tiene publicado en otro lado — ver EventDetailView
+  // ("Más información") y a_revisar.md.
+  info_url: string | null;
   // Etapa "Diseño v3" — flyer único (proporción 4:5, 1080×1350, "como el
   // feed de Instagram"), reemplaza al flyer dual desktop/mobile de la
   // Etapa 12b.
@@ -165,6 +169,9 @@ export interface EventCreateInput {
   contact_facebook?: string; // Etapa 12a
   contact_web?: string;
   contact_email?: string;
+  /** Link externo con el cronograma/actividades completo (web propia,
+   * Instagram, Linktree) — ver EventDetailView y a_revisar.md. */
+  info_url?: string;
   /** Solo tiene efecto si quien publica es admin: crea el evento en nombre de este organizador. */
   organizer_id?: string;
   /**

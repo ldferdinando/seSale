@@ -86,6 +86,38 @@ async def test_create_event_invalid_category_returns_422(
     assert response.status_code == 422
 
 
+async def test_create_event_with_valid_info_url_success(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["info_url"] = "https://miweb.com/cronograma"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["info_url"] == "https://miweb.com/cronograma"
+
+
+async def test_create_event_with_invalid_info_url_returns_422(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    payload = _valid_payload(str(location.id))
+    payload["info_url"] = "no-es-una-url"
+
+    response = await client.post("/api/events", json=payload, headers=user_token_headers)
+
+    assert response.status_code == 422
+
+
+async def test_create_event_without_info_url_still_works(
+    client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
+):
+    response = await client.post("/api/events", json=_valid_payload(str(location.id)), headers=user_token_headers)
+
+    assert response.status_code == 201
+    assert response.json()["info_url"] is None
+
+
 async def test_create_event_with_multiple_categories_success(
     client: AsyncClient, organizer: User, location: Location, user_token_headers: dict[str, str]
 ):

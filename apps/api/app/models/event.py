@@ -113,6 +113,13 @@ class Event(SQLModel, table=True):
     contact_web: str | None = Field(default=None)
     contact_email: str | None = Field(default=None)
 
+    # Link externo con el detalle completo del evento (cronograma,
+    # actividades, etc.) cuando el organizador ya lo tiene publicado en otro
+    # lado y no tiene sentido volver a cargarlo en seSALE — ver EventDetailView
+    # ("Más información") y a_revisar.md. Nullable/opcional, sin backfill:
+    # None en todos los eventos existentes.
+    info_url: str | None = Field(default=None)
+
     # Media — Etapa "Diseño v3": vuelve a un único flyer (proporción 4:5,
     # 1080×1350, "como el feed de Instagram") — deprecа el flyer dual
     # desktop/mobile de la Etapa 12b. La migración que agrega esta columna

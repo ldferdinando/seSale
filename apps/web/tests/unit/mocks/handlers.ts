@@ -55,6 +55,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     contact_facebook: null,
     contact_web: null,
     contact_email: null,
+    info_url: null,
     flyer_url: null,
     location: { ...MOCK_EVENT_LOCATION },
     is_active: true,

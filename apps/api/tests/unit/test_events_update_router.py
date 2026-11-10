@@ -48,6 +48,43 @@ async def test_update_event_by_organizer_returns_200_and_resets_to_pending(
     assert body["status"] == "pending"
 
 
+async def test_update_event_with_valid_info_url_success(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}",
+        json={"info_url": "https://miweb.com/actividades"},
+        headers=user_token_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["info_url"] == "https://miweb.com/actividades"
+
+
+async def test_update_event_with_invalid_info_url_returns_422(
+    client: AsyncClient,
+    session: Session,
+    city: City,
+    organizer: User,
+    location: Location,
+    user_token_headers: dict[str, str],
+):
+    event = _make_event(session, city=city, organizer=organizer, location=location, status=EventStatus.approved)
+
+    response = await client.put(
+        f"/api/events/{event.id}", json={"info_url": "ftp://no-valido"}, headers=user_token_headers
+    )
+
+    assert response.status_code == 422
+
+
 async def test_update_event_by_admin_returns_200_and_keeps_status(
     client: AsyncClient,
     session: Session,

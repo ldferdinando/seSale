@@ -35,6 +35,7 @@ export function payloadToFormValues(payload: EventCreateInput): Partial<EventFor
     contact_instagram: payload.contact_instagram ?? "",
     contact_web: payload.contact_web ?? "",
     contact_email: payload.contact_email ?? "",
+    info_url: payload.info_url ?? "",
   };
 }
 
@@ -76,5 +77,6 @@ export function duplicateEventToFormValues(event: Event): Partial<EventFormValue
     contact_facebook: event.contact_facebook ?? "",
     contact_web: event.contact_web ?? "",
     contact_email: event.contact_email ?? "",
+    info_url: event.info_url ?? "",
   };
 }

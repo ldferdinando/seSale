@@ -18,6 +18,7 @@ import {
   MapPin,
   MessageCircle,
   Instagram as InstagramIcon,
+  Link2,
   Pencil,
   Power,
   PowerOff,
@@ -291,6 +292,26 @@ export function EventDetailView({ event }: EventDetailViewProps) {
               </p>
             )}
           </div>
+        )}
+
+        {/* Link externo con el detalle completo (cronograma, actividades,
+            etc.) cuando el organizador ya lo tiene publicado en otro lado —
+            ver a_revisar.md. Separado de "¿Dónde conseguirlas?"/Compartir
+            (más abajo) para no mezclarlo con los medios de contacto: va
+            cerca de la info de horario/ubicación de más arriba. target
+            _blank + rel noopener noreferrer: abre en pestaña nueva tanto en
+            desktop/mobile como en la PWA (no "cierra" seSALE). */}
+        {event.info_url && (
+          <a
+            href={event.info_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="event-info-url-link"
+            className="flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm font-bold text-primary"
+          >
+            <Link2 className="h-4 w-4 flex-shrink-0" aria-hidden />
+            Más información
+          </a>
         )}
 
         {/* Etapa 10b-2: bloque "Lugar" separado del organizador (calcado de

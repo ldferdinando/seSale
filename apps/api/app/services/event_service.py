@@ -366,6 +366,7 @@ def create_event(
     contact_facebook: str | None = None,
     contact_web: str | None = None,
     contact_email: str | None = None,
+    info_url: str | None = None,
     organizer_id: UUID | None = None,
     is_admin: bool = False,
     city_id: UUID | None = None,
@@ -449,6 +450,7 @@ def create_event(
         contact_facebook=contact_facebook,
         contact_web=contact_web,
         contact_email=contact_email,
+        info_url=info_url,
     )
     session.add(event)
     session.flush()
@@ -514,6 +516,7 @@ def duplicate_event(session: Session, event_id: UUID, current_user: User, payloa
         contact_facebook=payload.contact_facebook,
         contact_web=payload.contact_web,
         contact_email=payload.contact_email,
+        info_url=payload.info_url,
         city_id=payload.city_id,
     )
 

@@ -20,6 +20,7 @@ import {
   Info,
   Instagram,
   LayoutGrid,
+  Link2,
   Mail,
   MapPin,
   MapPinned,
@@ -230,6 +231,7 @@ export function EventForm({
       contact_facebook: "",
       contact_web: "",
       contact_email: "",
+      info_url: "",
       ...initialValues,
     },
   });
@@ -337,6 +339,7 @@ export function EventForm({
       contact_facebook: acquisition.facebook ? values.contact_facebook || undefined : undefined,
       contact_web: acquisition.web ? values.contact_web || undefined : undefined,
       contact_email: acquisition.email ? values.contact_email || undefined : undefined,
+      info_url: values.info_url || undefined,
       ...(mode === "create" && currentUser?.role === "admin" ? { organizer_id: organizerId } : {}),
     };
 
@@ -545,6 +548,18 @@ export function EventForm({
         </FieldLabel>
         <Textarea id="description" rows={3} {...register("description")} placeholder="Contá de qué se trata..." />
         <FieldError message={errors.description?.message} />
+      </div>
+
+      {/* Festivales/ciclos con cronograma propio ya publicado en otro lado
+          (web, Instagram, Linktree) — no es un medio de contacto (va en
+          "¿Dónde conseguirlas?" más abajo), así que vive acá, cerca de la
+          info del evento en sí. Ver EventDetailView y a_revisar.md. */}
+      <div className="flex flex-col gap-1">
+        <FieldLabel icon={Link2} htmlFor="info_url">
+          Link con más información (cronograma, actividades, etc.)
+        </FieldLabel>
+        <Input id="info_url" type="url" {...register("info_url")} placeholder="https://..." />
+        <FieldError message={errors.info_url?.message} />
       </div>
 
       <div className="flex flex-col gap-1">

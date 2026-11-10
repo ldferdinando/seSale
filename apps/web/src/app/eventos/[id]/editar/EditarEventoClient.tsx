@@ -104,6 +104,7 @@ export function EditarEventoClient({ eventId }: EditarEventoClientProps) {
     contact_facebook: event.contact_facebook ?? "",
     contact_web: event.contact_web ?? "",
     contact_email: event.contact_email ?? "",
+    info_url: event.info_url ?? "",
   };
 
   if (notice) {

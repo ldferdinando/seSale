@@ -110,6 +110,7 @@ def post_event(
             contact_facebook=payload.contact_facebook,
             contact_web=payload.contact_web,
             contact_email=payload.contact_email,
+            info_url=payload.info_url,
             organizer_id=payload.organizer_id,
             plan=payload.plan,
             is_admin=current_user.role == "admin",

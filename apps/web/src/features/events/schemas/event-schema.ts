@@ -55,6 +55,18 @@ export const eventFormSchema = z
     contact_facebook: z.string().max(500).optional().or(z.literal("")),
     contact_web: z.string().max(255).optional().or(z.literal("")),
     contact_email: z.string().email("Email inválido").optional().or(z.literal("")),
+    // Link externo opcional con el cronograma/actividades completo — ver
+    // a_revisar.md. z.string().url() acepta cualquier esquema (ftp://,
+    // javascript:, etc.), así que se exige http/https explícitamente, igual
+    // que el backend (_validate_info_url).
+    info_url: z
+      .string()
+      .url("Tiene que ser un link válido (https://...)")
+      .refine((value) => value.startsWith("http://") || value.startsWith("https://"), {
+        message: "El link debe empezar con http:// o https://",
+      })
+      .optional()
+      .or(z.literal("")),
   })
   .refine(
     (data) => {

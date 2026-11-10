@@ -31,6 +31,20 @@ def _validate_price_mode(ticket_type: TicketType, price_mode: str, price_at_door
         raise ValueError("No se puede cargar un precio (price_at_door) con price_mode distinto de 'fixed'")
 
 
+def _validate_info_url(value: str | None) -> str | None:
+    """`info_url` es libre (el organizador es responsable de a dónde apunta,
+    ver AGENTS.md "fuera de alcance") — solo se valida que tenga esquema
+    http/https, no que el dominio exista ni sea "seguro"."""
+    if value is None:
+        return value
+    value = value.strip()
+    if not value:
+        return None
+    if not (value.startswith("http://") or value.startswith("https://")):
+        raise ValueError("El link debe empezar con http:// o https://")
+    return value
+
+
 def _validate_categories(value: list[str]) -> list[str]:
     """Solo valida forma (sin duplicados). La pertenencia a categorías
     activas (antes, un set VALID_CATEGORIES hardcodeado) se valida en
@@ -134,6 +148,7 @@ class EventRead(BaseModel):
     contact_facebook: str | None  # Etapa 12a
     contact_web: str | None
     contact_email: str | None
+    info_url: str | None  # Link externo con el detalle completo (cronograma, etc.)
     flyer_url: str | None  # Etapa "Diseño v3" — flyer único 4:5, antes dual (Etapa 12b)
     location: LocationRead | None  # None si el evento usa location_text
     # Etapa 10b-2: se expone para que el organizador dueño del evento (o un
@@ -287,6 +302,11 @@ class EventCreate(BaseModel):
     contact_facebook: str | None = None  # Etapa 12a
     contact_web: str | None = None
     contact_email: str | None = None
+    # Link externo opcional con el cronograma/actividades completo, cuando
+    # ya está publicado en otro lado (web propia, Instagram, Linktree) — ver
+    # a_revisar.md. Sin relación con instance_group_id (feature "Duplicar
+    # evento"): es siempre una URL libre, nunca un link interno a seSALE.
+    info_url: str | None = None
 
     # Etapa 9b: el organizador elige la visibilidad en el resumen (Paso 2),
     # no en este formulario. gratis (default) publica directo; dest/pro se
@@ -301,6 +321,11 @@ class EventCreate(BaseModel):
         if value == PlanType.banner:
             raise ValueError("El plan 'banner' no es válido para un evento")
         return value
+
+    @field_validator("info_url")
+    @classmethod
+    def validate_info_url(cls, value: str | None) -> str | None:
+        return _validate_info_url(value)
 
     @field_validator("categories")
     @classmethod
@@ -369,6 +394,7 @@ class EventUpdate(BaseModel):
     contact_facebook: str | None = None  # Etapa 12a
     contact_web: str | None = None
     contact_email: str | None = None
+    info_url: str | None = None
 
     # Etapa 10b-2: autoservicio de "Dar de baja"/"Volver a publicar" para el
     # organizador dueño del evento (antes solo se podía desactivar, vía
@@ -388,6 +414,11 @@ class EventUpdate(BaseModel):
     @classmethod
     def normalize_location_text(cls, value: str | None) -> str | None:
         return _normalize_location_text(value)
+
+    @field_validator("info_url")
+    @classmethod
+    def validate_info_url(cls, value: str | None) -> str | None:
+        return _validate_info_url(value)
 
     @model_validator(mode="after")
     def validate_location_choice(self) -> "EventUpdate":
